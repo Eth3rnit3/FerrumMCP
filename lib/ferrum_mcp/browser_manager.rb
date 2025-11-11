@@ -70,6 +70,11 @@ module FerrumMCP
         '--disable-gpu' => nil
       }
 
+      # Additional options for CI environments
+      if ENV['CI']
+        options['--disable-setuid-sandbox'] = nil
+      end
+
       # Add BotBrowser profile if configured
       if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)
         options['--bot-profile'] = config.botbrowser_profile

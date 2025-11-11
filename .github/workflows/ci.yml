@@ -69,17 +69,34 @@ jobs:
         with:
           chrome-version: stable
 
-      - name: Verify Chrome installation
+      - name: Verify Chrome installation and setup display
         run: |
-          which google-chrome-stable || which google-chrome || which chromium-browser
-          google-chrome-stable --version || google-chrome --version || chromium-browser --version
+          # Find Chrome
+          CHROME_PATH=$(which google-chrome-stable || which google-chrome || which chromium-browser || echo "not found")
+          echo "Chrome path: $CHROME_PATH"
+
+          # Show version
+          if [ "$CHROME_PATH" != "not found" ]; then
+            $CHROME_PATH --version
+          fi
+
+          # Setup virtual display for headless
+          export DISPLAY=:99
+          sudo Xvfb -ac :99 -screen 0 1280x1024x24 > /dev/null 2>&1 &
 
       - name: Run RSpec tests
         env:
           RACK_ENV: test
           CI: true
           BROWSER_HEADLESS: true
-        run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec-results.xml
+          DISPLAY: ':99'
+        run: |
+          # Find Chrome binary
+          export BROWSER_PATH=$(which google-chrome-stable || which google-chrome || which chromium-browser)
+          echo "Using Chrome at: $BROWSER_PATH"
+
+          # Run tests
+          bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec-results.xml
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
