@@ -145,12 +145,10 @@ module FerrumMCP
                           end
 
         base64_data = Base64.strict_encode64(screenshot_data)
+        mime_type = format == 'png' ? 'image/png' : 'image/jpeg'
 
-        success_response(
-          screenshot: base64_data,
-          format: format,
-          encoding: 'base64'
-        )
+        # Use image_response for MCP image injection
+        image_response(base64_data, mime_type)
       rescue StandardError => e
         logger.error "Screenshot failed: #{e.message}"
         error_response("Failed to take screenshot: #{e.message}")

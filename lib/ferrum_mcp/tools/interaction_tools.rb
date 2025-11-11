@@ -135,7 +135,9 @@ module FerrumMCP
         end
 
         logger.info "Pressing key: #{key}"
-        browser.keyboard.press(key)
+        # Use down + up to simulate key press
+        browser.keyboard.down(key)
+        browser.keyboard.up(key)
 
         success_response(message: "Pressed key: #{key}")
       rescue StandardError => e
@@ -171,8 +173,17 @@ module FerrumMCP
         selector = params['selector'] || params[:selector]
 
         logger.info "Hovering over element: #{selector}"
-        element = find_element(selector)
-        element.hover
+
+        # Use JavaScript to trigger mouseover event
+        script = <<~JS
+          const element = document.querySelector('#{selector.gsub("'", "\\'")}');
+          if (element) {
+            const event = new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window });
+            element.dispatchEvent(event);
+          }
+        JS
+
+        browser.execute(script)
 
         success_response(message: "Hovered over #{selector}")
       rescue StandardError => e

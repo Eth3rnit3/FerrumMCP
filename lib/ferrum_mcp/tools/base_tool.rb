@@ -46,6 +46,10 @@ module FerrumMCP
         { success: true, data: data }
       end
 
+      def image_response(base64_data, mime_type = 'image/png')
+        { success: true, type: 'image', data: base64_data, mime_type: mime_type }
+      end
+
       def error_response(message)
         { success: false, error: message }
       end

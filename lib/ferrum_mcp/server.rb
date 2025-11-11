@@ -130,8 +130,20 @@ module FerrumMCP
       # Convert our tool result to MCP format
       if result[:success]
         logger.debug "Tool succeeded, creating MCP::Tool::Response with data: #{result[:data].inspect}"
-        # Return a proper MCP Tool::Response with the data as content
-        MCP::Tool::Response.new([{ type: 'text', text: result[:data].to_json }])
+
+        # Check if this is an image response
+        if result[:type] == 'image'
+          logger.debug "Creating image response with mime_type: #{result[:mime_type]}"
+          # Return MCP Tool::Response with image content
+          MCP::Tool::Response.new([{
+            type: 'image',
+            data: result[:data],
+            mimeType: result[:mime_type]
+          }])
+        else
+          # Return a proper MCP Tool::Response with the data as text content
+          MCP::Tool::Response.new([{ type: 'text', text: result[:data].to_json }])
+        end
       else
         logger.error "Tool failed with error: #{result[:error]}"
         # Return an error response

@@ -103,13 +103,27 @@ module FerrumMCP
         domain = params['domain'] || params[:domain]
 
         logger.info "Getting cookies#{domain ? " for #{domain}" : ''}"
-        cookies = browser.cookies.all
+        all_cookies = browser.cookies.all
 
-        cookies = cookies.select { |c| c['domain'].include?(domain) } if domain
+        # Convert cookies to hash format
+        # cookies.all returns a hash where values can be Cookie objects or strings
+        cookies_hash = {}
+        all_cookies.each do |name, cookie|
+          cookie_str = cookie.is_a?(String) ? cookie : cookie.to_s
+          cookies_hash[name] = cookie_str
+        end
+
+        # Filter by domain if specified
+        if domain
+          cookies_hash = cookies_hash.select do |_name, cookie_string|
+            cookie_string && cookie_string.match(/Domain=([^;]+)/i) &&
+            Regexp.last_match(1).include?(domain)
+          end
+        end
 
         success_response(
-          cookies: cookies,
-          count: cookies.length
+          cookies: cookies_hash,
+          count: cookies_hash.length
         )
       rescue StandardError => e
         logger.error "Get cookies failed: #{e.message}"
@@ -213,9 +227,18 @@ module FerrumMCP
 
         if domain
           logger.info "Clearing cookies for: #{domain}"
-          cookies = browser.cookies.all.select { |c| c['domain'].include?(domain) }
-          cookies.each { |c| browser.cookies.remove(name: c['name'], domain: c['domain']) }
-          success_response(message: "Cleared #{cookies.length} cookies for #{domain}")
+          # cookies.all returns a hash where keys are cookie names and values can be Cookie objects or strings
+          all_cookies = browser.cookies.all
+          cookies_to_remove = all_cookies.select do |_name, cookie|
+            cookie_str = cookie.is_a?(String) ? cookie : cookie.to_s
+            cookie_str && cookie_str.match(/Domain=([^;]+)/i) &&
+            Regexp.last_match(1).include?(domain)
+          end
+          # Remove each cookie by name
+          cookies_to_remove.each do |cookie_name, _cookie|
+            browser.cookies.remove(name: cookie_name)
+          end
+          success_response(message: "Cleared #{cookies_to_remove.length} cookies for #{domain}")
         else
           logger.info 'Clearing all cookies'
           browser.cookies.clear
