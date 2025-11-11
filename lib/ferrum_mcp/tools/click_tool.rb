@@ -9,7 +9,7 @@ module FerrumMCP
       end
 
       def self.description
-        'Click on an element using a CSS selector'
+        'Click on an element using a CSS selector or XPath'
       end
 
       def self.input_schema
@@ -18,12 +18,17 @@ module FerrumMCP
           properties: {
             selector: {
               type: 'string',
-              description: 'CSS selector of the element to click'
+              description: 'CSS selector or XPath of the element to click (use xpath: prefix for XPath)'
             },
             wait: {
               type: 'number',
               description: 'Seconds to wait for element (default: 5)',
               default: 5
+            },
+            force: {
+              type: 'boolean',
+              description: 'Force click even if element is hidden or not visible (default: false)',
+              default: false
             }
           },
           required: ['selector']
@@ -33,15 +38,123 @@ module FerrumMCP
       def execute(params)
         selector = params['selector'] || params[:selector]
         wait_time = params['wait'] || params[:wait] || 5
+        force = params['force'] || params[:force] || false
 
-        logger.info "Clicking element: #{selector}"
-        element = find_element(selector, timeout: wait_time)
+        logger.info "Clicking element: #{selector} (force: #{force})"
+
+        element = find_element_robust(selector, wait_time)
+
+        # Scroll element into view before clicking
+        element.scroll_into_view if element.respond_to?(:scroll_into_view)
+
+        # Use native Ferrum click
         element.click
 
         success_response(message: "Clicked on #{selector}")
+      rescue Ferrum::NodeNotFoundError, Ferrum::CoordinatesNotFoundError, Ferrum::NodeMovingError => e
+        # If native click fails and force is enabled, try with JavaScript
+        if force
+          logger.warn "Native click failed, retrying with JavaScript: #{e.message}"
+          click_with_javascript(selector)
+          success_response(message: "Clicked on #{selector} (forced)")
+        else
+          logger.error "Click failed: #{e.message}"
+          error_response("Failed to click: #{e.message}. Try with force: true")
+        end
       rescue StandardError => e
         logger.error "Click failed: #{e.message}"
         error_response("Failed to click: #{e.message}")
+      end
+
+      private
+
+      def find_element_robust(selector, timeout)
+        # Support both CSS and XPath selectors
+        if selector.start_with?('xpath:', '//')
+          xpath = selector.sub(/^xpath:/, '')
+          logger.debug "Using XPath: #{xpath}"
+
+          # Find all matching elements
+          elements = browser.xpath(xpath)
+          raise "Element not found with XPath: #{xpath}" if elements.empty?
+
+          # Prefer visible element
+          element = elements.find { |el| element_visible?(el) } || elements.first
+          visibility = element_visible?(element) ? 'visible' : 'first'
+          logger.debug "Found #{elements.length} XPath matches, using #{visibility} one"
+        else
+          # For CSS selectors, try to find first visible element
+          elements = browser.css(selector)
+          if elements.empty?
+            # Fallback to BaseTool's find_element with timeout
+            element = find_element(selector, timeout: timeout)
+          else
+            element = elements.find { |el| element_visible?(el) } || elements.first
+            visibility = element_visible?(element) ? 'visible' : 'first'
+            logger.debug "Found #{elements.length} CSS matches, using #{visibility} one"
+          end
+        end
+
+        element
+      end
+
+      def click_with_javascript(selector)
+        logger.info "Using JavaScript click for: #{selector}"
+
+        # Build JavaScript to find and click the first visible element
+        if selector.start_with?('xpath:', '//')
+          xpath = selector.sub(/^xpath:/, '')
+          script = <<~JAVASCRIPT
+            const xpath = #{xpath.inspect};
+            const result = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+            const elements = [];
+            for (let i = 0; i < result.snapshotLength; i++) {
+              elements.push(result.snapshotItem(i));
+            }
+
+            // Find first visible element
+            const visible = elements.find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+            const target = visible || elements[0];
+
+            if (target) {
+              target.scrollIntoView({ behavior: 'instant', block: 'center' });
+              target.click();
+              return true;
+            }
+            throw new Error('No element found');
+          JAVASCRIPT
+        else
+          script = <<~JAVASCRIPT
+            const elements = Array.from(document.querySelectorAll(#{selector.inspect}));
+
+            if (elements.length === 0) {
+              throw new Error('No elements found with selector: #{selector}');
+            }
+
+            // Find first visible element
+            const visible = elements.find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+            const target = visible || elements[0];
+
+            target.scrollIntoView({ behavior: 'instant', block: 'center' });
+            target.click();
+            return true;
+          JAVASCRIPT
+        end
+
+        browser.execute(script)
+        logger.debug 'JavaScript click executed successfully'
+      end
+
+      def element_visible?(element)
+        return false unless element
+
+        # Use property instead of evaluate to avoid "Node does not have a layout object" errors
+        offset_width = element.property('offsetWidth')
+        offset_height = element.property('offsetHeight')
+        offset_width&.positive? && offset_height&.positive?
+      rescue StandardError => e
+        logger.debug "Cannot check visibility: #{e.message}"
+        false
       end
     end
   end
