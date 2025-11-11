@@ -1,0 +1,40 @@
+# Ruby
+*.gem
+*.rbc
+.bundle
+.config
+coverage
+InstalledFiles
+lib/bundler/man
+pkg
+rdoc
+spec/reports
+test/tmp
+test/version_tmp
+tmp
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# BotBrowser
+bin/botbrowser/
+config/profile.enc
+config/*.enc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Screenshots and downloads
+screenshots/
+downloads/

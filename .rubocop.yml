@@ -1,0 +1,35 @@
+AllCops:
+  TargetRubyVersion: 3.0
+  NewCops: enable
+  Exclude:
+    - 'bin/**/*'
+    - 'vendor/**/*'
+    - 'node_modules/**/*'
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+  EnforcedStyle: always
+
+Metrics/MethodLength:
+  Max: 30
+
+Metrics/ClassLength:
+  Max: 200
+
+Metrics/ModuleLength:
+  Max: 200
+
+Metrics/BlockLength:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/HashSyntax:
+  EnforcedStyle: ruby19
