@@ -10,11 +10,11 @@ RSpec.describe 'Navigation Tools' do
   let(:go_forward_tool) { FerrumMCP::Tools::GoForwardTool.new(browser_manager) }
   let(:refresh_tool) { FerrumMCP::Tools::RefreshTool.new(browser_manager) }
 
-  before(:each) do
+  before do
     browser_manager.start
   end
 
-  after(:each) do
+  after do
     browser_manager.stop
   end
 

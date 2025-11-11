@@ -13,12 +13,12 @@ RSpec.describe 'Advanced Tools' do
   let(:clear_cookies_tool) { FerrumMCP::Tools::ClearCookiesTool.new(browser_manager) }
   let(:get_attribute_tool) { FerrumMCP::Tools::GetAttributeTool.new(browser_manager) }
 
-  before(:each) do
+  before do
     browser_manager.start
     navigate_tool.execute({ url: test_url })
   end
 
-  after(:each) do
+  after do
     browser_manager.stop
   end
 

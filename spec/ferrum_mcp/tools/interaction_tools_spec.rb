@@ -11,12 +11,12 @@ RSpec.describe 'Interaction Tools' do
   let(:press_key_tool) { FerrumMCP::Tools::PressKeyTool.new(browser_manager) }
   let(:hover_tool) { FerrumMCP::Tools::HoverTool.new(browser_manager) }
 
-  before(:each) do
+  before do
     browser_manager.start
     navigate_tool.execute({ url: test_url })
   end
 
-  after(:each) do
+  after do
     browser_manager.stop
   end
 

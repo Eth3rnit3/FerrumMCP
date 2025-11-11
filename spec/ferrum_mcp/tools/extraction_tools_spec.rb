@@ -12,12 +12,12 @@ RSpec.describe 'Extraction Tools' do
   let(:get_title_tool) { FerrumMCP::Tools::GetTitleTool.new(browser_manager) }
   let(:get_url_tool) { FerrumMCP::Tools::GetURLTool.new(browser_manager) }
 
-  before(:each) do
+  before do
     browser_manager.start
     navigate_tool.execute({ url: test_url })
   end
 
-  after(:each) do
+  after do
     browser_manager.stop
   end
 

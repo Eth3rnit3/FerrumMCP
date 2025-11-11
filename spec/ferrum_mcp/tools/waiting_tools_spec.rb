@@ -9,12 +9,12 @@ RSpec.describe 'Waiting Tools' do
   let(:wait_for_element_tool) { FerrumMCP::Tools::WaitForElementTool.new(browser_manager) }
   let(:wait_tool) { FerrumMCP::Tools::WaitTool.new(browser_manager) }
 
-  before(:each) do
+  before do
     browser_manager.start
     navigate_tool.execute({ url: test_url })
   end
 
-  after(:each) do
+  after do
     browser_manager.stop
   end
 

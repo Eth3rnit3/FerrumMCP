@@ -1,4 +1,4 @@
-plugins:
+require:
   - rubocop-performance
   - rubocop-rspec
 
@@ -62,3 +62,11 @@ RSpec/MultipleMemoizedHelpers:
 
 RSpec/DescribeClass:
   Enabled: false
+
+RSpec/MultipleExpectations:
+  Max: 5
+
+# Spec helper is allowed to have long methods
+Metrics/MethodLength:
+  Exclude:
+    - 'spec/**/*'
