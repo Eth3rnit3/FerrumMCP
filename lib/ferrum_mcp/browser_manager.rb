@@ -71,9 +71,7 @@ module FerrumMCP
       }
 
       # Additional options for CI environments
-      if ENV['CI']
-        options['--disable-setuid-sandbox'] = nil
-      end
+      options['--disable-setuid-sandbox'] = nil if ENV['CI']
 
       # Add BotBrowser profile if configured
       if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)
