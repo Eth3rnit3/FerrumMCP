@@ -41,21 +41,12 @@ jobs:
 
       - name: Check Zeitwerk eager loading
         run: |
-          bundle exec ruby -e "
-          require 'zeitwerk'
-          loader = Zeitwerk::Loader.for_gem
-          loader.inflector.inflect(
-            'ferrum_mcp' => 'FerrumMCP',
-            'mcp' => 'MCP',
-            'get_html_tool' => 'GetHTMLTool',
-            'get_url_tool' => 'GetURLTool',
-            'evaluate_js_tool' => 'EvaluateJSTool',
-            'http_server' => 'HTTPServer'
-          )
-          loader.setup
-          loader.eager_load
+          RACK_ENV=production bundle exec ruby -r ./lib/ferrum_mcp -e "
           puts '✅ Zeitwerk eager loading successful!'
+          puts 'Loaded classes: ' + FerrumMCP::Tools.constants.length.to_s
           "
+        env:
+          BROWSER_HEADLESS: "true"
 
   test:
     name: RSpec Tests
