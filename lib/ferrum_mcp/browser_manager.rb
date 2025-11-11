@@ -24,7 +24,7 @@ module FerrumMCP
         browser_options: browser_options,
         headless: config.headless,
         timeout: config.timeout,
-        process_timeout: config.timeout,
+        process_timeout: ENV['CI'] ? 120 : config.timeout,
         pending_connection_errors: false
       }
 
@@ -65,7 +65,9 @@ module FerrumMCP
     def browser_options
       options = {
         '--no-sandbox' => nil,
-        '--disable-blink-features' => 'AutomationControlled'
+        '--disable-dev-shm-usage' => nil,
+        '--disable-blink-features' => 'AutomationControlled',
+        '--disable-gpu' => nil
       }
 
       # Add BotBrowser profile if configured

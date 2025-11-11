@@ -77,6 +77,8 @@ jobs:
       - name: Run RSpec tests
         env:
           RACK_ENV: test
+          CI: true
+          BROWSER_HEADLESS: true
         run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec-results.xml
 
       - name: Upload test results
