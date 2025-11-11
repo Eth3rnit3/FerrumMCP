@@ -32,6 +32,7 @@ module FerrumMCP
 
       def ensure_browser_active
         raise BrowserError, 'Browser is not active' unless @browser_manager.active?
+
         @browser = @browser_manager.browser
       end
 

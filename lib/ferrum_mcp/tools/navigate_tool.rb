@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'navigate'
       end
-    
+
       def self.description
         'Navigate to a specific URL in the browser'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -24,14 +24,14 @@ module FerrumMCP
           required: ['url']
         }
       end
-    
+
       def execute(params)
         ensure_browser_active
         url = params['url'] || params[:url]
-    
+
         logger.info "Navigating to: #{url}"
         browser.goto(url)
-    
+
         success_response(
           url: browser.url,
           title: browser.title

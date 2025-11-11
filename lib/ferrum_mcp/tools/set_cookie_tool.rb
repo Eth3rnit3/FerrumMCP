@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'set_cookie'
       end
-    
+
       def self.description
         'Set a cookie in the browser'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -47,10 +47,10 @@ module FerrumMCP
           required: %w[name value domain]
         }
       end
-    
+
       def execute(params)
         ensure_browser_active
-    
+
         cookie = {
           name: params['name'] || params[:name],
           value: params['value'] || params[:value],
@@ -59,10 +59,10 @@ module FerrumMCP
           secure: params['secure'] || params[:secure] || false,
           httpOnly: params['httponly'] || params[:httponly] || false
         }
-    
+
         logger.info "Setting cookie: #{cookie[:name]}"
         browser.cookies.set(**cookie)
-    
+
         success_response(message: "Cookie set: #{cookie[:name]}")
       rescue StandardError => e
         logger.error "Set cookie failed: #{e.message}"

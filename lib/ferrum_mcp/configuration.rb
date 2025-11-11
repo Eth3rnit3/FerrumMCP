@@ -34,7 +34,7 @@ module FerrumMCP
     def create_multi_logger
       # Create log directory if it doesn't exist
       log_dir = File.join(Dir.pwd, 'logs')
-      Dir.mkdir(log_dir) unless Dir.exist?(log_dir)
+      FileUtils.mkdir_p(log_dir)
 
       log_file = File.join(log_dir, 'ferrum_mcp.log')
 

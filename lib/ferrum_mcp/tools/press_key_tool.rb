@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'press_key'
       end
-    
+
       def self.description
         'Press keyboard keys (e.g., Enter, Tab, Escape)'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -28,22 +28,22 @@ module FerrumMCP
           required: ['key']
         }
       end
-    
+
       def execute(params)
         key = params['key'] || params[:key]
         selector = params['selector'] || params[:selector]
-    
+
         if selector
           logger.info "Focusing element: #{selector}"
           element = find_element(selector)
           element.focus
         end
-    
+
         logger.info "Pressing key: #{key}"
         # Use down + up to simulate key press
         browser.keyboard.down(key)
         browser.keyboard.up(key)
-    
+
         success_response(message: "Pressed key: #{key}")
       rescue StandardError => e
         logger.error "Press key failed: #{e.message}"

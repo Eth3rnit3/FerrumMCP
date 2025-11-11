@@ -7,20 +7,20 @@ module FerrumMCP
       def self.tool_name
         'refresh'
       end
-    
+
       def self.description
         'Refresh the current page'
       end
-    
+
       def self.input_schema
         { type: 'object', properties: {} }
       end
-    
+
       def execute(_params)
         ensure_browser_active
         logger.info 'Refreshing page'
         browser.refresh
-    
+
         success_response(
           url: browser.url,
           title: browser.title

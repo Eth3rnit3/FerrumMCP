@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'execute_script'
       end
-    
+
       def self.description
         'Execute JavaScript code in the browser context'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -24,14 +24,14 @@ module FerrumMCP
           required: ['script']
         }
       end
-    
+
       def execute(params)
         ensure_browser_active
         script = params['script'] || params[:script]
-    
+
         logger.info 'Executing JavaScript'
         browser.execute(script)
-    
+
         success_response(message: 'Script executed successfully')
       rescue StandardError => e
         logger.error "Execute script failed: #{e.message}"

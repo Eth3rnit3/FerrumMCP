@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'wait'
       end
-    
+
       def self.description
         'Wait for a specific number of seconds'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -26,13 +26,13 @@ module FerrumMCP
           required: ['seconds']
         }
       end
-    
+
       def execute(params)
         seconds = params['seconds'] || params[:seconds]
-    
+
         logger.info "Waiting for #{seconds} seconds"
         sleep seconds
-    
+
         success_response(message: "Waited #{seconds} seconds")
       rescue StandardError => e
         logger.error "Wait failed: #{e.message}"

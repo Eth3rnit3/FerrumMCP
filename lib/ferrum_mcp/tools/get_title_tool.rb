@@ -7,19 +7,19 @@ module FerrumMCP
       def self.tool_name
         'get_title'
       end
-    
+
       def self.description
         'Get the title of the current page'
       end
-    
+
       def self.input_schema
         { type: 'object', properties: {} }
       end
-    
+
       def execute(_params)
         ensure_browser_active
         logger.info 'Getting page title'
-    
+
         success_response(
           title: browser.title,
           url: browser.url

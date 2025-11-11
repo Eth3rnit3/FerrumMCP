@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'click'
       end
-    
+
       def self.description
         'Click on an element using a CSS selector'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -29,15 +29,15 @@ module FerrumMCP
           required: ['selector']
         }
       end
-    
+
       def execute(params)
         selector = params['selector'] || params[:selector]
         wait_time = params['wait'] || params[:wait] || 5
-    
+
         logger.info "Clicking element: #{selector}"
         element = find_element(selector, timeout: wait_time)
         element.click
-    
+
         success_response(message: "Clicked on #{selector}")
       rescue StandardError => e
         logger.error "Click failed: #{e.message}"

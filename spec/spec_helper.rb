@@ -35,11 +35,11 @@ def start_test_server
 
   server = WEBrick::HTTPServer.new(
     Port: port,
-    Logger: WEBrick::Log.new('/dev/null'),
+    Logger: WEBrick::Log.new(File::NULL),
     AccessLog: []
   )
 
-  server.mount_proc '/test' do |req, res|
+  server.mount_proc '/test' do |_req, res|
     res.status = 200
     res['Content-Type'] = 'text/html'
     res.body = <<~HTML
@@ -61,7 +61,7 @@ def start_test_server
     HTML
   end
 
-  server.mount_proc '/test/page2' do |req, res|
+  server.mount_proc '/test/page2' do |_req, res|
     res.status = 200
     res['Content-Type'] = 'text/html'
     res.body = <<~HTML

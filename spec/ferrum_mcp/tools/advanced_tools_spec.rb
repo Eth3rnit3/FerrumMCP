@@ -70,10 +70,10 @@ RSpec.describe 'Advanced Tools' do
     it 'gets all cookies' do
       # Set a cookie first
       set_cookie_tool.execute({
-        name: 'test_cookie',
-        value: 'test_value',
-        domain: 'localhost'
-      })
+                                name: 'test_cookie',
+                                value: 'test_value',
+                                domain: 'localhost'
+                              })
 
       result = get_cookies_tool.execute({})
 
@@ -84,10 +84,10 @@ RSpec.describe 'Advanced Tools' do
 
     it 'filters cookies by domain' do
       set_cookie_tool.execute({
-        name: 'test_cookie',
-        value: 'test_value',
-        domain: 'localhost'
-      })
+                                name: 'test_cookie',
+                                value: 'test_value',
+                                domain: 'localhost'
+                              })
 
       result = get_cookies_tool.execute({ domain: 'localhost' })
 
@@ -99,11 +99,11 @@ RSpec.describe 'Advanced Tools' do
   describe FerrumMCP::Tools::SetCookieTool do
     it 'sets a cookie' do
       result = set_cookie_tool.execute({
-        name: 'my_cookie',
-        value: 'my_value',
-        domain: 'localhost',
-        path: '/'
-      })
+                                         name: 'my_cookie',
+                                         value: 'my_value',
+                                         domain: 'localhost',
+                                         path: '/'
+                                       })
 
       expect(result[:success]).to be true
       expect(result[:data][:message]).to include('Cookie set: my_cookie')
@@ -111,12 +111,12 @@ RSpec.describe 'Advanced Tools' do
 
     it 'sets cookie with security flags' do
       result = set_cookie_tool.execute({
-        name: 'secure_cookie',
-        value: 'secure_value',
-        domain: 'localhost',
-        secure: false,
-        httponly: true
-      })
+                                         name: 'secure_cookie',
+                                         value: 'secure_value',
+                                         domain: 'localhost',
+                                         secure: false,
+                                         httponly: true
+                                       })
 
       expect(result[:success]).to be true
     end

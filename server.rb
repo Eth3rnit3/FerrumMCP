@@ -52,38 +52,38 @@ end
 
 # Start servers
 begin
-  puts "="*60
+  puts '=' * 60
   puts "Ferrum MCP Server v#{FerrumMCP::VERSION}"
-  puts "="*60
-  puts ""
-  puts "Configuration:"
+  puts '=' * 60
+  puts ''
+  puts 'Configuration:'
 
   if config.browser_path
     puts "  Browser: #{config.browser_path}"
   else
-    puts "  Browser: System Chrome/Chromium (auto-detect)"
+    puts '  Browser: System Chrome/Chromium (auto-detect)'
   end
 
   if config.using_botbrowser?
-    puts "  Mode: BotBrowser (anti-detection enabled) ✓"
+    puts '  Mode: BotBrowser (anti-detection enabled) ✓'
     puts "  Profile: #{config.botbrowser_profile}"
   else
-    puts "  Mode: Standard Chrome"
-    puts "  Profile: none (consider using BotBrowser for better stealth)"
+    puts '  Mode: Standard Chrome'
+    puts '  Profile: none (consider using BotBrowser for better stealth)'
   end
 
   puts "  Headless: #{config.headless}"
   puts "  Timeout: #{config.timeout}s"
-  puts ""
-  puts "Server:"
+  puts ''
+  puts 'Server:'
   puts "  Host: #{config.server_host}"
   puts "  Port: #{config.server_port}"
   puts "  MCP Endpoint: http://#{config.server_host}:#{config.server_port}/mcp"
-  puts ""
-  puts "="*60
-  puts "Press Ctrl+C to stop"
-  puts "="*60
-  puts ""
+  puts ''
+  puts '=' * 60
+  puts 'Press Ctrl+C to stop'
+  puts '=' * 60
+  puts ''
 
   http_server.start
 

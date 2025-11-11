@@ -5,10 +5,10 @@ require 'bundler/setup'
 require 'mcp'
 require 'json'
 
-puts "=" * 60
-puts "Test MCP Tool Return Format"
-puts "=" * 60
-puts ""
+puts '=' * 60
+puts 'Test MCP Tool Return Format'
+puts '=' * 60
+puts ''
 
 # Create a simple MCP server
 mcp_server = MCP::Server.new(
@@ -18,7 +18,7 @@ mcp_server = MCP::Server.new(
 )
 
 # Test different return formats
-puts "Test 1: Returning a simple hash"
+puts 'Test 1: Returning a simple hash'
 mcp_server.define_tool(
   name: 'test_hash',
   description: 'Returns a hash',
@@ -27,7 +27,7 @@ mcp_server.define_tool(
   { message: 'Hello', status: 'ok' }
 end
 
-puts "Test 2: Returning a string"
+puts 'Test 2: Returning a string'
 mcp_server.define_tool(
   name: 'test_string',
   description: 'Returns a string',
@@ -36,7 +36,7 @@ mcp_server.define_tool(
   'Hello World'
 end
 
-puts "Test 3: Raising an error"
+puts 'Test 3: Raising an error'
 mcp_server.define_tool(
   name: 'test_error',
   description: 'Raises an error',
@@ -88,4 +88,4 @@ rescue StandardError => e
   puts "Error: #{e.class} - #{e.message}"
 end
 
-puts "\n" + "=" * 60
+puts "\n#{'=' * 60}"

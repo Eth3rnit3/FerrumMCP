@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'clear_cookies'
       end
-    
+
       def self.description
         'Clear all cookies or cookies for a specific domain'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -23,19 +23,19 @@ module FerrumMCP
           }
         }
       end
-    
+
       def execute(params)
         ensure_browser_active
         domain = params['domain'] || params[:domain]
-    
+
         if domain
           logger.info "Clearing cookies for: #{domain}"
           # cookies.all returns a hash where keys are cookie names and values can be Cookie objects or strings
           all_cookies = browser.cookies.all
           cookies_to_remove = all_cookies.select do |_name, cookie|
             cookie_str = cookie.is_a?(String) ? cookie : cookie.to_s
-            cookie_str && cookie_str.match(/Domain=([^;]+)/i) &&
-            Regexp.last_match(1).include?(domain)
+            cookie_str&.match(/Domain=([^;]+)/i) &&
+              Regexp.last_match(1).include?(domain)
           end
           # Remove each cookie by name with domain
           cookies_to_remove.each do |cookie_name, cookie|

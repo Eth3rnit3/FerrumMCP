@@ -114,7 +114,7 @@ module FerrumMCP
 
       # Start browser if not active
       unless browser_manager.active?
-        logger.debug "Browser not active, starting..."
+        logger.debug 'Browser not active, starting...'
         start_browser
       end
 
@@ -136,10 +136,10 @@ module FerrumMCP
           logger.debug "Creating image response with mime_type: #{result[:mime_type]}"
           # Return MCP Tool::Response with image content
           MCP::Tool::Response.new([{
-            type: 'image',
-            data: result[:data],
-            mimeType: result[:mime_type]
-          }])
+                                    type: 'image',
+                                    data: result[:data],
+                                    mimeType: result[:mime_type]
+                                  }])
         else
           # Return a proper MCP Tool::Response with the data as text content
           MCP::Tool::Response.new([{ type: 'text', text: result[:data].to_json }])
@@ -151,7 +151,7 @@ module FerrumMCP
       end
     rescue StandardError => e
       logger.error "Tool execution error (#{tool_class.tool_name}): #{e.class} - #{e.message}"
-      logger.error "Backtrace:"
+      logger.error 'Backtrace:'
       logger.error e.backtrace.first(10).join("\n")
       # Return an error response for unexpected exceptions
       MCP::Tool::Response.new([{ type: 'text', text: "#{e.class}: #{e.message}" }], error: true)
@@ -160,20 +160,20 @@ module FerrumMCP
     def setup_error_handling
       MCP.configure do |mcp_config|
         mcp_config.exception_reporter = lambda { |exception, context|
-          logger.error "=" * 80
+          logger.error '=' * 80
           logger.error "MCP Exception: #{exception.class} - #{exception.message}"
           logger.error "Context: #{context.inspect}"
 
           # Log the original error if there is one
           if exception.respond_to?(:original_error) && exception.original_error
             logger.error "ORIGINAL ERROR: #{exception.original_error.class} - #{exception.original_error.message}"
-            logger.error "ORIGINAL BACKTRACE:"
+            logger.error 'ORIGINAL BACKTRACE:'
             logger.error exception.original_error.backtrace.first(15).join("\n")
           end
 
-          logger.error "Exception backtrace:"
+          logger.error 'Exception backtrace:'
           logger.error exception.backtrace.join("\n")
-          logger.error "=" * 80
+          logger.error '=' * 80
         }
 
         mcp_config.instrumentation_callback = lambda { |data|
@@ -186,7 +186,7 @@ module FerrumMCP
       {
         jsonrpc: '2.0',
         error: {
-          code: -32603,
+          code: -32_603,
           message: message
         },
         id: nil

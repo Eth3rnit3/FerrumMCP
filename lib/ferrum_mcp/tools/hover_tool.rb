@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'hover'
       end
-    
+
       def self.description
         'Hover over an element using a CSS selector'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -24,12 +24,12 @@ module FerrumMCP
           required: ['selector']
         }
       end
-    
+
       def execute(params)
         selector = params['selector'] || params[:selector]
-    
+
         logger.info "Hovering over element: #{selector}"
-    
+
         # Use JavaScript to trigger mouseover event
         script = <<~JS
           const element = document.querySelector('#{selector.gsub("'", "\\'")}');
@@ -38,9 +38,9 @@ module FerrumMCP
             element.dispatchEvent(event);
           }
         JS
-    
+
         browser.execute(script)
-    
+
         success_response(message: "Hovered over #{selector}")
       rescue StandardError => e
         logger.error "Hover failed: #{e.message}"

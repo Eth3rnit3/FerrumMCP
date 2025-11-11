@@ -23,11 +23,16 @@ gem 'json', '~> 2.7'
 gem 'logger', '~> 1.6'
 
 # Dependency injection
-gem "zeitwerk", "~> 2.7"
+gem 'zeitwerk', '~> 2.7'
 
 group :development, :test do
+  gem 'pry', '~> 0.14'
   gem 'rake', '~> 13.0'
   gem 'rspec', '~> 3.12'
+  gem 'rspec_junit_formatter', '~> 0.6'
   gem 'rubocop', '~> 1.50'
-  gem 'pry', '~> 0.14'
+  gem 'rubocop-performance', '~> 1.18'
+  gem 'rubocop-rspec', '~> 2.22'
+  gem 'simplecov', '~> 0.22', require: false
+  gem 'webrick', '~> 1.8'
 end

@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'get_cookies'
       end
-    
+
       def self.description
         'Get all cookies or cookies for a specific domain'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -23,14 +23,14 @@ module FerrumMCP
           }
         }
       end
-    
+
       def execute(params)
         ensure_browser_active
         domain = params['domain'] || params[:domain]
-    
-        logger.info "Getting cookies#{domain ? " for #{domain}" : ''}"
+
+        logger.info "Getting cookies#{" for #{domain}" if domain}"
         all_cookies = browser.cookies.all
-    
+
         # Convert cookies to hash format
         # cookies.all returns a hash where values can be Cookie objects or strings
         cookies_hash = {}
@@ -38,15 +38,15 @@ module FerrumMCP
           cookie_str = cookie.is_a?(String) ? cookie : cookie.to_s
           cookies_hash[name] = cookie_str
         end
-    
+
         # Filter by domain if specified
         if domain
           cookies_hash = cookies_hash.select do |_name, cookie_string|
-            cookie_string && cookie_string.match(/Domain=([^;]+)/i) &&
-            Regexp.last_match(1).include?(domain)
+            cookie_string&.match(/Domain=([^;]+)/i) &&
+              Regexp.last_match(1).include?(domain)
           end
         end
-    
+
         success_response(
           cookies: cookies_hash,
           count: cookies_hash.length

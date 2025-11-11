@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'get_text'
       end
-    
+
       def self.description
         'Extract text content from one or more elements'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -29,14 +29,14 @@ module FerrumMCP
           required: ['selector']
         }
       end
-    
+
       def execute(params)
         ensure_browser_active
         selector = params['selector'] || params[:selector]
         multiple = params['multiple'] || params[:multiple] || false
-    
+
         logger.info "Extracting text from: #{selector}"
-    
+
         if multiple
           elements = browser.css(selector)
           texts = elements.map(&:text)

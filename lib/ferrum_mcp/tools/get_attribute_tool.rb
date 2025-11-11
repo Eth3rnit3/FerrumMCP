@@ -7,11 +7,11 @@ module FerrumMCP
       def self.tool_name
         'get_attribute'
       end
-    
+
       def self.description
         'Get attribute value(s) from an element'
       end
-    
+
       def self.input_schema
         {
           type: 'object',
@@ -28,16 +28,16 @@ module FerrumMCP
           required: %w[selector attribute]
         }
       end
-    
+
       def execute(params)
         ensure_browser_active
         selector = params['selector'] || params[:selector]
         attribute = params['attribute'] || params[:attribute]
-    
+
         logger.info "Getting attribute '#{attribute}' from: #{selector}"
         element = find_element(selector)
         value = element.attribute(attribute)
-    
+
         success_response(
           selector: selector,
           attribute: attribute,
