@@ -1,5 +1,16 @@
 # frozen_string_literal: true
 
+# SimpleCov for code coverage
+if ENV['COVERAGE'] || ENV['CI']
+  require 'simplecov'
+  SimpleCov.start do
+    add_filter '/spec/'
+    add_filter '/vendor/'
+    enable_coverage :branch
+    minimum_coverage line: 80, branch: 60
+  end
+end
+
 require 'bundler/setup'
 require 'ferrum_mcp'
 require 'webrick'

@@ -1,3 +1,7 @@
+plugins:
+  - rubocop-performance
+  - rubocop-rspec
+
 AllCops:
   TargetRubyVersion: 3.0
   NewCops: enable
@@ -5,6 +9,7 @@ AllCops:
     - 'bin/**/*'
     - 'vendor/**/*'
     - 'node_modules/**/*'
+    - 'tmp/**/*'
 
 Style/Documentation:
   Enabled: false
@@ -33,3 +38,27 @@ Style/StringLiterals:
 
 Style/HashSyntax:
   EnforcedStyle: ruby19
+
+# Metrics exceptions for complex tool methods
+Metrics/AbcSize:
+  Max: 20
+  Exclude:
+    - 'lib/ferrum_mcp/tools/**/*'
+    - 'lib/ferrum_mcp/server.rb'
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+  Exclude:
+    - 'lib/ferrum_mcp/tools/**/*'
+
+Metrics/PerceivedComplexity:
+  Max: 10
+  Exclude:
+    - 'lib/ferrum_mcp/tools/**/*'
+
+# RSpec configuration
+RSpec/MultipleMemoizedHelpers:
+  Max: 10
+
+RSpec/DescribeClass:
+  Enabled: false

@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  rubocop:
+    name: RuboCop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.3.6
+          bundler-cache: true
+
+      - name: Run RuboCop
+        run: bundle exec rubocop --parallel --format github
+
+  zeitwerk:
+    name: Zeitwerk Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.3.6
+          bundler-cache: true
+
+      - name: Check Zeitwerk eager loading
+        run: |
+          bundle exec ruby -e "
+          require 'zeitwerk'
+          loader = Zeitwerk::Loader.for_gem
+          loader.inflector.inflect(
+            'ferrum_mcp' => 'FerrumMCP',
+            'mcp' => 'MCP',
+            'get_html_tool' => 'GetHTMLTool',
+            'get_url_tool' => 'GetURLTool',
+            'evaluate_js_tool' => 'EvaluateJSTool',
+            'http_server' => 'HTTPServer'
+          )
+          loader.setup
+          loader.eager_load
+          puts '✅ Zeitwerk eager loading successful!'
+          "
+
+  test:
+    name: RSpec Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby-version: ['3.1', '3.2', '3.3']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Verify Chrome installation
+        run: |
+          which google-chrome-stable || which google-chrome || which chromium-browser
+          google-chrome-stable --version || google-chrome --version || chromium-browser --version
+
+      - name: Run RSpec tests
+        env:
+          RACK_ENV: test
+        run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec-results.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rspec-results-${{ matrix.ruby-version }}
+          path: tmp/rspec-results.xml
+          retention-days: 7
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: matrix.ruby-version == '3.3'
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  all-checks:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    needs: [rubocop, zeitwerk, test]
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          if [[ "${{ needs.rubocop.result }}" == "success" && \
+                "${{ needs.zeitwerk.result }}" == "success" && \
+                "${{ needs.test.result }}" == "success" ]]; then
+            echo "✅ All checks passed!"
+            exit 0
+          else
+            echo "❌ Some checks failed:"
+            echo "  RuboCop: ${{ needs.rubocop.result }}"
+            echo "  Zeitwerk: ${{ needs.zeitwerk.result }}"
+            echo "  Tests: ${{ needs.test.result }}"
+            exit 1
+          fi
