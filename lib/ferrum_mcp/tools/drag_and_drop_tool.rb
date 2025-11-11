@@ -42,7 +42,7 @@ module FerrumMCP
         }
       end
 
-      def execute(params)
+      def execute(params) # rubocop:disable Metrics/MethodLength
         source_selector = params['source_selector'] || params[:source_selector]
         target_selector = params['target_selector'] || params[:target_selector]
         target_x = params['target_x'] || params[:target_x]
