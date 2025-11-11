@@ -4,6 +4,22 @@ require 'mcp'
 require 'ferrum'
 require 'logger'
 require 'json'
+require 'zeitwerk'
+
+# Setup Zeitwerk loader
+loader = Zeitwerk::Loader.for_gem
+
+# Custom inflector for acronyms
+loader.inflector.inflect(
+  'ferrum_mcp' => 'FerrumMCP',
+  'mcp' => 'MCP',
+  'get_html_tool' => 'GetHTMLTool',
+  'get_url_tool' => 'GetURLTool',
+  'evaluate_js_tool' => 'EvaluateJSTool',
+  'http_server' => 'HTTPServer'
+)
+
+loader.setup
 
 # Main module for Ferrum MCP Server
 module FerrumMCP
@@ -12,13 +28,5 @@ module FerrumMCP
   class ToolError < Error; end
 end
 
-require_relative 'ferrum_mcp/version'
-require_relative 'ferrum_mcp/configuration'
-require_relative 'ferrum_mcp/browser_manager'
-require_relative 'ferrum_mcp/tools/base_tool'
-require_relative 'ferrum_mcp/tools/navigation_tools'
-require_relative 'ferrum_mcp/tools/interaction_tools'
-require_relative 'ferrum_mcp/tools/extraction_tools'
-require_relative 'ferrum_mcp/tools/waiting_tools'
-require_relative 'ferrum_mcp/tools/advanced_tools'
-require_relative 'ferrum_mcp/server'
+# Eager load in production, lazy load in development
+loader.eager_load unless ENV['RACK_ENV'] == 'development'

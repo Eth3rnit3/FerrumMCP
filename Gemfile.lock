@@ -80,6 +80,7 @@ GEM
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    zeitwerk (2.7.3)
 
 PLATFORMS
   arm64-darwin-24
@@ -96,6 +97,7 @@ DEPENDENCIES
   rake (~> 13.0)
   rspec (~> 3.12)
   rubocop (~> 1.50)
+  zeitwerk (~> 2.7)
 
 RUBY VERSION
    ruby 3.3.6p108
