@@ -136,7 +136,8 @@ module FerrumMCP
 
         logger.info 'Taking screenshot'
 
-        options = { format: format, full: full_page }
+        # Request binary encoding from Ferrum (by default it returns base64)
+        options = { format: format, full: full_page, encoding: :binary }
         screenshot_data = if selector
                             element = find_element(selector)
                             element.screenshot(**options)
@@ -144,6 +145,7 @@ module FerrumMCP
                             browser.screenshot(**options)
                           end
 
+        # Now encode the binary data to base64 for MCP
         base64_data = Base64.strict_encode64(screenshot_data)
         mime_type = format == 'png' ? 'image/png' : 'image/jpeg'
 
