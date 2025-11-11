@@ -85,13 +85,17 @@ module FerrumMCP
     end
 
     def setup_tools
+      # Capture references to instance variables for use in the block
+      server_instance = self
+
       TOOL_CLASSES.each do |tool_class|
         mcp_server.define_tool(
           name: tool_class.tool_name,
           description: tool_class.description,
           input_schema: tool_class.input_schema
         ) do |**params|
-          execute_tool(tool_class, params)
+          # Call execute_tool on the server instance
+          server_instance.send(:execute_tool, tool_class, params)
         end
       end
 
@@ -106,26 +110,58 @@ module FerrumMCP
     end
 
     def execute_tool(tool_class, params)
-      # Start browser if not active
-      start_browser unless browser_manager.active?
+      logger.debug "Executing tool: #{tool_class.tool_name} with params: #{params.inspect}"
 
+      # Start browser if not active
+      unless browser_manager.active?
+        logger.debug "Browser not active, starting..."
+        start_browser
+      end
+
+      logger.debug "Creating tool instance for #{tool_class.tool_name}"
       tool = @tool_instances[tool_class] || tool_class.new(browser_manager)
+
+      logger.debug "Calling execute on #{tool_class.tool_name}"
       result = tool.execute(params)
 
-      logger.debug "Tool #{tool_class.tool_name} result: #{result[:success] ? 'success' : 'error'}"
-      result
+      logger.debug "Tool #{tool_class.tool_name} result: #{result.inspect}"
+
+      # MCP expects a Tool::Response object
+      # Convert our tool result to MCP format
+      if result[:success]
+        logger.debug "Tool succeeded, creating MCP::Tool::Response with data: #{result[:data].inspect}"
+        # Return a proper MCP Tool::Response with the data as content
+        MCP::Tool::Response.new([{ type: 'text', text: result[:data].to_json }])
+      else
+        logger.error "Tool failed with error: #{result[:error]}"
+        # Return an error response
+        MCP::Tool::Response.new([{ type: 'text', text: result[:error] }], error: true)
+      end
     rescue StandardError => e
-      logger.error "Tool execution error (#{tool_class.tool_name}): #{e.message}"
-      logger.error e.backtrace.first(5).join("\n")
-      { success: false, error: e.message }
+      logger.error "Tool execution error (#{tool_class.tool_name}): #{e.class} - #{e.message}"
+      logger.error "Backtrace:"
+      logger.error e.backtrace.first(10).join("\n")
+      # Return an error response for unexpected exceptions
+      MCP::Tool::Response.new([{ type: 'text', text: "#{e.class}: #{e.message}" }], error: true)
     end
 
     def setup_error_handling
       MCP.configure do |mcp_config|
         mcp_config.exception_reporter = lambda { |exception, context|
-          logger.error "MCP Exception: #{exception.message}"
+          logger.error "=" * 80
+          logger.error "MCP Exception: #{exception.class} - #{exception.message}"
           logger.error "Context: #{context.inspect}"
+
+          # Log the original error if there is one
+          if exception.respond_to?(:original_error) && exception.original_error
+            logger.error "ORIGINAL ERROR: #{exception.original_error.class} - #{exception.original_error.message}"
+            logger.error "ORIGINAL BACKTRACE:"
+            logger.error exception.original_error.backtrace.first(15).join("\n")
+          end
+
+          logger.error "Exception backtrace:"
           logger.error exception.backtrace.join("\n")
+          logger.error "=" * 80
         }
 
         mcp_config.instrumentation_callback = lambda { |data|

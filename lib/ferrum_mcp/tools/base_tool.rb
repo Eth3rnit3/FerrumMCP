@@ -37,7 +37,7 @@ module FerrumMCP
 
       def find_element(selector, timeout: 5)
         ensure_browser_active
-        browser.at_css(selector, wait: timeout)
+        browser.at_css(selector)
       rescue Ferrum::NodeNotFoundError
         raise ToolError, "Element not found: #{selector}"
       end

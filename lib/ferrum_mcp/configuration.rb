@@ -13,7 +13,7 @@ module FerrumMCP
       @timeout = ENV.fetch('BROWSER_TIMEOUT', '60').to_i
       @server_host = ENV.fetch('MCP_SERVER_HOST', '0.0.0.0')
       @server_port = ENV.fetch('MCP_SERVER_PORT', '3000').to_i
-      @log_level = ENV.fetch('LOG_LEVEL', 'info').to_sym
+      @log_level = ENV.fetch('LOG_LEVEL', 'debug').to_sym
     end
 
     def valid?
@@ -26,7 +26,30 @@ module FerrumMCP
     end
 
     def logger
-      @logger ||= Logger.new($stdout, level: log_level)
+      @logger ||= create_multi_logger
+    end
+
+    private
+
+    def create_multi_logger
+      # Create log directory if it doesn't exist
+      log_dir = File.join(Dir.pwd, 'logs')
+      Dir.mkdir(log_dir) unless Dir.exist?(log_dir)
+
+      log_file = File.join(log_dir, 'ferrum_mcp.log')
+
+      # Create a logger that writes to both stdout and file
+      stdout_logger = Logger.new($stdout, level: log_level)
+      file_logger = Logger.new(log_file, level: log_level)
+
+      # Create a custom logger that broadcasts to both
+      multi_logger = Logger.new($stdout, level: log_level)
+      multi_logger.define_singleton_method(:add) do |severity, message = nil, progname = nil, &block|
+        stdout_logger.add(severity, message, progname, &block)
+        file_logger.add(severity, message, progname, &block)
+      end
+
+      multi_logger
     end
   end
 end
