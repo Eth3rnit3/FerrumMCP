@@ -16,6 +16,7 @@ module FerrumMCP
       Tools::FillFormTool,
       Tools::PressKeyTool,
       Tools::HoverTool,
+      Tools::DragAndDropTool,
       # Extraction
       Tools::GetTextTool,
       Tools::GetHTMLTool,
@@ -32,7 +33,8 @@ module FerrumMCP
       Tools::GetCookiesTool,
       Tools::SetCookieTool,
       Tools::ClearCookiesTool,
-      Tools::GetAttributeTool
+      Tools::GetAttributeTool,
+      Tools::QueryShadowDOMTool
     ].freeze
 
     def initialize(config = Configuration.new)

@@ -18,7 +18,7 @@ module FerrumMCP
           properties: {
             selector: {
               type: 'string',
-              description: 'CSS selector of element(s) to extract text from'
+              description: 'CSS selector or XPath of element(s) to extract text from (use xpath: prefix for XPath)'
             },
             multiple: {
               type: 'boolean',
@@ -37,13 +37,22 @@ module FerrumMCP
 
         logger.info "Extracting text from: #{selector}"
 
-        if multiple
+        # Support both CSS and XPath selectors
+        if selector.start_with?('xpath:', '//')
+          xpath = selector.sub(/^xpath:/, '')
+          logger.debug "Using XPath: #{xpath}"
+          elements = browser.xpath(xpath)
+          raise "Element not found with XPath: #{xpath}" if elements.empty?
+        else
           elements = browser.css(selector)
+          raise "Element not found: #{selector}" if elements.empty?
+        end
+
+        if multiple
           texts = elements.map(&:text)
           success_response(texts: texts, count: texts.length)
         else
-          element = find_element(selector)
-          success_response(text: element.text)
+          success_response(text: elements.first.text)
         end
       rescue StandardError => e
         logger.error "Get text failed: #{e.message}"

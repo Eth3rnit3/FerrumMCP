@@ -62,8 +62,20 @@ module FerrumMCP
           error_response("Failed to click: #{e.message}. Try with force: true")
         end
       rescue StandardError => e
-        logger.error "Click failed: #{e.message}"
-        error_response("Failed to click: #{e.message}")
+        # Handle "Node does not have a layout object" and similar errors
+        if e.message.include?('layout object') || e.message.include?('not visible')
+          if force
+            logger.warn "Element not visible, forcing click with JavaScript: #{e.message}"
+            click_with_javascript(selector)
+            success_response(message: "Clicked on #{selector} (forced)")
+          else
+            logger.error "Click failed: #{e.message}"
+            error_response("Failed to click: #{e.message}. Try with force: true")
+          end
+        else
+          logger.error "Click failed: #{e.message}"
+          error_response("Failed to click: #{e.message}")
+        end
       end
 
       private
@@ -98,10 +110,10 @@ module FerrumMCP
         element
       end
 
-      def click_with_javascript(selector)
+      def click_with_javascript(selector) # rubocop:disable Metrics/MethodLength
         logger.info "Using JavaScript click for: #{selector}"
 
-        # Build JavaScript to find and click the first visible element
+        # Build JavaScript to find and click element, even if hidden
         if selector.start_with?('xpath:', '//')
           xpath = selector.sub(/^xpath:/, '')
           script = <<~JAVASCRIPT
@@ -112,16 +124,35 @@ module FerrumMCP
               elements.push(result.snapshotItem(i));
             }
 
-            // Find first visible element
+            if (elements.length === 0) {
+              throw new Error('No element found with XPath: ' + xpath);
+            }
+
+            // Find first visible element, or use first element if force clicking
             const visible = elements.find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
             const target = visible || elements[0];
 
-            if (target) {
+            // For hidden elements, temporarily show them, click, then hide again
+            const wasHidden = target.offsetWidth === 0 && target.offsetHeight === 0;
+            const originalDisplay = target.style.display;
+            const originalVisibility = target.style.visibility;
+
+            if (wasHidden) {
+              target.style.display = 'block';
+              target.style.visibility = 'visible';
+            }
+
+            try {
               target.scrollIntoView({ behavior: 'instant', block: 'center' });
               target.click();
-              return true;
+            } finally {
+              if (wasHidden) {
+                target.style.display = originalDisplay;
+                target.style.visibility = originalVisibility;
+              }
             }
-            throw new Error('No element found');
+
+            return true;
           JAVASCRIPT
         else
           script = <<~JAVASCRIPT
@@ -131,12 +162,30 @@ module FerrumMCP
               throw new Error('No elements found with selector: #{selector}');
             }
 
-            // Find first visible element
+            // Find first visible element, or use first element if force clicking
             const visible = elements.find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
             const target = visible || elements[0];
 
-            target.scrollIntoView({ behavior: 'instant', block: 'center' });
-            target.click();
+            // For hidden elements, temporarily show them, click, then hide again
+            const wasHidden = target.offsetWidth === 0 && target.offsetHeight === 0;
+            const originalDisplay = target.style.display;
+            const originalVisibility = target.style.visibility;
+
+            if (wasHidden) {
+              target.style.display = 'block';
+              target.style.visibility = 'visible';
+            }
+
+            try {
+              target.scrollIntoView({ behavior: 'instant', block: 'center' });
+              target.click();
+            } finally {
+              if (wasHidden) {
+                target.style.display = originalDisplay;
+                target.style.visibility = originalVisibility;
+              }
+            }
+
             return true;
           JAVASCRIPT
         end
