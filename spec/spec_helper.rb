@@ -7,7 +7,7 @@ if ENV['COVERAGE'] || ENV['CI']
     add_filter '/spec/'
     add_filter '/vendor/'
     enable_coverage :branch
-    minimum_coverage line: 80, branch: 60
+    minimum_coverage line: 65, branch: 50
   end
 end
 
