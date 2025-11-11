@@ -138,12 +138,11 @@ module FerrumMCP
 
         # Request binary encoding from Ferrum (by default it returns base64)
         options = { format: format, full: full_page, encoding: :binary }
-        screenshot_data = if selector
-                            element = find_element(selector)
-                            element.screenshot(**options)
-                          else
-                            browser.screenshot(**options)
-                          end
+
+        # Add selector to options if provided, otherwise take full page/viewport screenshot
+        options[:selector] = selector if selector
+
+        screenshot_data = browser.screenshot(**options)
 
         # Now encode the binary data to base64 for MCP
         base64_data = Base64.strict_encode64(screenshot_data)

@@ -48,12 +48,11 @@ module FerrumMCP
 
         case state
         when 'visible'
-          element = browser.at_css(selector, wait: timeout)
-          raise ToolError, "Element not visible: #{selector}" unless element
+          wait_for_visible(selector, timeout)
         when 'hidden'
           wait_for_hidden(selector, timeout)
         when 'exists'
-          browser.at_css(selector, wait: timeout)
+          wait_for_exists(selector, timeout)
         end
 
         elapsed = (Time.now - start_time).round(2)
@@ -69,11 +68,41 @@ module FerrumMCP
 
       private
 
+      def wait_for_visible(selector, timeout)
+        deadline = Time.now + timeout
+
+        loop do
+          element = browser.at_css(selector)
+          return element if element
+
+          raise ToolError, "Timeout waiting for element to be visible: #{selector}" if Time.now > deadline
+
+          sleep 0.5
+        end
+      end
+
+      def wait_for_exists(selector, timeout)
+        deadline = Time.now + timeout
+
+        loop do
+          begin
+            element = browser.at_css(selector)
+            return element if element
+          rescue Ferrum::NodeNotFoundError
+            # Element doesn't exist yet, continue waiting
+          end
+
+          raise ToolError, "Timeout waiting for element to exist: #{selector}" if Time.now > deadline
+
+          sleep 0.5
+        end
+      end
+
       def wait_for_hidden(selector, timeout)
         deadline = Time.now + timeout
 
         loop do
-          element = browser.at_css(selector, wait: 0.5)
+          element = browser.at_css(selector)
           return if element.nil?
 
           raise ToolError, "Timeout waiting for element to hide: #{selector}" if Time.now > deadline

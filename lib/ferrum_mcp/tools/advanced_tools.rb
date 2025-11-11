@@ -234,9 +234,14 @@ module FerrumMCP
             cookie_str && cookie_str.match(/Domain=([^;]+)/i) &&
             Regexp.last_match(1).include?(domain)
           end
-          # Remove each cookie by name
-          cookies_to_remove.each do |cookie_name, _cookie|
-            browser.cookies.remove(name: cookie_name)
+          # Remove each cookie by name with domain
+          cookies_to_remove.each do |cookie_name, cookie|
+            # Extract domain from cookie string
+            cookie_str = cookie.is_a?(String) ? cookie : cookie.to_s
+            if cookie_str.match(/Domain=([^;]+)/i)
+              cookie_domain = Regexp.last_match(1).strip
+              browser.cookies.remove(name: cookie_name, domain: cookie_domain)
+            end
           end
           success_response(message: "Cleared #{cookies_to_remove.length} cookies for #{domain}")
         else
