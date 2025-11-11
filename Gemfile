@@ -2,7 +2,7 @@
 
 source 'https://rubygems.org'
 
-ruby '~> 3.0'
+ruby '~> 3.2'
 
 # MCP SDK for building Model Context Protocol servers
 gem 'mcp', '~> 0.1'
