@@ -16,7 +16,8 @@ loader.inflector.inflect(
   'get_html_tool' => 'GetHTMLTool',
   'get_url_tool' => 'GetURLTool',
   'evaluate_js_tool' => 'EvaluateJSTool',
-  'http_server' => 'HTTPServer'
+  'http_server' => 'HTTPServer',
+  'query_shadow_dom_tool' => 'QueryShadowDOMTool'
 )
 
 loader.setup

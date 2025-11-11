@@ -60,9 +60,10 @@ def start_test_server
       <body>
         <h1 id="title">Test Page</h1>
         <p id="content">This is a test page for browser automation.</p>
-        <form id="test-form">
+        <form id="test-form" onsubmit="return false;">
           <input type="text" id="name-input" name="name" placeholder="Enter name">
           <input type="email" id="email-input" name="email" placeholder="Enter email">
+          <input type="search" id="search-input" name="search" placeholder="Search">
           <button type="submit" id="submit-btn">Submit</button>
         </form>
         <div id="hidden" style="display:none;">Hidden content</div>
