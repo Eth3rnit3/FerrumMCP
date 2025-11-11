@@ -4,35 +4,23 @@ source 'https://rubygems.org'
 
 ruby '~> 3.2'
 
-# MCP SDK for building Model Context Protocol servers
-gem 'mcp', '~> 0.1'
-
-# Ferrum for browser automation via Chrome DevTools Protocol
-gem 'ferrum', '~> 0.15'
-
-# Puma for HTTP server
-gem 'puma', '~> 6.0'
-
-# Rack for HTTP middleware
-gem 'rack', '~> 3.0'
-
-# JSON handling
-gem 'json', '~> 2.7'
-
-# Logging
-gem 'logger', '~> 1.6'
-
-# Dependency injection
+gem 'ferrum', '~> 0.17.1'
+gem 'json', '~> 2.16'
+gem 'logger', '~> 1.7'
+gem 'mcp', '~> 0.4.0'
+gem 'puma', '~> 7.1'
 gem 'zeitwerk', '~> 2.7'
 
 group :development, :test do
-  gem 'pry', '~> 0.14'
-  gem 'rake', '~> 13.0'
-  gem 'rspec', '~> 3.12'
-  gem 'rspec_junit_formatter', '~> 0.6'
-  gem 'rubocop', '~> 1.50'
-  gem 'rubocop-performance', '~> 1.18'
-  gem 'rubocop-rspec', '~> 2.22'
-  gem 'simplecov', '~> 0.22', require: false
-  gem 'webrick', '~> 1.8'
+  gem 'debug', '~> 1.11'
+  gem 'rack', '~> 3.2'
+  gem 'rake', '~> 13.3'
+  gem 'rspec', '~> 3.13'
+  gem 'rspec_junit_formatter', '~> 0.6.0'
+  gem 'rubocop', '~> 1.81'
+  gem 'rubocop-performance', '~> 1.26'
+  gem 'rubocop-rake', '~> 0.7.1'
+  gem 'rubocop-rspec', '~> 3.7'
+  gem 'simplecov', '~> 0.22.0', require: false
+  gem 'webrick', '~> 1.9'
 end

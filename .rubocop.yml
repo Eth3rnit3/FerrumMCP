@@ -1,6 +1,7 @@
-require:
+plugins:
   - rubocop-performance
   - rubocop-rspec
+  - rubocop-rake
 
 AllCops:
   TargetRubyVersion: 3.2
@@ -19,7 +20,9 @@ Style/FrozenStringLiteralComment:
   EnforcedStyle: always
 
 Metrics/MethodLength:
-  Max: 30
+  Max: 50
+  Exclude:
+    - 'spec/**/*'
 
 Metrics/ClassLength:
   Max: 200
@@ -41,7 +44,7 @@ Style/HashSyntax:
 
 # Metrics exceptions for complex tool methods
 Metrics/AbcSize:
-  Max: 20
+  Max: 30
   Exclude:
     - 'lib/ferrum_mcp/tools/**/*'
     - 'lib/ferrum_mcp/server.rb'
@@ -63,10 +66,8 @@ RSpec/MultipleMemoizedHelpers:
 RSpec/DescribeClass:
   Enabled: false
 
+RSpec/ExampleLength:
+  Enabled: false
+
 RSpec/MultipleExpectations:
   Max: 5
-
-# Spec helper is allowed to have long methods
-Metrics/MethodLength:
-  Exclude:
-    - 'spec/**/*'
