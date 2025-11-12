@@ -2,8 +2,55 @@
 # frozen_string_literal: true
 
 require 'bundler/setup'
+require 'optparse'
 require_relative 'lib/ferrum_mcp'
 require_relative 'lib/ferrum_mcp/transport/http_server'
+require_relative 'lib/ferrum_mcp/transport/stdio_server'
+
+# Parse command line options
+options = {
+  transport: 'http'
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
+  opts.separator ''
+  opts.separator 'Ferrum MCP Server - Browser automation server using Ferrum and BotBrowser'
+  opts.separator ''
+  opts.separator 'Options:'
+
+  opts.on('-t', '--transport TRANSPORT', %w[http stdio],
+          'Transport protocol to use (http or stdio)',
+          '  http  - HTTP server (default)',
+          '  stdio - Standard input/output') do |t|
+    options[:transport] = t
+  end
+
+  opts.on('-h', '--help', 'Show this help message') do
+    puts opts
+    exit
+  end
+
+  opts.on('-v', '--version', 'Show version') do
+    puts "Ferrum MCP Server v#{FerrumMCP::VERSION}"
+    exit
+  end
+
+  opts.separator ''
+  opts.separator 'Environment variables:'
+  opts.separator '  BROWSER_PATH        - Path to browser executable (optional)'
+  opts.separator '  BOTBROWSER_PROFILE  - BotBrowser profile to use (optional)'
+  opts.separator '  BROWSER_HEADLESS    - Run browser in headless mode (true/false)'
+  opts.separator '  BROWSER_TIMEOUT     - Browser timeout in seconds'
+  opts.separator '  SERVER_HOST         - HTTP server host (default: localhost)'
+  opts.separator '  SERVER_PORT         - HTTP server port (default: 3000)'
+  opts.separator '  LOG_LEVEL           - Log level (debug/info/warn/error)'
+  opts.separator ''
+  opts.separator 'Examples:'
+  opts.separator "  #{$PROGRAM_NAME}                    # Start with HTTP transport"
+  opts.separator "  #{$PROGRAM_NAME} --transport stdio  # Start with STDIO transport"
+  opts.separator "  #{$PROGRAM_NAME} --help             # Show this help"
+end.parse!
 
 # Load environment variables from .env file if it exists
 if File.exist?('.env')
@@ -16,7 +63,7 @@ if File.exist?('.env')
 end
 
 # Create configuration
-config = FerrumMCP::Configuration.new
+config = FerrumMCP::Configuration.new(transport: options[:transport])
 
 # Validate configuration
 unless config.valid?
@@ -33,64 +80,83 @@ end
 
 # Create server
 mcp_server = FerrumMCP::Server.new(config)
-http_server = FerrumMCP::Transport::HTTPServer.new(mcp_server, config)
+
+# Create transport based on option
+transport_server = case options[:transport]
+                   when 'stdio'
+                     FerrumMCP::Transport::StdioServer.new(mcp_server, config)
+                   when 'http'
+                     FerrumMCP::Transport::HTTPServer.new(mcp_server, config)
+                   else
+                     raise "Unknown transport: #{options[:transport]}"
+                   end
 
 # Signal handling
 trap('INT') do
-  puts "\n\nShutting down..."
-  http_server.stop
+  config.logger.info 'Shutting down...'
+  transport_server.stop
   mcp_server.stop_browser
   exit 0
 end
 
 trap('TERM') do
-  puts "\n\nShutting down..."
-  http_server.stop
+  config.logger.info 'Shutting down...'
+  transport_server.stop
   mcp_server.stop_browser
   exit 0
 end
 
 # Start servers
 begin
-  puts '=' * 60
-  puts "Ferrum MCP Server v#{FerrumMCP::VERSION}"
-  puts '=' * 60
-  puts ''
-  puts 'Configuration:'
+  # Log startup info to file only
+  logger = config.logger
+  logger.info '=' * 60
+  logger.info "Ferrum MCP Server v#{FerrumMCP::VERSION}"
+  logger.info '=' * 60
+  logger.info ''
+  logger.info 'Configuration:'
 
   if config.browser_path
-    puts "  Browser: #{config.browser_path}"
+    logger.info "  Browser: #{config.browser_path}"
   else
-    puts '  Browser: System Chrome/Chromium (auto-detect)'
+    logger.info '  Browser: System Chrome/Chromium (auto-detect)'
   end
 
   if config.using_botbrowser?
-    puts '  Mode: BotBrowser (anti-detection enabled) ✓'
-    puts "  Profile: #{config.botbrowser_profile}"
+    logger.info '  Mode: BotBrowser (anti-detection enabled) ✓'
+    logger.info "  Profile: #{config.botbrowser_profile}"
   else
-    puts '  Mode: Standard Chrome'
-    puts '  Profile: none (consider using BotBrowser for better stealth)'
+    logger.info '  Mode: Standard Chrome'
+    logger.info '  Profile: none (consider using BotBrowser for better stealth)'
   end
 
-  puts "  Headless: #{config.headless}"
-  puts "  Timeout: #{config.timeout}s"
-  puts ''
-  puts 'Server:'
-  puts "  Host: #{config.server_host}"
-  puts "  Port: #{config.server_port}"
-  puts "  MCP Endpoint: http://#{config.server_host}:#{config.server_port}/mcp"
-  puts ''
-  puts '=' * 60
-  puts 'Press Ctrl+C to stop'
-  puts '=' * 60
-  puts ''
+  logger.info "  Headless: #{config.headless}"
+  logger.info "  Timeout: #{config.timeout}s"
+  logger.info ''
+  logger.info 'Transport:'
+  logger.info "  Protocol: #{options[:transport].upcase}"
 
-  http_server.start
+  if options[:transport] == 'http'
+    logger.info "  Host: #{config.server_host}"
+    logger.info "  Port: #{config.server_port}"
+    logger.info "  MCP Endpoint: http://#{config.server_host}:#{config.server_port}/mcp"
+  else
+    logger.info '  Mode: Standard input/output'
+  end
 
-  # Keep main thread alive
-  sleep
+  logger.info ''
+  logger.info '=' * 60
+  logger.info 'Server starting...'
+  logger.info '=' * 60
+  logger.info ''
+
+  transport_server.start
+
+  # Keep main thread alive (not needed for stdio as it blocks)
+  sleep if options[:transport] == 'http'
 rescue StandardError => e
-  puts "ERROR: #{e.message}"
-  puts e.backtrace.join("\n")
+  logger = config.logger
+  logger.error "ERROR: #{e.message}"
+  logger.error e.backtrace.join("\n")
   exit 1
 end

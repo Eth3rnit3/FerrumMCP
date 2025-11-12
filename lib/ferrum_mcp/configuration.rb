@@ -4,9 +4,9 @@ module FerrumMCP
   # Configuration class for Ferrum MCP Server
   class Configuration
     attr_accessor :browser_path, :botbrowser_profile, :headless, :timeout,
-                  :server_host, :server_port, :log_level
+                  :server_host, :server_port, :log_level, :transport
 
-    def initialize
+    def initialize(transport: 'http')
       @browser_path = ENV.fetch('BROWSER_PATH', nil) || ENV.fetch('BOTBROWSER_PATH', nil)
       @botbrowser_profile = ENV.fetch('BOTBROWSER_PROFILE', nil)
       @headless = ENV.fetch('BROWSER_HEADLESS', 'false') == 'true'
@@ -14,6 +14,7 @@ module FerrumMCP
       @server_host = ENV.fetch('MCP_SERVER_HOST', '0.0.0.0')
       @server_port = ENV.fetch('MCP_SERVER_PORT', '3000').to_i
       @log_level = ENV.fetch('LOG_LEVEL', 'debug').to_sym
+      @transport = transport
     end
 
     def valid?
@@ -32,24 +33,16 @@ module FerrumMCP
     private
 
     def create_multi_logger
-      # Create log directory if it doesn't exist
-      log_dir = File.join(Dir.pwd, 'logs')
-      FileUtils.mkdir_p(log_dir)
+      # Create log directory relative to the project root
+      # Use __FILE__ to get the gem's location, then go up to project root
+      project_root = File.expand_path('../..', __dir__)
+      log_dir = File.join(project_root, 'logs')
+      FileUtils.mkdir_p(log_dir) unless File.directory?(log_dir)
 
       log_file = File.join(log_dir, 'ferrum_mcp.log')
 
-      # Create a logger that writes to both stdout and file
-      stdout_logger = Logger.new($stdout, level: log_level)
-      file_logger = Logger.new(log_file, level: log_level)
-
-      # Create a custom logger that broadcasts to both
-      multi_logger = Logger.new($stdout, level: log_level)
-      multi_logger.define_singleton_method(:add) do |severity, message = nil, progname = nil, &block|
-        stdout_logger.add(severity, message, progname, &block)
-        file_logger.add(severity, message, progname, &block)
-      end
-
-      multi_logger
+      # Only write to file, no console output
+      Logger.new(log_file, level: log_level)
     end
   end
 end

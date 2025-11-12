@@ -39,28 +39,100 @@ bundle install
 
 ### Start the Server
 
+#### HTTP Transport (Default)
+
 ```bash
 ruby server.rb
+# or explicitly
+ruby server.rb --transport http
 ```
 
 The server will start on `http://0.0.0.0:3000` by default.
+
+#### STDIO Transport
+
+For MCP clients that require stdio protocol:
+
+```bash
+ruby server.rb --transport stdio
+```
+
+#### Help and Options
+
+View all available options:
+
+```bash
+ruby server.rb --help
+```
 
 ## Connect Your AI Assistant
 
 ### Claude Desktop
 
-Add FerrumMCP to your Claude configuration:
+#### Using STDIO Transport (Recommended)
+
+Add this configuration to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "ferrum-mcp": {
+      "command": "/path/to/ruby",
+      "args": [
+        "/path/to/ferrum-mcp/server.rb",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "BROWSER_HEADLESS": "false"
+      }
+    }
+  }
+}
+```
+
+**Important**: Replace the paths with your actual paths:
+- **Ruby path**: Find it with `which ruby` (e.g., `/Users/username/.rbenv/versions/3.3.5/bin/ruby`)
+- **Server path**: Full path to your `server.rb` (e.g., `/Users/username/code/ferrum-mcp/server.rb`)
+
+**Example with rbenv**:
+```json
+{
+  "mcpServers": {
+    "ferrum-mcp": {
+      "command": "/Users/username/.rbenv/versions/3.3.5/bin/ruby",
+      "args": [
+        "/Users/username/code/ferrum-mcp/server.rb",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "BROWSER_HEADLESS": "false"
+      }
+    }
+  }
+}
+```
+
+After updating the config, restart Claude Desktop.
+
+#### Using HTTP Transport
+
+Alternative setup using HTTP (requires manual server start):
 
 ```bash
+# Start the server
+ruby server.rb --transport http
+
+# In another terminal, add to Claude
 claude mcp add --transport http ferrum-mcp http://0.0.0.0:3000/mcp
 ```
 
 ### Other MCP Clients
 
-For any MCP-compatible client, configure an HTTP transport pointing to:
-```
-http://0.0.0.0:3000/mcp
-```
+For any MCP-compatible client:
+- **HTTP Transport**: Configure pointing to `http://0.0.0.0:3000/mcp`
+- **STDIO Transport**: Run `ruby server.rb --transport stdio` as a subprocess
 
 ## Usage Examples
 
