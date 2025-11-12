@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+README.md
+LICENSE
+
+# Development files
+.env
+.env.example
+.rspec
+.rspec_status
+.rubocop.yml
+.ruby-version
+.claude
+
+# Test files
+spec/
+test/
+coverage/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Scripts (not needed in container)
+start_server.sh

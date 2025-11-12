@@ -9,11 +9,11 @@ gem 'json', '~> 2.16'
 gem 'logger', '~> 1.7'
 gem 'mcp', '~> 0.4.0'
 gem 'puma', '~> 7.1'
+gem 'rack', '~> 3.2'
 gem 'zeitwerk', '~> 2.7'
 
 group :development, :test do
   gem 'debug', '~> 1.11'
-  gem 'rack', '~> 3.2'
   gem 'rake', '~> 13.3'
   gem 'rspec', '~> 3.13'
   gem 'rspec_junit_formatter', '~> 0.6.0'
