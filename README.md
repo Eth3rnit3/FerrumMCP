@@ -16,7 +16,20 @@ FerrumMCP provides AI assistants with browser automation capabilities via the MC
 
 ## Quick Start
 
-### Installation
+### Option 1: Using Docker (Recommended)
+
+Pull and run the official Docker image:
+
+```bash
+docker pull eth3rnit3/ferrum-mcp:latest
+docker run -p 3000:3000 eth3rnit3/ferrum-mcp:latest
+```
+
+The server will be available at `http://0.0.0.0:3000`.
+
+**Docker Hub:** [eth3rnit3/ferrum-mcp](https://hub.docker.com/r/eth3rnit3/ferrum-mcp)
+
+### Option 2: Local Installation
 
 ```bash
 git clone https://github.com/Eth3rnit3/FerrumMCP.git
