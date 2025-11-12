@@ -60,15 +60,38 @@ RSpec.describe 'Server CLI Options' do
       pid = spawn('ruby', server_path, '--transport', 'stdio',
                   in: :close, out: File::NULL, err: File::NULL)
 
-      # Wait briefly for startup
-      sleep 0.5
+      # Wait for process to exit (with timeout to prevent hanging)
+      # The process should exit quickly when stdin is closed
+      process_status = nil
+      timeout = 5 # seconds
+      start_time = Time.now
 
-      # Check process started successfully (it should exit when stdin closes)
-      process_status = begin
-        Process.wait(pid, Process::WNOHANG)
-      rescue Errno::ECHILD
-        # Process already exited, that's fine
-        :exited
+      loop do
+        process_status = begin
+          Process.wait(pid, Process::WNOHANG)
+        rescue Errno::ECHILD
+          # Process already exited, that's fine
+          :exited
+        end
+
+        break if process_status # Process finished
+
+        if Time.now - start_time > timeout
+          # Timeout - kill the process
+          begin
+            Process.kill('TERM', pid)
+          rescue StandardError
+            nil
+          end
+          begin
+            Process.wait(pid)
+          rescue StandardError
+            nil
+          end
+          break
+        end
+
+        sleep 0.1 # Check every 100ms
       end
 
       # Either got a status or process already exited
