@@ -35,7 +35,7 @@ RSpec.describe FerrumMCP::Session do
       end
 
       it 'stores options' do
-        expect(session.options[:headless]).to eq(true)
+        expect(session.options[:headless]).to be(true)
         expect(session.options[:timeout]).to eq(120)
       end
 
@@ -59,7 +59,7 @@ RSpec.describe FerrumMCP::Session do
 
     it 'is thread-safe' do
       results = []
-      threads = 10.times.map do
+      threads = Array.new(10) do
         Thread.new do
           session.with_browser do |_|
             results << Thread.current.object_id
@@ -75,38 +75,38 @@ RSpec.describe FerrumMCP::Session do
 
   describe '#active?' do
     it 'returns false when browser is not started' do
-      expect(session.active?).to eq(false)
+      expect(session.active?).to be(false)
     end
 
     it 'returns true after starting browser', :integration do
       session.start
-      expect(session.active?).to eq(true)
+      expect(session.active?).to be(true)
       session.stop
     end
   end
 
   describe '#start and #stop', :integration do
     it 'starts and stops the browser' do
-      expect(session.active?).to eq(false)
+      expect(session.active?).to be(false)
 
       session.start
-      expect(session.active?).to eq(true)
+      expect(session.active?).to be(true)
 
       session.stop
-      expect(session.active?).to eq(false)
+      expect(session.active?).to be(false)
     end
   end
 
   describe '#idle?' do
     it 'returns false for recently used session' do
       session.with_browser { |_| nil }
-      expect(session.idle?(60)).to eq(false)
+      expect(session.idle?(60)).to be(false)
     end
 
     it 'returns true for idle session' do
       # Manually set last_used_at to the past
       session.instance_variable_set(:@last_used_at, Time.now - 120)
-      expect(session.idle?(60)).to eq(true)
+      expect(session.idle?(60)).to be(true)
     end
   end
 
@@ -126,7 +126,7 @@ RSpec.describe FerrumMCP::Session do
       )
 
       expect(info[:id]).to eq(session.id)
-      expect(info[:active]).to eq(false)
+      expect(info[:active]).to be(false)
       expect(info[:browser_type]).to eq('System Chrome/Chromium')
     end
 

@@ -36,7 +36,7 @@ module FerrumMCP
               description: 'Session ID to use for this operation'
             }
           },
-          required: ['selector', 'session_id']
+          required: %w[selector session_id]
         }
       end
 

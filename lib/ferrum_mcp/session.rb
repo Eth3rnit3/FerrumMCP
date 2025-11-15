@@ -100,7 +100,7 @@ module FerrumMCP
 
     # Return sanitized options (without sensitive data)
     def sanitized_options
-      @options.reject { |k, _| k == :metadata }
+      @options.except(:metadata)
     end
   end
 

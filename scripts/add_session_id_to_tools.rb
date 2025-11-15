@@ -14,10 +14,10 @@ EXCLUDED_TOOLS = %w[
 ].freeze
 
 SESSION_ID_PROPERTY = <<~RUBY.chomp
-session_id: {
-              type: 'string',
-              description: 'Optional: Session ID to use (omit for default session)'
-            }
+  session_id: {
+                type: 'string',
+                description: 'Optional: Session ID to use (omit for default session)'
+              }
 RUBY
 
 def should_process_file?(filename)
@@ -50,13 +50,11 @@ def add_session_id_to_schema(content)
 
     if last_property && last_property > insert_pos
       # Add comma to last property if needed
-      unless content[last_property..next_section].include?(',')
-        content.insert(last_property + 1, ',')
-      end
+      content.insert(last_property + 1, ',') unless content[last_property..next_section].include?(',')
 
       # Insert session_id after the last property
       insert_position = content.index("\n", last_property + 1)
-      indent = content[insert_position + 1..insert_position + 20].match(/^\s*/)[0]
+      indent = content[(insert_position + 1)..(insert_position + 20)].match(/^\s*/)[0]
       content.insert(insert_position + 1, "#{indent}#{SESSION_ID_PROPERTY},\n")
     else
       # No properties yet, insert as first property
@@ -74,25 +72,25 @@ def process_file(filepath)
   content = File.read(filepath)
 
   if already_has_session_id?(content)
-    puts "  ✓ Already has session_id parameter, skipping"
+    puts '  ✓ Already has session_id parameter, skipping'
     return false
   end
 
   updated_content = add_session_id_to_schema(content)
 
-  if updated_content != content
-    File.write(filepath, updated_content)
-    puts "  ✓ Added session_id parameter"
-    true
-  else
-    puts "  ⚠ Could not add session_id (schema format not recognized)"
+  if updated_content == content
+    puts '  ⚠ Could not add session_id (schema format not recognized)'
     false
+  else
+    File.write(filepath, updated_content)
+    puts '  ✓ Added session_id parameter'
+    true
   end
 end
 
 # Main execution
-puts "Adding session_id parameter to all tools..."
-puts "=" * 50
+puts 'Adding session_id parameter to all tools...'
+puts '=' * 50
 
 processed_count = 0
 updated_count = 0
@@ -104,7 +102,7 @@ Dir.glob(File.join(TOOLS_DIR, '*.rb')).each do |filepath|
   updated_count += 1 if process_file(filepath)
 end
 
-puts "=" * 50
+puts '=' * 50
 puts "Processed #{processed_count} tools"
 puts "Updated #{updated_count} tools"
 puts "Skipped #{processed_count - updated_count} tools (already up-to-date)"

@@ -25,7 +25,7 @@ module FerrumMCP
               description: 'Session ID to use for this operation'
             }
           },
-          required: ['url', 'session_id']
+          required: %w[url session_id]
         }
       end
 

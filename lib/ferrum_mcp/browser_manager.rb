@@ -65,11 +65,11 @@ module FerrumMCP
     # Compute browser options, merging defaults with session-specific options
     def computed_browser_options
       # Use merged options if config supports it (SessionConfiguration)
-      if config.respond_to?(:merged_browser_options)
-        options = config.merged_browser_options
-      else
-        options = browser_options
-      end
+      options = if config.respond_to?(:merged_browser_options)
+                  config.merged_browser_options
+                else
+                  browser_options
+                end
 
       # Log BotBrowser profile usage
       if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)

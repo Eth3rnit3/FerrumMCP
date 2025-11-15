@@ -42,7 +42,7 @@ module FerrumMCP
               description: 'Session ID to use for this operation'
             }
           },
-          required: ['source_selector', 'session_id']
+          required: %w[source_selector session_id]
         }
       end
 

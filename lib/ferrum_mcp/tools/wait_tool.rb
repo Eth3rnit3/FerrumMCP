@@ -27,7 +27,7 @@ module FerrumMCP
               description: 'Session ID to use for this operation'
             }
           },
-          required: ['seconds', 'session_id']
+          required: %w[seconds session_id]
         }
       end
 

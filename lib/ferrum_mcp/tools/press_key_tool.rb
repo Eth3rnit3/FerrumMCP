@@ -29,7 +29,7 @@ module FerrumMCP
               description: 'Session ID to use for this operation'
             }
           },
-          required: ['key', 'session_id']
+          required: %w[key session_id]
         }
       end
 

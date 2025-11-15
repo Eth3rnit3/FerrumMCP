@@ -92,7 +92,7 @@ module FerrumMCP
     # Execute a block with a session (thread-safe)
     # @param session_id [String] Session ID (required)
     # @yield [BrowserManager] Browser manager for the session
-    def with_session(session_id)
+    def with_session(session_id, &)
       raise ArgumentError, 'session_id is required' if session_id.nil? || session_id.empty?
 
       session = get_session(session_id)
@@ -102,7 +102,7 @@ module FerrumMCP
       session.start unless session.active?
 
       # Execute with thread-safe access
-      session.with_browser { |browser_manager| yield browser_manager }
+      session.with_browser(&)
     end
 
     # Set session timeout (in seconds)

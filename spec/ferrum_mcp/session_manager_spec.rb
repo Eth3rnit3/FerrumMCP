@@ -34,7 +34,7 @@ RSpec.describe FerrumMCP::SessionManager do
       session_id = session_manager.create_session(options)
 
       session = session_manager.get_session(session_id)
-      expect(session.options[:headless]).to eq(true)
+      expect(session.options[:headless]).to be(true)
       expect(session.options[:timeout]).to eq(120)
     end
 
@@ -55,15 +55,15 @@ RSpec.describe FerrumMCP::SessionManager do
     end
 
     it 'raises error when id is nil' do
-      expect {
+      expect do
         session_manager.get_session(nil)
-      }.to raise_error(ArgumentError, /session_id is required/)
+      end.to raise_error(ArgumentError, /session_id is required/)
     end
 
     it 'raises error when id is empty string' do
-      expect {
+      expect do
         session_manager.get_session('')
-      }.to raise_error(ArgumentError, /session_id is required/)
+      end.to raise_error(ArgumentError, /session_id is required/)
     end
 
     it 'returns nil for non-existent session' do
@@ -78,13 +78,13 @@ RSpec.describe FerrumMCP::SessionManager do
       expect(session_manager.session_count).to eq(1)
 
       result = session_manager.close_session(session_id)
-      expect(result).to eq(true)
+      expect(result).to be(true)
       expect(session_manager.session_count).to eq(0)
     end
 
     it 'returns false for non-existent session' do
       result = session_manager.close_session('non-existent-id')
-      expect(result).to eq(false)
+      expect(result).to be(false)
     end
   end
 
@@ -114,31 +114,31 @@ RSpec.describe FerrumMCP::SessionManager do
     end
 
     it 'raises error when id is nil' do
-      expect {
+      expect do
         session_manager.with_session(nil) { |_| nil }
-      }.to raise_error(ArgumentError, /session_id is required/)
+      end.to raise_error(ArgumentError, /session_id is required/)
     end
 
     it 'raises error when id is empty string' do
-      expect {
+      expect do
         session_manager.with_session('') { |_| nil }
-      }.to raise_error(ArgumentError, /session_id is required/)
+      end.to raise_error(ArgumentError, /session_id is required/)
     end
 
     it 'raises error for non-existent session' do
-      expect {
+      expect do
         session_manager.with_session('non-existent-id') { |_| nil }
-      }.to raise_error(FerrumMCP::SessionError, /Session not found/)
+      end.to raise_error(FerrumMCP::SessionError, /Session not found/)
     end
 
     it 'starts browser if not active', :integration do
       session_id = session_manager.create_session
       session = session_manager.get_session(session_id)
 
-      expect(session.active?).to eq(false)
+      expect(session.active?).to be(false)
 
       session_manager.with_session(session_id) do |browser_manager|
-        expect(browser_manager.active?).to eq(true)
+        expect(browser_manager.active?).to be(true)
       end
 
       session.stop
@@ -170,7 +170,7 @@ RSpec.describe FerrumMCP::SessionManager do
       # Set very short timeout for testing
       session_manager.session_timeout = 0.5
 
-      session_id = session_manager.create_session
+      session_manager.create_session
       expect(session_manager.session_count).to eq(1)
 
       # Wait for cleanup (cleanup runs every 5 minutes by default, but we can trigger it manually)
@@ -215,7 +215,7 @@ RSpec.describe FerrumMCP::SessionManager do
 
   describe 'thread safety' do
     it 'handles concurrent session creation' do
-      threads = 10.times.map do
+      threads = Array.new(10) do
         Thread.new { session_manager.create_session }
       end
 
@@ -229,7 +229,7 @@ RSpec.describe FerrumMCP::SessionManager do
       session_id = session_manager.create_session
       results = []
 
-      threads = 5.times.map do
+      threads = Array.new(5) do
         Thread.new do
           session_manager.with_session(session_id) do |_|
             results << Thread.current.object_id

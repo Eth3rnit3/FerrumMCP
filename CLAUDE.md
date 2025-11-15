@@ -167,11 +167,28 @@ navigate(url: "https://protected-site.com", session_id: bot_session)
 2. Inherit from `BaseTool` and implement required methods:
    - `.tool_name`: String identifier for MCP
    - `.description`: Human-readable description
-   - `.input_schema`: JSON schema for parameters (session_id automatically added)
+   - `.input_schema`: JSON schema for parameters
+     - **IMPORTANT**: Add `session_id` as a **required** parameter in your schema
    - `#execute(params)`: Main logic, returns `success_response(data)` or `error_response(message)`
 3. Add to `TOOL_CLASSES` array in `lib/ferrum_mcp/server.rb`
 4. Tool will be auto-registered with MCP server at startup
-5. The `session_id` parameter is automatically added to all browser tools via `BaseTool.inherited` hook
+
+Example schema with session_id:
+```ruby
+def self.input_schema
+  {
+    type: 'object',
+    properties: {
+      session_id: {
+        type: 'string',
+        description: 'Session ID to use for this operation'
+      },
+      # ... your other parameters
+    },
+    required: ['session_id', ...]  # session_id is REQUIRED
+  }
+end
+```
 
 ## Environment Variables
 

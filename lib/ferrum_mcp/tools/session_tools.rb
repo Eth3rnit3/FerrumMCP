@@ -87,7 +87,7 @@ module FerrumMCP
         success_response(
           session_id: session_id,
           message: 'Session created successfully',
-          options: options.reject { |k, _| k == :metadata }
+          options: options.except(:metadata)
         )
       rescue StandardError => e
         logger.error "Failed to create session: #{e.message}"
@@ -98,11 +98,23 @@ module FerrumMCP
 
       def build_options(params)
         options = {}
-        options[:browser_path] = params[:browser_path] || params['browser_path'] if params[:browser_path] || params['browser_path']
-        options[:botbrowser_profile] = params[:botbrowser_profile] || params['botbrowser_profile'] if params[:botbrowser_profile] || params['botbrowser_profile']
-        options[:headless] = params[:headless] || params['headless'] if params.key?(:headless) || params.key?('headless')
+        if params[:browser_path] || params['browser_path']
+          options[:browser_path] =
+            params[:browser_path] || params['browser_path']
+        end
+        if params[:botbrowser_profile] || params['botbrowser_profile']
+          options[:botbrowser_profile] =
+            params[:botbrowser_profile] || params['botbrowser_profile']
+        end
+        if params.key?(:headless) || params.key?('headless')
+          options[:headless] =
+            params[:headless] || params['headless']
+        end
         options[:timeout] = params[:timeout] || params['timeout'] if params[:timeout] || params['timeout']
-        options[:browser_options] = params[:browser_options] || params['browser_options'] if params[:browser_options] || params['browser_options']
+        if params[:browser_options] || params['browser_options']
+          options[:browser_options] =
+            params[:browser_options] || params['browser_options']
+        end
         options[:metadata] = params[:metadata] || params['metadata'] if params[:metadata] || params['metadata']
         options
       end
@@ -163,9 +175,7 @@ module FerrumMCP
       def execute(params)
         session_id = params[:session_id] || params['session_id']
 
-        unless session_id
-          return error_response('session_id is required')
-        end
+        return error_response('session_id is required') unless session_id
 
         success = session_manager.close_session(session_id)
 
@@ -209,9 +219,7 @@ module FerrumMCP
         session_id = params[:session_id] || params['session_id']
         session = session_manager.get_session(session_id)
 
-        unless session
-          return error_response("Session not found: #{session_id}")
-        end
+        return error_response("Session not found: #{session_id}") unless session
 
         success_response(session.info)
       rescue StandardError => e
