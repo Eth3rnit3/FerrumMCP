@@ -42,9 +42,13 @@ module FerrumMCP
               type: 'boolean',
               description: 'HttpOnly flag (default: false)',
               default: false
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: %w[name value domain]
+          required: %w[name value domain session_id]
         }
       end
 

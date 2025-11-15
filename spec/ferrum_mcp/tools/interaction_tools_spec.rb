@@ -88,12 +88,12 @@ RSpec.describe 'Interaction Tools' do
       expect(result[:data][:message]).to include('Hovered over #link')
     end
 
-    it 'does not fail when element not found (uses JavaScript)' do
-      # HoverTool uses JavaScript and doesn't validate element existence
+    it 'fails when element not found' do
+      # HoverTool now properly validates element existence before hovering
       result = hover_tool.execute({ selector: '#non-existent' })
 
-      expect(result[:success]).to be true
-      expect(result[:data][:message]).to include('Hovered over')
+      expect(result[:success]).to be false
+      expect(result[:error]).to include('Element not found')
     end
   end
 end

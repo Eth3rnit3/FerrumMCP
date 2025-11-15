@@ -23,9 +23,13 @@ module FerrumMCP
             attribute: {
               type: 'string',
               description: 'Attribute name to get'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: %w[selector attribute]
+          required: %w[selector attribute session_id]
         }
       end
 

@@ -24,16 +24,20 @@ module FerrumMCP
               type: 'boolean',
               description: 'Extract from all matching elements (default: false)',
               default: false
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['selector']
+          required: %w[selector session_id]
         }
       end
 
       def execute(params)
         ensure_browser_active
-        selector = params['selector'] || params[:selector]
-        multiple = params['multiple'] || params[:multiple] || false
+        selector = param(params, :selector)
+        multiple = param(params, :multiple) || false
 
         logger.info "Extracting text from: #{selector}"
 
@@ -42,10 +46,10 @@ module FerrumMCP
           xpath = selector.sub(/^xpath:/, '')
           logger.debug "Using XPath: #{xpath}"
           elements = browser.xpath(xpath)
-          raise "Element not found with XPath: #{xpath}" if elements.empty?
+          raise ToolError, "Element not found with XPath: #{xpath}" if elements.empty?
         else
           elements = browser.css(selector)
-          raise "Element not found: #{selector}" if elements.empty?
+          raise ToolError, "Element not found: #{selector}" if elements.empty?
         end
 
         if multiple

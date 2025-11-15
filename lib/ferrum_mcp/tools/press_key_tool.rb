@@ -23,15 +23,19 @@ module FerrumMCP
             selector: {
               type: 'string',
               description: 'Optional: CSS selector to focus before pressing key'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['key']
+          required: %w[key session_id]
         }
       end
 
       def execute(params)
-        key = params['key'] || params[:key]
-        selector = params['selector'] || params[:selector]
+        key = param(params, :key)
+        selector = param(params, :selector)
 
         if selector
           logger.info "Focusing element: #{selector}"
@@ -40,9 +44,10 @@ module FerrumMCP
         end
 
         logger.info "Pressing key: #{key}"
-        # Use keyboard.type for single key press to avoid duplication issues
-        # keyboard.down + keyboard.up was causing duplicate characters
         normalized_key = normalize_key(key)
+
+        # Use keyboard.type for key presses
+        # This handles both special keys and regular characters correctly
         browser.keyboard.type(normalized_key)
 
         success_response(message: "Pressed key: #{key}")

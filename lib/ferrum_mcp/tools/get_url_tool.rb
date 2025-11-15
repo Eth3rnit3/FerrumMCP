@@ -15,7 +15,13 @@ module FerrumMCP
       def self.input_schema
         {
           type: 'object',
-          properties: {}
+          properties: {
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
+            }
+          },
+          required: ['session_id']
         }
       end
 

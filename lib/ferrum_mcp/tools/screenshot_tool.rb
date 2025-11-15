@@ -30,23 +30,37 @@ module FerrumMCP
               enum: %w[png jpeg],
               description: 'Image format (default: png)',
               default: 'png'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
-          }
+          },
+          required: ['session_id']
         }
       end
 
       def execute(params)
         ensure_browser_active
-        selector = params['selector'] || params[:selector]
-        full_page = params['full_page'] || params[:full_page] || false
-        format = params['format'] || params[:format] || 'png'
+        selector = param(params, :selector)
+        full_page = param(params, :full_page) || false
+        format = param(params, :format) || 'png'
 
         logger.info 'Taking screenshot'
+
+        # If selector provided, verify element exists and is visible
+        if selector
+          element = find_element(selector)
+          element.scroll_into_view if element.respond_to?(:scroll_into_view)
+
+          # Small delay to ensure element is fully rendered
+          sleep 0.1
+        end
 
         # Request binary encoding from Ferrum (by default it returns base64)
         options = { format: format, full: full_page, encoding: :binary }
 
-        # Add selector to options if provided, otherwise take full page/viewport screenshot
+        # Add selector to options if provided
         options[:selector] = selector if selector
 
         screenshot_data = browser.screenshot(**options)

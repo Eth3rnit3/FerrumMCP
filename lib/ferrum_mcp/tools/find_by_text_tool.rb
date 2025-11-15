@@ -34,27 +34,35 @@ module FerrumMCP
               type: 'boolean',
               description: 'Return all matching elements (true) or just the first visible one (false, default)',
               default: false
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['text']
+          required: %w[text session_id]
         }
       end
 
       def execute(params)
         ensure_browser_active
 
-        text = params['text'] || params[:text]
-        tag = params['tag'] || params[:tag] || '*'
-        exact = params['exact'] || params[:exact] || false
-        multiple = params['multiple'] || params[:multiple] || false
+        text = param(params, :text)
+        tag = param(params, :tag) || '*'
+        exact = param(params, :exact) || false
+        multiple = param(params, :multiple) || false
 
         logger.info "Finding elements with text: '#{text}' in <#{tag}> tags (exact: #{exact}, multiple: #{multiple})"
 
-        # Build XPath query
+        # Escape text for XPath using concat() to handle quotes safely
+        # This prevents XPath injection while maintaining the original text
+        escaped_text = escape_xpath_string(text)
+
+        # Build XPath query with escaped text
         xpath = if exact
-                  "//#{tag}[normalize-space(text())='#{text}']"
+                  "//#{tag}[normalize-space(text())=#{escaped_text}]"
                 else
-                  "//#{tag}[contains(normalize-space(.), '#{text}')]"
+                  "//#{tag}[contains(normalize-space(.), #{escaped_text})]"
                 end
 
         logger.debug "Using XPath: #{xpath}"
@@ -102,6 +110,19 @@ module FerrumMCP
       end
 
       private
+
+      # Escape string for XPath using concat() to handle quotes
+      # This prevents injection while preserving the original text
+      def escape_xpath_string(text)
+        # If text contains no quotes, simple quoting works
+        return "'#{text}'" unless text.include?("'")
+
+        # If text contains quotes, use concat() function
+        # Split on single quotes and join with concat
+        parts = text.split("'")
+        quoted_parts = parts.map { |part| "'#{part}'" }
+        "concat(#{quoted_parts.join(", \"'\", ")})"
+      end
 
       def element_visible?(element)
         rect = element.evaluate('el => el.getBoundingClientRect()')

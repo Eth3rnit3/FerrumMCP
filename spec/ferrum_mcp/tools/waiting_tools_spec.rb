@@ -37,8 +37,8 @@ RSpec.describe 'Waiting Tools' do
     it 'waits for hidden element' do
       result = wait_for_element_tool.execute({ selector: '#hidden', state: 'hidden', timeout: 5 })
 
-      expect(result[:success]).to be false
-      expect(result[:error]).to include('Timeout')
+      # Element #hidden is already hidden on the page, so should return success immediately
+      expect(result[:success]).to be true
     end
 
     it 'times out when element not found' do

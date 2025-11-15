@@ -19,17 +19,23 @@ module FerrumMCP
             script: {
               type: 'string',
               description: 'JavaScript code to execute'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['script']
+          required: %w[script session_id]
         }
       end
 
       def execute(params)
         ensure_browser_active
-        script = params['script'] || params[:script]
+        script = param(params, :script)
 
         logger.info 'Executing JavaScript'
+        # Use execute for side effects (doesn't return value)
+        # For getting return values, users should use EvaluateJSTool
         browser.execute(script)
 
         success_response(message: 'Script executed successfully')

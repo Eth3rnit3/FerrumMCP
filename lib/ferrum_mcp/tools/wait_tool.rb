@@ -21,9 +21,13 @@ module FerrumMCP
               description: 'Number of seconds to wait',
               minimum: 0.1,
               maximum: 60
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['seconds']
+          required: %w[seconds session_id]
         }
       end
 
