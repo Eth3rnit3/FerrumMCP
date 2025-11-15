@@ -8,7 +8,11 @@ module FerrumMCP
       end
 
       def self.description
-        'Create a new browser session with custom options. Supports multiple browsers in parallel (Chrome, BotBrowser). Returns a session_id to use with other tools.'
+        <<~DESC
+          Create a new browser session with custom options.
+          Supports multiple browsers in parallel (Chrome, BotBrowser).
+          Returns a session_id to use with other tools.
+        DESC
       end
 
       def self.input_schema

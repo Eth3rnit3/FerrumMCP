@@ -65,7 +65,7 @@ def add_session_id_to_schema(content)
   content
 end
 
-def process_file(filepath)
+def process_file(filepath) # rubocop:disable Naming/PredicateMethod
   filename = File.basename(filepath)
   puts "Processing #{filename}..."
 
