@@ -23,6 +23,7 @@ module FerrumMCP
       Tools::ScreenshotTool,
       Tools::GetTitleTool,
       Tools::GetURLTool,
+      Tools::FindByTextTool,
       # Waiting
       Tools::WaitForElementTool,
       Tools::WaitForNavigationTool,

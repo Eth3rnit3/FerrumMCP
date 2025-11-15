@@ -21,10 +21,16 @@ module FerrumMCP
         logger.info 'Refreshing page'
         browser.refresh
 
+        # Wait for network to be idle to ensure page is reloaded
+        browser.network.wait_for_idle(timeout: 30)
+
         success_response(
           url: browser.url,
           title: browser.title
         )
+      rescue Ferrum::TimeoutError => e
+        logger.error "Refresh timeout: #{e.message}"
+        error_response("Refresh timed out: #{e.message}")
       rescue StandardError => e
         logger.error "Refresh failed: #{e.message}"
         error_response("Failed to refresh: #{e.message}")

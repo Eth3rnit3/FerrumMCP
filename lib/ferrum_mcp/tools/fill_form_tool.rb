@@ -34,17 +34,34 @@ module FerrumMCP
       end
 
       def execute(params)
-        fields = params['fields'] || params[:fields]
+        fields = param(params, :fields)
         results = []
 
-        fields.each do |field|
+        fields.each_with_index do |field, index|
           selector = field['selector'] || field[:selector]
           value = field['value'] || field[:value]
 
           logger.info "Filling field: #{selector}"
-          element = find_element(selector)
-          element.focus.type(value)
+
+          # Use retry logic for stale elements
+          with_retry do
+            element = find_element(selector)
+
+            # Scroll into view to ensure element is visible
+            element.scroll_into_view if element.respond_to?(:scroll_into_view)
+
+            # Focus with small delay to allow focus event to register
+            element.focus
+            sleep 0.05
+
+            # Type the value
+            element.type(value)
+          end
+
           results << { selector: selector, filled: true }
+
+          # Small delay between fields to allow validation/autocomplete/onChange handlers
+          sleep 0.1 unless index == fields.length - 1
         end
 
         success_response(fields: results)

@@ -26,30 +26,35 @@ module FerrumMCP
 
       def execute(params)
         ensure_browser_active
-        domain = params['domain'] || params[:domain]
+        domain = param(params, :domain)
 
         logger.info "Getting cookies#{" for #{domain}" if domain}"
         all_cookies = browser.cookies.all
 
-        # Convert cookies to hash format
-        # cookies.all returns a hash where values can be Cookie objects or strings
-        cookies_hash = {}
-        all_cookies.each do |name, cookie|
-          cookie_str = cookie.is_a?(String) ? cookie : cookie.to_s
-          cookies_hash[name] = cookie_str
-        end
+        # Convert cookies to structured format
+        cookies_array = []
 
-        # Filter by domain if specified
-        if domain
-          cookies_hash = cookies_hash.select do |_name, cookie_string|
-            cookie_string&.match(/Domain=([^;]+)/i) &&
-              Regexp.last_match(1).include?(domain)
-          end
+        all_cookies.each do |name, cookie|
+          # Get structured cookie data if available
+          cookie_data = if cookie.respond_to?(:to_h)
+                          cookie.to_h
+                        elsif cookie.is_a?(Hash)
+                          cookie
+                        else
+                          # Fallback to basic format
+                          { name: name, value: cookie.to_s }
+                        end
+
+          # Ensure name is set
+          cookie_data[:name] ||= name
+
+          # Filter by domain if specified
+          cookies_array << cookie_data if domain.nil? || cookie_data[:domain]&.include?(domain)
         end
 
         success_response(
-          cookies: cookies_hash,
-          count: cookies_hash.length
+          cookies: cookies_array,
+          count: cookies_array.length
         )
       rescue StandardError => e
         logger.error "Get cookies failed: #{e.message}"

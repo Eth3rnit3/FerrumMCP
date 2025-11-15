@@ -36,19 +36,22 @@ module FerrumMCP
       end
 
       def execute(params)
-        selector = params['selector'] || params[:selector]
-        wait_time = params['wait'] || params[:wait] || 5
-        force = params['force'] || params[:force] || false
+        selector = param(params, :selector)
+        wait_time = param(params, :wait) || 5
+        force = param(params, :force) || false
 
         logger.info "Clicking element: #{selector} (force: #{force})"
 
-        element = find_element_robust(selector, wait_time)
+        # Use retry logic for stale elements
+        with_retry do
+          element = find_element_robust(selector, wait_time)
 
-        # Scroll element into view before clicking
-        element.scroll_into_view if element.respond_to?(:scroll_into_view)
+          # Scroll element into view before clicking
+          element.scroll_into_view if element.respond_to?(:scroll_into_view)
 
-        # Use native Ferrum click
-        element.click
+          # Use native Ferrum click
+          element.click
+        end
 
         success_response(message: "Clicked on #{selector}")
       rescue Ferrum::NodeNotFoundError, Ferrum::CoordinatesNotFoundError, Ferrum::NodeMovingError => e
@@ -81,30 +84,31 @@ module FerrumMCP
       private
 
       def find_element_robust(selector, timeout)
+        deadline = Time.now + timeout
+
         # Support both CSS and XPath selectors
         if selector.start_with?('xpath:', '//')
           xpath = selector.sub(/^xpath:/, '')
           logger.debug "Using XPath: #{xpath}"
 
-          # Find all matching elements
-          elements = browser.xpath(xpath)
-          raise "Element not found with XPath: #{xpath}" if elements.empty?
+          # Retry XPath search until timeout
+          elements = []
+          loop do
+            elements = browser.xpath(xpath)
+            break unless elements.empty?
+
+            raise ToolError, "Element not found with XPath: #{xpath}" if Time.now > deadline
+
+            sleep 0.2
+          end
 
           # Prefer visible element
           element = elements.find { |el| element_visible?(el) } || elements.first
           visibility = element_visible?(element) ? 'visible' : 'first'
           logger.debug "Found #{elements.length} XPath matches, using #{visibility} one"
         else
-          # For CSS selectors, try to find first visible element
-          elements = browser.css(selector)
-          if elements.empty?
-            # Fallback to BaseTool's find_element with timeout
-            element = find_element(selector, timeout: timeout)
-          else
-            element = elements.find { |el| element_visible?(el) } || elements.first
-            visibility = element_visible?(element) ? 'visible' : 'first'
-            logger.debug "Found #{elements.length} CSS matches, using #{visibility} one"
-          end
+          # For CSS selectors, use the base find_element with timeout
+          element = find_element(selector, timeout: timeout)
         end
 
         element

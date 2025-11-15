@@ -78,7 +78,7 @@ RSpec.describe 'Advanced Tools' do
       result = get_cookies_tool.execute({})
 
       expect(result[:success]).to be true
-      expect(result[:data][:cookies]).to be_a(Hash)
+      expect(result[:data][:cookies]).to be_an(Array)
       expect(result[:data][:count]).to be >= 0
     end
 
@@ -92,7 +92,7 @@ RSpec.describe 'Advanced Tools' do
       result = get_cookies_tool.execute({ domain: 'localhost' })
 
       expect(result[:success]).to be true
-      expect(result[:data][:cookies]).to be_a(Hash)
+      expect(result[:data][:cookies]).to be_an(Array)
     end
   end
 

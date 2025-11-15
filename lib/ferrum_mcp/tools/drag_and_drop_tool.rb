@@ -43,11 +43,11 @@ module FerrumMCP
       end
 
       def execute(params) # rubocop:disable Metrics/MethodLength
-        source_selector = params['source_selector'] || params[:source_selector]
-        target_selector = params['target_selector'] || params[:target_selector]
-        target_x = params['target_x'] || params[:target_x]
-        target_y = params['target_y'] || params[:target_y]
-        steps = params['steps'] || params[:steps] || 10
+        source_selector = param(params, :source_selector)
+        target_selector = param(params, :target_selector)
+        target_x = param(params, :target_x)
+        target_y = param(params, :target_y)
+        steps = param(params, :steps) || 10
 
         logger.info "Dragging #{source_selector} to #{target_selector || "(#{target_x}, #{target_y})"}"
 
@@ -57,9 +57,6 @@ module FerrumMCP
         rescue StandardError => e
           raise ToolError, "Source element not found: #{source_selector} - #{e.message}"
         end
-
-        # Small delay to ensure element is fully rendered
-        sleep 0.1
 
         # Get position using JavaScript
         selector_js = source_selector.inspect
@@ -138,25 +135,29 @@ module FerrumMCP
 
         # Move to source element
         mouse.move(x: from_x, y: from_y)
-        sleep 0.1
+        sleep 0.05
 
         # Press mouse button
         mouse.down
+        sleep 0.05 # Small delay to ensure mousedown registers
 
         # Calculate step size for smooth drag
         step_x = (to_x - from_x) / steps.to_f
         step_y = (to_y - from_y) / steps.to_f
+
+        # Calculate delay per step (aim for ~300ms total drag time)
+        delay_per_step = [0.3 / steps, 0.01].max # At least 10ms per step
 
         # Perform smooth drag
         (1..steps).each do |step|
           current_x = from_x + (step_x * step)
           current_y = from_y + (step_y * step)
           mouse.move(x: current_x, y: current_y)
-          sleep 0.02
+          sleep delay_per_step
         end
 
         # Release mouse button
-        sleep 0.1
+        sleep 0.05 # Small delay before release
         mouse.up
 
         logger.debug 'Drag and drop completed'

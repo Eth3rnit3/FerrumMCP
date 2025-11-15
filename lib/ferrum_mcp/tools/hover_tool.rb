@@ -26,25 +26,46 @@ module FerrumMCP
       end
 
       def execute(params)
-        selector = params['selector'] || params[:selector]
+        selector = param(params, :selector)
 
         logger.info "Hovering over element: #{selector}"
 
-        # Use JavaScript to trigger mouseover event
-        script = <<~JS
-          const element = document.querySelector('#{selector.gsub("'", "\\'")}');
-          if (element) {
-            const event = new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window });
-            element.dispatchEvent(event);
-          }
-        JS
+        # First ensure element exists and is ready
+        element = find_element(selector)
 
-        browser.execute(script)
+        # Scroll into view if supported
+        element.scroll_into_view if element.respond_to?(:scroll_into_view)
+
+        # Try native hover first, fallback to JavaScript
+        begin
+          element.hover
+          logger.debug 'Native hover successful'
+        rescue StandardError => e
+          logger.debug "Native hover failed, using JavaScript: #{e.message}"
+          hover_with_javascript(selector)
+        end
 
         success_response(message: "Hovered over #{selector}")
       rescue StandardError => e
         logger.error "Hover failed: #{e.message}"
         error_response("Failed to hover: #{e.message}")
+      end
+
+      private
+
+      def hover_with_javascript(selector)
+        # Use inspect to properly escape the selector for JavaScript (prevents XSS)
+        script = <<~JS
+          const element = document.querySelector(#{selector.inspect});
+          if (!element) {
+            throw new Error('Element not found: ' + #{selector.inspect});
+          }
+          const event = new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window });
+          element.dispatchEvent(event);
+        JS
+
+        browser.execute(script)
+        logger.debug 'JavaScript hover successful'
       end
     end
   end

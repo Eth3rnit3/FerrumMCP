@@ -27,9 +27,11 @@ module FerrumMCP
 
       def execute(params)
         ensure_browser_active
-        script = params['script'] || params[:script]
+        script = param(params, :script)
 
         logger.info 'Executing JavaScript'
+        # Use execute for side effects (doesn't return value)
+        # For getting return values, users should use EvaluateJSTool
         browser.execute(script)
 
         success_response(message: 'Script executed successfully')

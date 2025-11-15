@@ -72,12 +72,22 @@ module FerrumMCP
         deadline = Time.now + timeout
 
         loop do
-          element = browser.at_css(selector)
-          return element if element
+          begin
+            # Find element without wait parameter (Ferrum 0.17.1 doesn't support it)
+            element = browser.at_css(selector)
+
+            # Check if element is actually visible (has dimensions and not hidden)
+            if element && element_visible?(element)
+              logger.debug "Element is visible: #{selector}"
+              return element
+            end
+          rescue Ferrum::NodeNotFoundError
+            # Element not found, continue waiting
+          end
 
           raise ToolError, "Timeout waiting for element to be visible: #{selector}" if Time.now > deadline
 
-          sleep 0.5
+          sleep 0.1
         end
       end
 
@@ -87,14 +97,17 @@ module FerrumMCP
         loop do
           begin
             element = browser.at_css(selector)
-            return element if element
+            if element
+              logger.debug "Element exists: #{selector}"
+              return element
+            end
           rescue Ferrum::NodeNotFoundError
             # Element doesn't exist yet, continue waiting
           end
 
           raise ToolError, "Timeout waiting for element to exist: #{selector}" if Time.now > deadline
 
-          sleep 0.5
+          sleep 0.1
         end
       end
 
@@ -102,12 +115,24 @@ module FerrumMCP
         deadline = Time.now + timeout
 
         loop do
-          element = browser.at_css(selector)
-          return if element.nil?
+          begin
+            # Check if element exists
+            element = browser.at_css(selector)
+
+            # If element exists, check if it's hidden
+            if element.nil? || !element_visible?(element)
+              logger.debug "Element is hidden: #{selector}"
+              return
+            end
+          rescue Ferrum::NodeNotFoundError
+            # Element doesn't exist, which means it's hidden
+            logger.debug "Element doesn't exist (hidden): #{selector}"
+            return
+          end
 
           raise ToolError, "Timeout waiting for element to hide: #{selector}" if Time.now > deadline
 
-          sleep 0.5
+          sleep 0.1
         end
       end
     end

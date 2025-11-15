@@ -36,6 +36,13 @@ module FerrumMCP
         @browser = @browser_manager.browser
       end
 
+      # Helper to access params consistently (supports both string and symbol keys)
+      def param(params, key)
+        params[key.to_s] || params[key.to_sym]
+      end
+
+      # Find element with improved timeout handling
+      # Uses shorter polling intervals for better responsiveness
       def find_element(selector, timeout: 5)
         ensure_browser_active
         deadline = Time.now + timeout
@@ -46,10 +53,49 @@ module FerrumMCP
 
           raise ToolError, "Element not found: #{selector}" if Time.now > deadline
 
-          sleep 0.5
+          # Use shorter sleep for better responsiveness (0.1s instead of 0.5s)
+          sleep 0.1
         end
       rescue Ferrum::NodeNotFoundError
         raise ToolError, "Element not found: #{selector}"
+      end
+
+      # Retry logic for handling stale/moving elements
+      def with_retry(retries: 3)
+        attempts = 0
+        begin
+          attempts += 1
+          yield
+        rescue Ferrum::NodeMovingError => e
+          raise ToolError, "Element became stale after #{retries} retries" unless attempts < retries
+
+          logger.debug "Retry #{attempts}/#{retries} due to: #{e.class}"
+          sleep 0.1
+          retry
+        end
+      end
+
+      # Check if element is actually visible (has dimensions and not hidden)
+      def element_visible?(element)
+        return false unless element
+
+        # Check both CSS visibility and actual rendered dimensions
+        script = <<~JS
+          (function(el) {
+            if (!el) return false;
+            const rect = el.getBoundingClientRect();
+            const style = window.getComputedStyle(el);
+            return rect.width > 0 &&
+                   rect.height > 0 &&
+                   style.visibility !== 'hidden' &&
+                   style.display !== 'none';
+          })(arguments[0])
+        JS
+
+        browser.evaluate(script, element)
+      rescue StandardError => e
+        logger.debug "Error checking element visibility: #{e.message}"
+        false
       end
 
       def success_response(data = {})
