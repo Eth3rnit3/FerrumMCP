@@ -23,9 +23,13 @@ module FerrumMCP
             selector: {
               type: 'string',
               description: 'Optional: CSS selector to focus before pressing key'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['key']
+          required: ['key', 'session_id']
         }
       end
 

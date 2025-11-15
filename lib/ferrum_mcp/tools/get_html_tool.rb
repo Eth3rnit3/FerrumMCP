@@ -19,8 +19,13 @@ module FerrumMCP
             selector: {
               type: 'string',
               description: 'Optional: CSS selector to get HTML of specific element'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
-          }
+          },
+          required: ['session_id']
         }
       end
 

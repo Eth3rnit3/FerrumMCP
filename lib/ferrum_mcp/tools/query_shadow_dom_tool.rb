@@ -37,9 +37,13 @@ module FerrumMCP
               type: 'boolean',
               description: 'Return all matching elements (default: false)',
               default: false
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: %w[host_selector shadow_selector action]
+          required: %w[host_selector shadow_selector action session_id]
         }
       end
 

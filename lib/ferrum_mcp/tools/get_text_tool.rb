@@ -24,9 +24,13 @@ module FerrumMCP
               type: 'boolean',
               description: 'Extract from all matching elements (default: false)',
               default: false
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['selector']
+          required: ['selector', 'session_id']
         }
       end
 

@@ -19,9 +19,13 @@ module FerrumMCP
             expression: {
               type: 'string',
               description: 'JavaScript expression to evaluate'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['expression']
+          required: ['expression', 'session_id']
         }
       end
 

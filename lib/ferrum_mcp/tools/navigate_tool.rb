@@ -19,9 +19,13 @@ module FerrumMCP
             url: {
               type: 'string',
               description: 'The URL to navigate to (must include protocol: http:// or https://)'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['url']
+          required: ['url', 'session_id']
         }
       end
 

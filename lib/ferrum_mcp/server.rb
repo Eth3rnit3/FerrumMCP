@@ -3,9 +3,14 @@
 module FerrumMCP
   # Main MCP Server implementation
   class Server
-    attr_reader :mcp_server, :browser_manager, :config, :logger
+    attr_reader :mcp_server, :session_manager, :config, :logger
 
     TOOL_CLASSES = [
+      # Session Management
+      Tools::CreateSessionTool,
+      Tools::ListSessionsTool,
+      Tools::CloseSessionTool,
+      Tools::GetSessionInfoTool,
       # Navigation
       Tools::NavigateTool,
       Tools::GoBackTool,
@@ -41,7 +46,7 @@ module FerrumMCP
     def initialize(config = Configuration.new)
       @config = config
       @logger = config.logger
-      @browser_manager = BrowserManager.new(config)
+      @session_manager = SessionManager.new(config)
       @mcp_server = create_mcp_server
       @tool_instances = {}
 
@@ -49,18 +54,25 @@ module FerrumMCP
       setup_error_handling
     end
 
+    # Deprecated: For backward compatibility
+    # Sessions must be created explicitly using create_session tool
     def start_browser
-      logger.info 'Starting browser...'
-      browser_manager.start
-      initialize_tool_instances
-      logger.info 'Browser ready'
+      raise NotImplementedError, 'start_browser is deprecated. Use create_session tool to create a session.'
     end
 
+    # Deprecated: For backward compatibility
     def stop_browser
-      logger.info 'Stopping browser...'
-      browser_manager.stop
+      logger.warn 'stop_browser is deprecated, use session_manager.close_all_sessions'
+      session_manager.close_all_sessions
       @tool_instances = {}
-      logger.info 'Browser stopped'
+      logger.info 'All sessions stopped'
+    end
+
+    # Shutdown server and cleanup all sessions
+    def shutdown
+      logger.info 'Shutting down server...'
+      session_manager.shutdown
+      logger.info 'Server shutdown complete'
     end
 
     def handle_request(json_request)
@@ -105,27 +117,33 @@ module FerrumMCP
       logger.info "Registered #{TOOL_CLASSES.length} tools"
     end
 
-    def initialize_tool_instances
-      @tool_instances = {}
-      TOOL_CLASSES.each do |tool_class|
-        @tool_instances[tool_class] = tool_class.new(browser_manager)
-      end
-    end
-
     def execute_tool(tool_class, params)
       logger.debug "Executing tool: #{tool_class.tool_name} with params: #{params.inspect}"
 
-      # Start browser if not active
-      unless browser_manager.active?
-        logger.debug 'Browser not active, starting...'
-        start_browser
+      # Session management tools don't need a browser session
+      if session_management_tool?(tool_class)
+        logger.debug "Executing session management tool: #{tool_class.tool_name}"
+        tool = tool_class.new(session_manager)
+        result = tool.execute(params)
+      else
+        # Extract session_id from params (required)
+        session_id = params[:session_id] || params['session_id']
+
+        unless session_id
+          logger.error "session_id is required for #{tool_class.tool_name}"
+          return error_tool_response('session_id is required. Create a session first using create_session tool.')
+        end
+
+        logger.debug "Using session_id: #{session_id}"
+
+        # Execute tool within session context
+        result = session_manager.with_session(session_id) do |browser_manager|
+          logger.debug "Creating tool instance for #{tool_class.tool_name}"
+          tool = tool_class.new(browser_manager)
+          logger.debug "Calling execute on #{tool_class.tool_name}"
+          tool.execute(params)
+        end
       end
-
-      logger.debug "Creating tool instance for #{tool_class.tool_name}"
-      tool = @tool_instances[tool_class] || tool_class.new(browser_manager)
-
-      logger.debug "Calling execute on #{tool_class.tool_name}"
-      result = tool.execute(params)
 
       logger.debug "Tool #{tool_class.tool_name} result: #{result.inspect}"
 
@@ -158,6 +176,16 @@ module FerrumMCP
       logger.error e.backtrace.first(10).join("\n")
       # Return an error response for unexpected exceptions
       MCP::Tool::Response.new([{ type: 'text', text: "#{e.class}: #{e.message}" }], error: true)
+    end
+
+    # Check if tool is a session management tool
+    def session_management_tool?(tool_class)
+      [
+        Tools::CreateSessionTool,
+        Tools::ListSessionsTool,
+        Tools::CloseSessionTool,
+        Tools::GetSessionInfoTool
+      ].include?(tool_class)
     end
 
     def setup_error_handling
@@ -194,6 +222,11 @@ module FerrumMCP
         },
         id: nil
       }
+    end
+
+    # Helper to create error response for tool execution
+    def error_tool_response(message)
+      MCP::Tool::Response.new([{ type: 'text', text: message }], error: true)
     end
   end
 end

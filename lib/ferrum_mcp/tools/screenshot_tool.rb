@@ -30,8 +30,13 @@ module FerrumMCP
               enum: %w[png jpeg],
               description: 'Image format (default: png)',
               default: 'png'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
-          }
+          },
+          required: ['session_id']
         }
       end
 

@@ -12,14 +12,23 @@ FerrumMCP is a browser automation server implementing the Model Context Protocol
 
 **Server Layer** (`lib/ferrum_mcp/server.rb`)
 - `FerrumMCP::Server`: Main MCP server implementation
-- Manages 23+ browser automation tools organized into 5 categories (Navigation, Interaction, Extraction, Waiting, Advanced)
+- Manages 27+ browser automation tools organized into 6 categories (Session Management, Navigation, Interaction, Extraction, Waiting, Advanced)
 - Tools are defined in `TOOL_CLASSES` constant and registered with the MCP server at initialization
-- Lazy browser initialization: browser starts only when first tool is executed
+- **Session-based architecture**: All browser operations require an explicit session
+
+**Session Management** (`lib/ferrum_mcp/session_manager.rb`, `lib/ferrum_mcp/session.rb`)
+- `SessionManager`: Thread-safe session pool with automatic cleanup
+- `Session`: Encapsulates a browser instance with custom configuration
+- Supports multiple concurrent browser sessions with different configurations
+- Each session can use different browser types (Chrome, BotBrowser), options, and profiles
+- Session lifecycle: create → use → auto-cleanup (after 30min idle) or manual close
+- **Important**: All browser tools require a valid `session_id` parameter
 
 **Browser Management** (`lib/ferrum_mcp/browser_manager.rb`)
 - `BrowserManager`: Handles Ferrum browser lifecycle
 - Supports both standard Chrome/Chromium and BotBrowser (anti-detection mode)
 - Browser options configured via `browser_options` method with anti-automation flags
+- Each session has its own `BrowserManager` with custom configuration
 
 **Transport Layer** (`lib/ferrum_mcp/transport/`)
 - Two transport implementations:
@@ -104,16 +113,65 @@ rake list_tools
 rake test
 ```
 
+## Session Management
+
+### Creating and Using Sessions
+
+**All browser operations require a session**. You must create a session before using any browser automation tools:
+
+```ruby
+# 1. Create a session (returns session_id)
+session_id = create_session(
+  headless: true,
+  timeout: 60,
+  browser_options: { '--window-size': '1920,1080' }
+)
+
+# 2. Use the session_id with any browser tool
+navigate(url: "https://example.com", session_id: session_id)
+screenshot(session_id: session_id)
+
+# 3. Close the session when done (or it auto-closes after 30min idle)
+close_session(session_id: session_id)
+```
+
+### Multiple Concurrent Sessions
+
+You can run multiple browsers in parallel with different configurations:
+
+```ruby
+# Standard Chrome for simple tasks
+chrome_session = create_session(headless: true)
+
+# BotBrowser with anti-detection for protected sites
+bot_session = create_session(
+  browser_path: '/path/to/botbrowser',
+  botbrowser_profile: '/path/to/profile'
+)
+
+# Use them concurrently
+navigate(url: "https://api.example.com", session_id: chrome_session)
+navigate(url: "https://protected-site.com", session_id: bot_session)
+```
+
+### Session Tools
+
+- `create_session`: Create a new browser session with custom options
+- `list_sessions`: List all active sessions
+- `get_session_info`: Get detailed information about a session
+- `close_session`: Manually close a session
+
 ## Adding New Tools
 
 1. Create tool file in `lib/ferrum_mcp/tools/` (e.g., `my_tool.rb`)
 2. Inherit from `BaseTool` and implement required methods:
    - `.tool_name`: String identifier for MCP
    - `.description`: Human-readable description
-   - `.input_schema`: JSON schema for parameters
+   - `.input_schema`: JSON schema for parameters (session_id automatically added)
    - `#execute(params)`: Main logic, returns `success_response(data)` or `error_response(message)`
 3. Add to `TOOL_CLASSES` array in `lib/ferrum_mcp/server.rb`
 4. Tool will be auto-registered with MCP server at startup
+5. The `session_id` parameter is automatically added to all browser tools via `BaseTool.inherited` hook
 
 ## Environment Variables
 
@@ -129,8 +187,11 @@ Can be set via `.env` file in project root (automatically loaded by `server.rb`)
 
 ## Key Implementation Details
 
-- **Tool Execution Flow**: `Server#execute_tool` → starts browser if needed → creates/reuses tool instance → calls `tool.execute` → wraps result in `MCP::Tool::Response`
+- **Tool Execution Flow**: `Server#execute_tool` → validates `session_id` → gets session from `SessionManager` → starts browser if needed → creates tool instance → calls `tool.execute` → wraps result in `MCP::Tool::Response`
+- **Session Management**: `SessionManager#with_session(session_id)` provides thread-safe access to browser
 - **Error Handling**: MCP exception reporter configured in `Server#setup_error_handling` logs to file
 - **Image Responses**: Screenshot tool returns base64 image data with `type: 'image'` and `mime_type`
 - **Element Finding**: `BaseTool#find_element` includes retry logic with configurable timeout
-- **Browser State**: Browser remains active across tool calls until server shutdown
+- **Browser State**: Each session's browser remains active until session is closed or idle timeout (30min)
+- **Auto-cleanup**: Background thread cleans up idle sessions every 5 minutes
+- **Thread Safety**: All session operations are protected by mutex locks

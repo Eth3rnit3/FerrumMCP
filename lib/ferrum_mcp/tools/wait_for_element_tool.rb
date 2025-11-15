@@ -30,9 +30,13 @@ module FerrumMCP
               enum: %w[visible hidden exists],
               description: 'Wait for element to be visible, hidden, or just exist (default: visible)',
               default: 'visible'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['selector']
+          required: ['selector', 'session_id']
         }
       end
 

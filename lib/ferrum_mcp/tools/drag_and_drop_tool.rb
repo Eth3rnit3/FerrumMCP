@@ -36,9 +36,13 @@ module FerrumMCP
               type: 'number',
               description: 'Number of steps for smooth dragging (default: 10)',
               default: 10
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['source_selector']
+          required: ['source_selector', 'session_id']
         }
       end
 

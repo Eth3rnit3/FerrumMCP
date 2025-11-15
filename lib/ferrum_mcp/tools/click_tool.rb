@@ -29,9 +29,13 @@ module FerrumMCP
               type: 'boolean',
               description: 'Force click even if element is hidden or not visible (default: false)',
               default: false
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['selector']
+          required: ['selector', 'session_id']
         }
       end
 

@@ -19,8 +19,13 @@ module FerrumMCP
             domain: {
               type: 'string',
               description: 'Optional: Clear cookies only for this domain'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
-          }
+          },
+          required: ['session_id']
         }
       end
 

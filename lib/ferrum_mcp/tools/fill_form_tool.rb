@@ -27,9 +27,13 @@ module FerrumMCP
                 },
                 required: %w[selector value]
               }
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['fields']
+          required: ['fields', 'session_id']
         }
       end
 

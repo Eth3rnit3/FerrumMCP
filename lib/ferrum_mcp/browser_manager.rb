@@ -21,7 +21,7 @@ module FerrumMCP
       end
 
       browser_options_hash = {
-        browser_options: browser_options,
+        browser_options: computed_browser_options,
         headless: config.headless,
         timeout: config.timeout,
         process_timeout: ENV['CI'] ? 120 : config.timeout,
@@ -62,6 +62,23 @@ module FerrumMCP
 
     private
 
+    # Compute browser options, merging defaults with session-specific options
+    def computed_browser_options
+      # Use merged options if config supports it (SessionConfiguration)
+      if config.respond_to?(:merged_browser_options)
+        options = config.merged_browser_options
+      else
+        options = browser_options
+      end
+
+      # Log BotBrowser profile usage
+      if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)
+        logger.info "Using BotBrowser profile: #{config.botbrowser_profile}"
+      end
+
+      options
+    end
+
     def browser_options
       options = {
         '--no-sandbox' => nil,
@@ -76,7 +93,6 @@ module FerrumMCP
       # Add BotBrowser profile if configured
       if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)
         options['--bot-profile'] = config.botbrowser_profile
-        logger.info "Using BotBrowser profile: #{config.botbrowser_profile}"
       end
 
       options

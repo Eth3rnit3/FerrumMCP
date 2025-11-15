@@ -26,8 +26,13 @@ module FerrumMCP
               enum: %w[load domcontentloaded networkidle],
               description: 'When to consider navigation complete (default: load)',
               default: 'load'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
-          }
+          },
+          required: ['session_id']
         }
       end
 

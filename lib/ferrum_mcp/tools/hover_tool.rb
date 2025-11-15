@@ -19,9 +19,13 @@ module FerrumMCP
             selector: {
               type: 'string',
               description: 'CSS selector of the element to hover over'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['selector']
+          required: ['selector', 'session_id']
         }
       end
 

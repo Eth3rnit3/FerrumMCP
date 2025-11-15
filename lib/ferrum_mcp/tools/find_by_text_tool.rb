@@ -34,9 +34,13 @@ module FerrumMCP
               type: 'boolean',
               description: 'Return all matching elements (true) or just the first visible one (false, default)',
               default: false
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['text']
+          required: ['text', 'session_id']
         }
       end
 

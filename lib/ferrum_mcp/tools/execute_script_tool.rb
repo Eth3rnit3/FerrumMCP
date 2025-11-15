@@ -19,9 +19,13 @@ module FerrumMCP
             script: {
               type: 'string',
               description: 'JavaScript code to execute'
+            },
+            session_id: {
+              type: 'string',
+              description: 'Session ID to use for this operation'
             }
           },
-          required: ['script']
+          required: ['script', 'session_id']
         }
       end
 
