@@ -23,6 +23,7 @@ module FerrumMCP
       Tools::HoverTool,
       Tools::DragAndDropTool,
       Tools::AcceptCookiesTool,
+      Tools::SolveCaptchaTool,
       # Extraction
       Tools::GetTextTool,
       Tools::GetHTMLTool,
