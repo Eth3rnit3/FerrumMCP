@@ -8,6 +8,7 @@ AllCops:
   NewCops: enable
   Exclude:
     - 'bin/**/*'
+    - 'scripts/**/*'
     - 'vendor/**/*'
     - 'node_modules/**/*'
     - 'tmp/**/*'

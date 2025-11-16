@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Run RuboCop with optional auto-correct
+if [ "$1" = "--fix" ]; then
+    echo "Running RuboCop with auto-correct..."
+    bundle exec rubocop -A .
+else
+    echo "Running RuboCop..."
+    bundle exec rubocop .
+fi
