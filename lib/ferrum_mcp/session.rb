@@ -145,17 +145,17 @@ module FerrumMCP
 
     def default_browser_options
       options = {
-        '--no-sandbox' => nil,
-        '--disable-dev-shm-usage' => nil,
-        '--disable-blink-features' => 'AutomationControlled',
-        '--disable-gpu' => nil
+        'no-sandbox' => nil,
+        'disable-dev-shm-usage' => nil,
+        'disable-blink-features' => 'AutomationControlled',
+        'disable-gpu' => nil
       }
 
-      options['--disable-setuid-sandbox'] = nil if ENV['CI']
+      options['disable-setuid-sandbox'] = nil if ENV['CI']
 
       # Add BotBrowser profile if configured
       if using_botbrowser? && botbrowser_profile && File.exist?(botbrowser_profile)
-        options['--bot-profile'] = botbrowser_profile
+        options['bot-profile'] = botbrowser_profile
       end
 
       options

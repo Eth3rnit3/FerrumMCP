@@ -40,7 +40,7 @@ class CookieDetectionAnalyzer
       options: {
         headless: false,
         timeout: 60,
-        browser_options: { '--window-size' => '1920,1080' }
+        browser_options: { 'window-size' => '1920,1080' }
       }
     )
 

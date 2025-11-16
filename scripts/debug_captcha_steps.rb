@@ -62,8 +62,8 @@ class CaptchaDebugger
         headless: false,
         timeout: 90,
         browser_options: {
-          '--window-size' => '1920,1080',
-          '--disable-blink-features' => 'AutomationControlled'
+          'window-size' => '1920,1080',
+          'disable-blink-features' => 'AutomationControlled'
         }
       }
     )

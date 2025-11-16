@@ -13,7 +13,7 @@ require 'json'
 require 'base64'
 
 ENV["BROWSER_PATH"] ||= '/Applications/Chromium.app/Contents/MacOS/Chromium'
-ENV["BOTBROWSER_PROFILE"] ||= '/Users/eth3rnit3/Downloads/chrome142_mac_arm64.enc'
+ENV["BOTBROWSER_PROFILE"] ||= '/Users/eth3rnit3/Downloads/chrome142_win10_x64.enc'
 
 # Create output directory for screenshots
 OUTPUT_DIR = 'tmp/captcha_tests'
@@ -51,15 +51,14 @@ class CaptchaSolverTester
     config = FerrumMCP::Configuration.new
 
     browser_options = {
-      '--window-size' => '1920,1080',
-      '--disable-blink-features' => 'AutomationControlled',
-      '--disable-dev-shm-usage' => nil,
-      '--no-sandbox' => nil,
-      '--disable-setuid-sandbox' => nil,
-      '--disable-infobars' => nil,
-      '--disable-web-security' => nil,
-      '--disable-features' => 'IsolateOrigins,site-per-process',
-      "--bot-profile" => ENV["BOTBROWSER_PROFILE"]
+      'window-size' => '1920,1080',
+      'disable-blink-features' => 'AutomationControlled',
+      'disable-dev-shm-usage' => nil,
+      'no-sandbox' => nil,
+      'disable-setuid-sandbox' => nil,
+      'disable-infobars' => nil,
+      'disable-web-security' => nil,
+      'disable-features' => 'IsolateOrigins,site-per-process'
     }
 
     @session = FerrumMCP::Session.new(
