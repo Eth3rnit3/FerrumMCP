@@ -6,6 +6,8 @@ if ENV['COVERAGE'] || ENV['CI']
   SimpleCov.start do
     add_filter '/spec/'
     add_filter '/vendor/'
+    add_filter '/scripts/'
+    add_filter '/test/'
     enable_coverage :branch
     minimum_coverage line: 65, branch: 50
   end
