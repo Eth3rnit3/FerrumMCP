@@ -96,7 +96,7 @@ jobs:
           echo "Using Chrome at: $BROWSER_PATH"
 
           # Run tests
-          bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec-results.xml
+          bin/test --format progress --format RspecJunitFormatter --out tmp/rspec-results.xml
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
