@@ -164,6 +164,179 @@ RSpec.describe 'Multi-Browser and Multi-Profile Support' do
         expect(default_profile.encrypted).to be true
       end
     end
+
+    context 'with mixed legacy and new configurations' do
+      before do
+        ENV['BROWSER_PATH'] = '/custom/chrome'
+        ENV['BROWSER_FIREFOX'] = 'firefox:/usr/bin/firefox:Firefox:Mozilla'
+      end
+
+      it 'loads both legacy and new browsers' do
+        config = FerrumMCP::Configuration.new
+
+        expect(config.browsers.count).to eq(2)
+        expect(config.find_browser('default')).not_to be_nil
+        expect(config.find_browser('firefox')).not_to be_nil
+      end
+
+      it 'sets first configured browser as default when legacy exists' do
+        config = FerrumMCP::Configuration.new
+        # Firefox is loaded first from ENV.each, then legacy
+        expect(config.default_browser.id).to eq('firefox')
+      end
+    end
+
+    context 'when browsers configuration has missing values' do
+      before do
+        ENV['BROWSER_INCOMPLETE'] = 'chrome:/usr/bin/chrome'
+      end
+
+      it 'uses ID as default name when name is missing' do
+        config = FerrumMCP::Configuration.new
+        browser = config.find_browser('incomplete')
+
+        expect(browser.name).to eq('Incomplete')
+      end
+
+      it 'stores empty string for type when type field is empty' do
+        ENV['BROWSER_NO_TYPE'] = ':/usr/bin/browser:Browser:Description'
+
+        config = FerrumMCP::Configuration.new
+        browser = config.find_browser('no_type')
+
+        # Empty string in config results in empty type, not 'chrome'
+        expect(browser.type).to eq('')
+      end
+
+      it 'handles empty paths (skips them)' do
+        ENV['USER_PROFILE_EMPTY'] = ':Name:Description'
+
+        config = FerrumMCP::Configuration.new
+        profile = config.find_user_profile('empty')
+
+        # Should be nil because path is empty
+        expect(profile).to be_nil
+      end
+
+      it 'handles empty bot profile paths (skips them)' do
+        ENV['BOT_PROFILE_EMPTY'] = ':Name:Description'
+
+        config = FerrumMCP::Configuration.new
+        profile = config.find_bot_profile('empty')
+
+        # Should be nil because path is empty
+        expect(profile).to be_nil
+      end
+
+      it 'handles legacy BOTBROWSER_PROFILE when empty' do
+        ENV['BOTBROWSER_PROFILE'] = ''
+
+        config = FerrumMCP::Configuration.new
+        # Should not create a bot profile for empty string
+        expect(config.bot_profiles).to be_empty
+      end
+    end
+
+    context 'when user profile has missing description' do
+      before do
+        ENV['USER_PROFILE_SIMPLE'] = '/path/to/profile:Simple'
+      end
+
+      it 'handles missing description gracefully' do
+        config = FerrumMCP::Configuration.new
+        profile = config.find_user_profile('simple')
+
+        expect(profile.description).to be_nil
+      end
+    end
+
+    context 'when bot profile has missing description' do
+      before do
+        ENV['BOT_PROFILE_SIMPLE'] = '/path/to/profile.enc:Simple'
+      end
+
+      it 'handles missing description gracefully' do
+        config = FerrumMCP::Configuration.new
+        profile = config.find_bot_profile('simple')
+
+        expect(profile.description).to be_nil
+      end
+    end
+
+    describe 'find methods' do
+      before do
+        ENV['BROWSER_CHROME'] = 'chrome:/usr/bin/chrome:Chrome:Standard'
+        ENV['USER_PROFILE_DEV'] = '/home/.chrome-dev:Dev:Dev'
+        ENV['BOT_PROFILE_US'] = '/profiles/us.enc:US:US'
+      end
+
+      it 'finds browser by id' do
+        config = FerrumMCP::Configuration.new
+        browser = config.find_browser('chrome')
+        expect(browser).not_to be_nil
+        expect(browser.id).to eq('chrome')
+      end
+
+      it 'returns nil for non-existent browser' do
+        config = FerrumMCP::Configuration.new
+        browser = config.find_browser('nonexistent')
+        expect(browser).to be_nil
+      end
+
+      it 'finds user profile by id' do
+        config = FerrumMCP::Configuration.new
+        profile = config.find_user_profile('dev')
+        expect(profile).not_to be_nil
+        expect(profile.id).to eq('dev')
+      end
+
+      it 'returns nil for non-existent user profile' do
+        config = FerrumMCP::Configuration.new
+        profile = config.find_user_profile('nonexistent')
+        expect(profile).to be_nil
+      end
+
+      it 'finds bot profile by id' do
+        config = FerrumMCP::Configuration.new
+        profile = config.find_bot_profile('us')
+        expect(profile).not_to be_nil
+        expect(profile.id).to eq('us')
+      end
+
+      it 'returns nil for non-existent bot profile' do
+        config = FerrumMCP::Configuration.new
+        profile = config.find_bot_profile('nonexistent')
+        expect(profile).to be_nil
+      end
+    end
+
+    describe 'default_browser' do
+      it 'returns first browser as default' do
+        ENV['BROWSER_CHROME'] = 'chrome:/usr/bin/chrome:Chrome:Standard'
+        ENV['BROWSER_FIREFOX'] = 'firefox:/usr/bin/firefox:Firefox:Mozilla'
+
+        config = FerrumMCP::Configuration.new
+        expect(config.default_browser.id).to eq('chrome')
+      end
+
+      it 'returns system browser when no custom browsers' do
+        config = FerrumMCP::Configuration.new
+        expect(config.default_browser.id).to eq('system')
+      end
+    end
+
+    describe 'using_botbrowser?' do
+      it 'returns true when bot profiles exist' do
+        ENV['BOT_PROFILE_US'] = '/profiles/us.enc:US:US'
+        config = FerrumMCP::Configuration.new
+        expect(config.using_botbrowser?).to be true
+      end
+
+      it 'returns false when no bot profiles' do
+        config = FerrumMCP::Configuration.new
+        expect(config.using_botbrowser?).to be false
+      end
+    end
   end
 
   describe 'SessionConfiguration' do
@@ -296,6 +469,83 @@ RSpec.describe 'Multi-Browser and Multi-Profile Support' do
         expect(session_config.browser_path).to eq('/usr/bin/google-chrome')
         expect(session_config.botbrowser_profile).to be_nil
       end
+
+      it 'returns nil for browser_path when browser has no path' do
+        ENV['BROWSER_SYSTEM'] = 'chrome::System:System browser'
+        session_config = FerrumMCP::Session.new(
+          config: base_config,
+          options: { browser_id: 'system' }
+        ).session_config
+
+        expect(session_config.browser_path).to be_nil
+      end
+
+      it 'detects botbrowser usage from browser type' do
+        session_config = FerrumMCP::Session.new(
+          config: base_config,
+          options: { browser_id: 'botbrowser' }
+        ).session_config
+
+        expect(session_config.using_botbrowser?).to be true
+      end
+
+      it 'detects botbrowser usage from bot profile' do
+        session_config = FerrumMCP::Session.new(
+          config: base_config,
+          options: { bot_profile_id: 'us' }
+        ).session_config
+
+        expect(session_config.using_botbrowser?).to be true
+      end
+
+      it 'returns false for using_botbrowser when neither type nor profile' do
+        session_config = FerrumMCP::Session.new(
+          config: base_config,
+          options: { browser_id: 'chrome' }
+        ).session_config
+
+        expect(session_config.using_botbrowser?).to be false
+      end
+
+      it 'checks validity when browser has no path (uses nil for system browser)' do
+        ENV['BROWSER_SYSTEM'] = 'chrome::System:System browser'
+        system_config = FerrumMCP::Configuration.new
+        session_config = FerrumMCP::Session.new(
+          config: system_config,
+          options: { browser_id: 'system' }
+        ).session_config
+        # Browser with nil path should be valid
+        expect(session_config.valid?).to be true
+      end
+
+      it 'checks validity when browser has non-existent path' do
+        session_config = FerrumMCP::Session.new(
+          config: base_config,
+          options: { browser_id: 'chrome' }
+        ).session_config
+        # Non-existent path (/usr/bin/google-chrome on macOS) should be invalid
+        expect(session_config.valid?).to be false
+      end
+    end
+
+    context 'when resolving with string keys' do
+      it 'resolves browser_id from string key' do
+        session_config = FerrumMCP::Session.new(
+          config: base_config,
+          options: { 'browser_id' => 'chrome' }
+        ).session_config
+
+        expect(session_config.browser.id).to eq('chrome')
+      end
+
+      it 'resolves bot_profile_id from string key' do
+        session_config = FerrumMCP::Session.new(
+          config: base_config,
+          options: { 'bot_profile_id' => 'us' }
+        ).session_config
+
+        expect(session_config.bot_profile.id).to eq('us')
+      end
     end
   end
 
@@ -311,6 +561,15 @@ RSpec.describe 'Multi-Browser and Multi-Profile Support' do
     it 'returns system browser type for default session' do
       session = FerrumMCP::Session.new(config: base_config, options: {})
       expect(session.browser_type).to eq('Chrome')
+    end
+
+    it 'returns system Chrome when browser is nil' do
+      # Create session with non-existent browser to get nil
+      session = FerrumMCP::Session.new(
+        config: base_config,
+        options: { browser_id: 'nonexistent' }
+      )
+      expect(session.browser_type).to eq('System Chrome/Chromium')
     end
 
     it 'returns browser name for named browser' do
@@ -479,6 +738,79 @@ RSpec.describe 'Multi-Browser and Multi-Profile Support' do
       it 'returns nil for non-existent browser' do
         result = resource_manager.read_resource('ferrum://browsers/nonexistent')
         expect(result).to be_nil
+      end
+
+      it 'returns nil for non-existent user profile' do
+        result = resource_manager.read_resource('ferrum://user-profiles/nonexistent')
+        expect(result).to be_nil
+      end
+
+      it 'returns nil for non-existent bot profile' do
+        result = resource_manager.read_resource('ferrum://bot-profiles/nonexistent')
+        expect(result).to be_nil
+      end
+    end
+
+    describe 'browser with nil path (system browser)' do
+      before do
+        ENV['BROWSER_SYSTEM'] = 'chrome::System Chrome:Use system Chrome'
+      end
+
+      it 'handles browser with nil path correctly' do
+        result = resource_manager.read_resource('ferrum://browsers/system')
+        data = JSON.parse(result[:text])
+
+        aggregate_failures do
+          expect(data['id']).to eq('system')
+          expect(data['path']).to be_nil
+          expect(data['exists']).to be true # nil path means use system, so exists is true
+        end
+      end
+    end
+
+    describe 'capabilities without multi-browser' do
+      before do
+        # Clear all custom browsers, should fall back to system browser
+        ENV.keys.grep(/^BROWSER_/).each { |key| ENV.delete(key) }
+        ENV['BROWSER_HEADLESS'] = 'true' # Keep this one
+      end
+
+      it 'reports multi_browser as false when only one browser' do
+        config = FerrumMCP::Configuration.new
+        manager = FerrumMCP::ResourceManager.new(config)
+        result = manager.read_resource('ferrum://capabilities')
+        data = JSON.parse(result[:text])
+
+        expect(data['features']['multi_browser']).to be false
+        expect(data['browsers_count']).to eq(1)
+      end
+    end
+
+    describe 'capabilities without profiles' do
+      let(:keys) { %w[BROWSER_HEADLESS BROWSER_TIMEOUT] }
+
+      before do
+        # Clear all ENV variables and set only browser
+        ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_)/).each do |key|
+          ENV.delete(key) unless keys.include?(key)
+        end
+        ENV['BROWSER_CHROME'] = 'chrome:/usr/bin/chrome:Chrome:Standard'
+        # No user or bot profiles configured
+      end
+
+      it 'reports profile features as false when no profiles' do
+        config = FerrumMCP::Configuration.new
+        manager = FerrumMCP::ResourceManager.new(config)
+        result = manager.read_resource('ferrum://capabilities')
+        data = JSON.parse(result[:text])
+
+        aggregate_failures do
+          expect(data['features']['user_profiles']).to be false
+          expect(data['features']['bot_profiles']).to be false
+          expect(data['features']['botbrowser_integration']).to be false
+          expect(data['user_profiles_count']).to eq(0)
+          expect(data['bot_profiles_count']).to eq(0)
+        end
       end
     end
   end

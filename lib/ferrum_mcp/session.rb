@@ -141,7 +141,7 @@ module FerrumMCP
     end
 
     def using_botbrowser?
-      browser&.type == 'botbrowser' || bot_profile&.path
+      browser&.type == 'botbrowser' || !bot_profile.nil?
     end
 
     # Legacy compatibility methods
