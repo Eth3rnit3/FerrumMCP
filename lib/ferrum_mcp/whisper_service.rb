@@ -129,13 +129,13 @@ module FerrumMCP
       download_model(model_path)
     end
 
-    def get_model_path
+    def get_model_path # rubocop:disable Naming/AccessorMethodName
       models_dir = File.expand_path('~/.whisper.cpp/models')
       FileUtils.mkdir_p(models_dir)
       File.join(models_dir, "ggml-#{model}.bin")
     end
 
-    def download_model(model_path)
+    def download_model(model_path) # rubocop:disable Metrics/AbcSize
       url = MODEL_URLS[model]
 
       raise ToolError, "Unknown model: #{model}. Available: #{MODEL_URLS.keys.join(', ')}" unless url
