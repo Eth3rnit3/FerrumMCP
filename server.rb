@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require 'bundler/setup'
+require 'dotenv/load'
 require 'optparse'
 require_relative 'lib/ferrum_mcp'
 require_relative 'lib/ferrum_mcp/transport/http_server'
@@ -51,16 +52,6 @@ OptionParser.new do |opts|
   opts.separator "  #{$PROGRAM_NAME} --transport stdio  # Start with STDIO transport"
   opts.separator "  #{$PROGRAM_NAME} --help             # Show this help"
 end.parse!
-
-# Load environment variables from .env file if it exists
-if File.exist?('.env')
-  File.readlines('.env').each do |line|
-    next if line.strip.empty? || line.start_with?('#')
-
-    key, value = line.strip.split('=', 2)
-    ENV[key] = value if key && value
-  end
-end
 
 # Create configuration
 config = FerrumMCP::Configuration.new(transport: options[:transport])

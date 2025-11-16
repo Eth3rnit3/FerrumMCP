@@ -12,6 +12,7 @@ gem 'puma', '~> 7.1'
 gem 'rack', '~> 3.2'
 gem 'ruby-vips', '~> 2.2'
 gem 'zeitwerk', '~> 2.7'
+gem "dotenv", "~> 3.1"
 
 group :development, :test do
   gem 'debug', '~> 1.11'

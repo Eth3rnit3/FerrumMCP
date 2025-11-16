@@ -32,9 +32,9 @@ module FerrumMCP
       Tools::GetURLTool,
       Tools::FindByTextTool,
       # Waiting
-      Tools::WaitForElementTool,
-      Tools::WaitForNavigationTool,
-      Tools::WaitTool,
+      # Tools::WaitForElementTool,
+      # Tools::WaitForNavigationTool,
+      # Tools::WaitTool,
       # Advanced
       Tools::ExecuteScriptTool,
       Tools::EvaluateJSTool,
