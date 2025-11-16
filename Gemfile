@@ -10,6 +10,7 @@ gem 'logger', '~> 1.7'
 gem 'mcp', '~> 0.4.0'
 gem 'puma', '~> 7.1'
 gem 'rack', '~> 3.2'
+gem 'ruby-vips', '~> 2.2'
 gem 'zeitwerk', '~> 2.7'
 
 group :development, :test do

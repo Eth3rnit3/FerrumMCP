@@ -96,6 +96,24 @@ RSpec.describe 'Extraction Tools' do
       expect(result[:success]).to be true
       expect(result[:data]).to be_a(String)
     end
+
+    it 'resizes screenshots that exceed Claude API dimension limits' do
+      # Take a full page screenshot which may exceed limits
+      result = screenshot_tool.execute({ format: 'png', full_page: true })
+
+      expect(result[:success]).to be true
+      expect(result[:data]).to be_a(String)
+
+      # Decode the base64 image and verify dimensions
+      require 'vips'
+      image_data = Base64.decode64(result[:data])
+      image = Vips::Image.new_from_buffer(image_data, '')
+
+      # Verify neither dimension exceeds the max limit
+      max_dim = FerrumMCP::Tools::ScreenshotTool::MAX_DIMENSION
+      expect(image.width).to be <= max_dim
+      expect(image.height).to be <= max_dim
+    end
   end
 
   describe FerrumMCP::Tools::GetTitleTool do
