@@ -68,14 +68,16 @@ module FerrumMCP
         # Wait a bit for cookie banner to appear
         sleep wait_time
 
-        # Try different strategies in order
-        # iframe_detection is tried early because many sites use iframes for cookie banners
-        # aria_labels is disabled for now as it causes too many false positives
+        # Try different strategies in order of reliability (most reliable first)
+        # 1. Frameworks are most specific and reliable (no false positives)
+        # 2. Iframes often contain cookie banners from known frameworks
+        # 3. Text-based is generic but works across many sites
+        # 4. CSS selectors are least specific (higher risk of false positives)
         strategies = [
-          method(:try_common_frameworks),
-          method(:try_iframe_detection),
-          method(:try_text_based_detection),
-          method(:try_css_selectors)
+          method(:try_common_frameworks),     # Most reliable: known frameworks
+          method(:try_iframe_detection),      # Check iframes (Sourcepoint, OneTrust, etc.)
+          method(:try_text_based_detection),  # Generic text patterns
+          method(:try_css_selectors)          # Least specific: generic CSS
         ]
 
         strategies.each_with_index do |strategy, index|
@@ -136,7 +138,14 @@ module FerrumMCP
 
           # Didomi
           '#didomi-notice-agree-button',
-          '.didomi-continue-without-agreeing'
+          '.didomi-continue-without-agreeing',
+
+          # Sourcepoint
+          'button.sp_choice_type_11',              # Accept all
+          'button[title="Accept all"]',
+          'button[aria-label="Accept all"]',
+          '.message-button.btn-primary',
+          'button.message-component.sp_choice_type_11'
         ]
 
         try_selectors(selectors)
@@ -258,42 +267,105 @@ module FerrumMCP
 
         logger.debug "Found #{iframes.length} iframe(s), checking for cookie banners..."
 
-        iframes.each_with_index do |_iframe, index|
-          # Try to access iframe content
-          frame = browser.frames[index]
+        # Get frames (includes main frame + all iframes)
+        frames = browser.frames
+        return { found: false } if frames.empty?
+
+        # Skip the main frame (index 0), only check iframes
+        frames[1..-1].each_with_index do |frame, index|
           next unless frame
 
-          # Switch to iframe context
-          browser.switch_to_frame(frame)
+          logger.debug "Checking iframe #{index + 1}: #{frame.url}"
 
-          # Try strategies within iframe (in order of effectiveness)
-          result = try_common_frameworks
-          if result[:found]
-            browser.switch_to_default_content
-            return { found: true, selector: "iframe[#{index}] > #{result[:selector]}" }
-          end
+          # Try strategies within iframe using frame.at_css() directly
+          result = try_iframe_frameworks(frame)
+          return { found: true, selector: "iframe[#{index}] > #{result[:selector]}" } if result[:found]
 
-          result = try_text_based_detection
-          if result[:found]
-            browser.switch_to_default_content
-            return { found: true, selector: "iframe[#{index}] > #{result[:selector]}" }
-          end
+          result = try_iframe_text_detection(frame)
+          return { found: true, selector: "iframe[#{index}] > #{result[:selector]}" } if result[:found]
 
-          result = try_css_selectors
-          if result[:found]
-            browser.switch_to_default_content
-            return { found: true, selector: "iframe[#{index}] > #{result[:selector]}" }
-          end
-
-          # Switch back to main context
-          browser.switch_to_default_content
+          result = try_iframe_css_selectors(frame)
+          return { found: true, selector: "iframe[#{index}] > #{result[:selector]}" } if result[:found]
         rescue StandardError => e
-          logger.debug "Cannot access iframe #{index}: #{e.message}"
-          begin
-            browser.switch_to_default_content
-          rescue StandardError
-            nil
+          logger.debug "Cannot access iframe #{index + 1}: #{e.message}"
+        end
+
+        { found: false }
+      end
+
+      # Try common frameworks within an iframe
+      def try_iframe_frameworks(frame)
+        # Same selectors as try_common_frameworks
+        selectors = [
+          # OneTrust
+          '#onetrust-accept-btn-handler',
+          '.onetrust-close-btn-handler',
+
+          # Cookiebot
+          '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+
+          # Sourcepoint (most important for Guardian)
+          'button.sp_choice_type_11',
+          'button[title="Accept all"]',
+          'button[aria-label="Accept all"]',
+
+          # Didomi
+          '#didomi-notice-agree-button'
+        ]
+
+        selectors.each do |selector|
+          element = frame.at_css(selector)
+          next unless element
+
+          if click_element(element)
+            logger.info "Successfully clicked in iframe: #{selector}"
+            return { found: true, selector: selector }
           end
+        rescue StandardError => e
+          logger.debug "Iframe selector '#{selector}' failed: #{e.message}"
+        end
+
+        { found: false }
+      end
+
+      # Try text-based detection within an iframe
+      def try_iframe_text_detection(frame)
+        patterns = ['accept all', 'accept and continue', 'accepter et continuer']
+
+        patterns.each do |pattern|
+          elements = frame.css('button')
+          button = elements.find do |el|
+            text = el.text.downcase.strip rescue ''
+            text.include?(pattern)
+          end
+
+          if button && click_element(button)
+            return { found: true, selector: "button:contains('#{pattern}')" }
+          end
+        rescue StandardError => e
+          logger.debug "Iframe text pattern '#{pattern}' failed: #{e.message}"
+        end
+
+        { found: false }
+      end
+
+      # Try CSS selectors within an iframe
+      def try_iframe_css_selectors(frame)
+        selectors = [
+          'button[class*="accept"]',
+          'button[class*="consent"]',
+          '.accept-cookies'
+        ]
+
+        selectors.each do |selector|
+          element = frame.at_css(selector)
+          next unless element
+
+          if click_element(element)
+            return { found: true, selector: selector }
+          end
+        rescue StandardError => e
+          logger.debug "Iframe CSS selector '#{selector}' failed: #{e.message}"
         end
 
         { found: false }
