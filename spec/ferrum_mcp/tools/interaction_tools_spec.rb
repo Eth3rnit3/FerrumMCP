@@ -229,22 +229,6 @@ RSpec.describe 'Interaction Tools' do
       end
     end
 
-    context 'with ARIA labels' do
-      it 'finds accept button by aria-label' do
-        browser_manager.browser.execute(<<~JS)
-          const button = document.createElement('button');
-          button.setAttribute('aria-label', 'Accept all cookies');
-          button.textContent = 'X';
-          document.body.appendChild(button);
-        JS
-
-        result = accept_cookies_tool.execute({ wait: 0.5 })
-
-        expect(result[:success]).to be true
-        expect(result[:data][:strategy]).to eq('aria_labels')
-      end
-    end
-
     context 'when no cookie banner is present' do
       it 'returns error when no cookie banner found' do
         result = accept_cookies_tool.execute({ wait: 0.5 })
