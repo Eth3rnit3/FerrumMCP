@@ -6,7 +6,7 @@ require 'rack/test'
 RSpec.describe FerrumMCP::Transport::HTTPServer do
   include Rack::Test::Methods
 
-  let(:config) { test_config }
+  let(:config) { test_base_config }
   let(:mcp_server) { FerrumMCP::Server.new(config) }
   let(:http_server) { described_class.new(mcp_server, config) }
 

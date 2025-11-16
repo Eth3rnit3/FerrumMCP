@@ -70,11 +70,11 @@ module FerrumMCP
       if @session_config.bot_profile
         "BotBrowser (#{@session_config.bot_profile.name})"
       elsif @session_config.browser
-        case @session_config.browser.type
-        when 'botbrowser'
-          "BotBrowser (#{@session_config.browser.name})"
-        when 'system'
+        # Check ID first (for system browser), then type
+        if @session_config.browser.id == 'system'
           'System Chrome/Chromium'
+        elsif @session_config.browser.type == 'botbrowser'
+          "BotBrowser (#{@session_config.browser.name})"
         else
           @session_config.browser.name
         end

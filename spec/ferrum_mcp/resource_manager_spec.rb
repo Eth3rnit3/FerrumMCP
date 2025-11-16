@@ -3,16 +3,8 @@
 require 'spec_helper'
 
 RSpec.describe FerrumMCP::ResourceManager do
-  let(:preserved_env_keys) { %w[BROWSER_HEADLESS BROWSER_TIMEOUT] }
   let(:config) { FerrumMCP::Configuration.new }
   let(:resource_manager) { described_class.new(config) }
-
-  before do
-    # Clean up environment variables
-    ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_)/).each do |key|
-      ENV.delete(key) unless preserved_env_keys.include?(key)
-    end
-  end
 
   describe '#resources' do
     it 'returns array of MCP::Resource objects' do
