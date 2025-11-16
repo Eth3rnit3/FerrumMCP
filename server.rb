@@ -116,18 +116,35 @@ begin
   logger.info ''
   logger.info 'Configuration:'
 
-  if config.browser_path
-    logger.info "  Browser: #{config.browser_path}"
-  else
-    logger.info '  Browser: System Chrome/Chromium (auto-detect)'
+  # Display browsers
+  logger.info "  Browsers (#{config.browsers.count}):"
+  config.browsers.each do |browser|
+    default_marker = browser == config.default_browser ? ' [default]' : ''
+    browser_path = browser.path || 'auto-detect'
+    logger.info "    - #{browser.id}: #{browser.name} (#{browser.type})#{default_marker}"
+    logger.info "      Path: #{browser_path}"
   end
 
-  if config.using_botbrowser?
-    logger.info '  Mode: BotBrowser (anti-detection enabled) ✓'
-    logger.info "  Profile: #{config.botbrowser_profile}"
+  # Display user profiles
+  if config.user_profiles.any?
+    logger.info "  User Profiles (#{config.user_profiles.count}):"
+    config.user_profiles.each do |profile|
+      logger.info "    - #{profile.id}: #{profile.name}"
+      logger.info "      Path: #{profile.path}"
+    end
+  end
+
+  # Display BotBrowser profiles
+  if config.bot_profiles.any?
+    logger.info '  BotBrowser (anti-detection enabled) ✓'
+    logger.info "  Bot Profiles (#{config.bot_profiles.count}):"
+    config.bot_profiles.each do |profile|
+      encrypted_marker = profile.encrypted ? ' [encrypted]' : ''
+      logger.info "    - #{profile.id}: #{profile.name}#{encrypted_marker}"
+      logger.info "      Path: #{profile.path}"
+    end
   else
-    logger.info '  Mode: Standard Chrome'
-    logger.info '  Profile: none (consider using BotBrowser for better stealth)'
+    logger.info '  BotBrowser: Not configured (consider using for better stealth)'
   end
 
   logger.info "  Headless: #{config.headless}"
