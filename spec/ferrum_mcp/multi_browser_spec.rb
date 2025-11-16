@@ -519,11 +519,13 @@ RSpec.describe 'Multi-Browser and Multi-Profile Support' do
       end
 
       it 'checks validity when browser has non-existent path' do
+        ENV['BROWSER_FAKE'] = 'chrome:/definitely/nonexistent/path/chrome:Fake:Fake'
+        fake_config = FerrumMCP::Configuration.new
         session_config = FerrumMCP::Session.new(
-          config: base_config,
-          options: { browser_id: 'chrome' }
+          config: fake_config,
+          options: { browser_id: 'fake' }
         ).session_config
-        # Non-existent path (/usr/bin/google-chrome on macOS) should be invalid
+        # Non-existent path should be invalid on all platforms
         expect(session_config.valid?).to be false
       end
     end
