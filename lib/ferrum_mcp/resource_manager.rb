@@ -42,70 +42,61 @@ module FerrumMCP
 
     def build_resources
       resources = []
+      resources.concat(build_browser_resources)
+      resources.concat(build_user_profile_resources)
+      resources.concat(build_bot_profile_resources)
+      resources << build_capabilities_resource
+      resources
+    end
 
-      # Browsers list resource
-      resources << MCP::Resource.new(
-        uri: 'ferrum://browsers',
-        name: 'available-browsers',
-        description: 'List of all available browser configurations',
-        mime_type: 'application/json'
-      )
+    def build_browser_resources
+      resources = [create_resource('ferrum://browsers', 'available-browsers',
+                                   'List of all available browser configurations')]
 
-      # Individual browser resources
       config.browsers.each do |browser|
-        resources << MCP::Resource.new(
-          uri: "ferrum://browsers/#{browser.id}",
-          name: "browser-#{browser.id}",
-          description: "Configuration for #{browser.name}",
-          mime_type: 'application/json'
-        )
+        resources << create_resource("ferrum://browsers/#{browser.id}", "browser-#{browser.id}",
+                                     "Configuration for #{browser.name}")
       end
-
-      # User profiles list resource
-      resources << MCP::Resource.new(
-        uri: 'ferrum://user-profiles',
-        name: 'user-profiles',
-        description: 'List of all available Chrome user profiles',
-        mime_type: 'application/json'
-      )
-
-      # Individual user profile resources
-      config.user_profiles.each do |profile|
-        resources << MCP::Resource.new(
-          uri: "ferrum://user-profiles/#{profile.id}",
-          name: "user-profile-#{profile.id}",
-          description: "Details for user profile: #{profile.name}",
-          mime_type: 'application/json'
-        )
-      end
-
-      # Bot profiles list resource
-      resources << MCP::Resource.new(
-        uri: 'ferrum://bot-profiles',
-        name: 'bot-profiles',
-        description: 'List of all available BotBrowser profiles',
-        mime_type: 'application/json'
-      )
-
-      # Individual bot profile resources
-      config.bot_profiles.each do |profile|
-        resources << MCP::Resource.new(
-          uri: "ferrum://bot-profiles/#{profile.id}",
-          name: "bot-profile-#{profile.id}",
-          description: "Details for BotBrowser profile: #{profile.name}",
-          mime_type: 'application/json'
-        )
-      end
-
-      # Capabilities resource
-      resources << MCP::Resource.new(
-        uri: 'ferrum://capabilities',
-        name: 'server-capabilities',
-        description: 'Server capabilities and feature flags',
-        mime_type: 'application/json'
-      )
 
       resources
+    end
+
+    def build_user_profile_resources
+      resources = [create_resource('ferrum://user-profiles', 'user-profiles',
+                                   'List of all available Chrome user profiles')]
+
+      config.user_profiles.each do |profile|
+        resources << create_resource("ferrum://user-profiles/#{profile.id}", "user-profile-#{profile.id}",
+                                     "Details for user profile: #{profile.name}")
+      end
+
+      resources
+    end
+
+    def build_bot_profile_resources
+      resources = [create_resource('ferrum://bot-profiles', 'bot-profiles',
+                                   'List of all available BotBrowser profiles')]
+
+      config.bot_profiles.each do |profile|
+        resources << create_resource("ferrum://bot-profiles/#{profile.id}", "bot-profile-#{profile.id}",
+                                     "Details for BotBrowser profile: #{profile.name}")
+      end
+
+      resources
+    end
+
+    def build_capabilities_resource
+      create_resource('ferrum://capabilities', 'server-capabilities',
+                      'Server capabilities and feature flags')
+    end
+
+    def create_resource(uri, name, description)
+      MCP::Resource.new(
+        uri: uri,
+        name: name,
+        description: description,
+        mime_type: 'application/json'
+      )
     end
 
     def read_browsers_resource

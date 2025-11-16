@@ -3,11 +3,13 @@
 require 'spec_helper'
 
 RSpec.describe FerrumMCP::Configuration do
+  let(:preserved_env_keys) { %w[BROWSER_HEADLESS BROWSER_TIMEOUT] }
+
   # Clean up environment variables before each test
   before do
     # Remove all browser, profile, and legacy config env vars
     ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_)/).each do |key|
-      ENV.delete(key) unless %w[BROWSER_HEADLESS BROWSER_TIMEOUT].include?(key)
+      ENV.delete(key) unless preserved_env_keys.include?(key)
     end
   end
 

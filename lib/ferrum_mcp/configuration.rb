@@ -76,6 +76,9 @@ module FerrumMCP
       @logger ||= create_multi_logger
     end
 
+    # Environment variable keys to skip when loading browsers
+    RESERVED_BROWSER_ENV_KEYS = %w[BROWSER_PATH BROWSER_HEADLESS BROWSER_TIMEOUT].freeze
+
     private
 
     # Load browser configurations from environment variables
@@ -84,50 +87,59 @@ module FerrumMCP
     # Example: BROWSER_BOTBROWSER=botbrowser:/opt/botbrowser/chrome:BotBrowser:Anti-detection browser
     def load_browsers
       browsers = []
-
-      # Parse custom browser configurations
-      ENV.each do |key, value|
-        next unless key.start_with?('BROWSER_')
-        next if %w[BROWSER_PATH BROWSER_HEADLESS BROWSER_TIMEOUT].include?(key)
-
-        id = key.sub('BROWSER_', '').downcase
-        type, path, name, description = value.split(':', 4)
-
-        browsers << BrowserConfig.new(
-          id: id,
-          name: name || id.capitalize,
-          path: path.empty? ? nil : path,
-          type: type || 'chrome',
-          description: description
-        )
-      end
-
-      # Add legacy environment variables for backward compatibility
-      if ENV['BROWSER_PATH'] || ENV['BOTBROWSER_PATH']
-        legacy_path = ENV.fetch('BROWSER_PATH', nil) || ENV.fetch('BOTBROWSER_PATH', nil)
-        legacy_type = ENV['BOTBROWSER_PATH'] ? 'botbrowser' : 'chrome'
-
-        browsers << BrowserConfig.new(
-          id: 'default',
-          name: 'Default Browser',
-          path: legacy_path,
-          type: legacy_type,
-          description: 'Legacy browser configuration'
-        )
-      end
-
-      # Add system Chrome as fallback if no browsers configured
-      if browsers.empty?
-        browsers << BrowserConfig.new(
-          id: 'system',
-          name: 'System Chrome',
-          path: nil,
-          type: 'chrome',
-          description: 'Auto-detected system Chrome/Chromium'
-        )
-      end
-
+      browsers.concat(load_custom_browsers)
+      browsers << load_legacy_browser if legacy_browser_configured?
+      browsers << create_system_browser if browsers.empty?
       browsers
+    end
+
+    def load_custom_browsers
+      ENV.each_with_object([]) do |(key, value), browsers|
+        next unless key.start_with?('BROWSER_')
+        next if RESERVED_BROWSER_ENV_KEYS.include?(key)
+
+        browsers << parse_browser_config(key, value)
+      end
+    end
+
+    def parse_browser_config(key, value)
+      id = key.sub('BROWSER_', '').downcase
+      type, path, name, description = value.split(':', 4)
+
+      BrowserConfig.new(
+        id: id,
+        name: name || id.capitalize,
+        path: path.empty? ? nil : path,
+        type: type || 'chrome',
+        description: description
+      )
+    end
+
+    def legacy_browser_configured?
+      ENV['BROWSER_PATH'] || ENV.fetch('BOTBROWSER_PATH', nil)
+    end
+
+    def load_legacy_browser
+      legacy_path = ENV.fetch('BROWSER_PATH', nil) || ENV.fetch('BOTBROWSER_PATH', nil)
+      legacy_type = ENV['BOTBROWSER_PATH'] ? 'botbrowser' : 'chrome'
+
+      BrowserConfig.new(
+        id: 'default',
+        name: 'Default Browser',
+        path: legacy_path,
+        type: legacy_type,
+        description: 'Legacy browser configuration'
+      )
+    end
+
+    def create_system_browser
+      BrowserConfig.new(
+        id: 'system',
+        name: 'System Chrome',
+        path: nil,
+        type: 'chrome',
+        description: 'Auto-detected system Chrome/Chromium'
+      )
     end
 
     # Load user profile configurations from environment variables
