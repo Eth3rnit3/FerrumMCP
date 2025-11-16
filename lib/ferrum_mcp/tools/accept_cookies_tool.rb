@@ -141,7 +141,7 @@ module FerrumMCP
           '.didomi-continue-without-agreeing',
 
           # Sourcepoint
-          'button.sp_choice_type_11',              # Accept all
+          'button.sp_choice_type_11', # Accept all
           'button[title="Accept all"]',
           'button[aria-label="Accept all"]',
           '.message-button.btn-primary',
@@ -272,7 +272,7 @@ module FerrumMCP
         return { found: false } if frames.empty?
 
         # Skip the main frame (index 0), only check iframes
-        frames[1..-1].each_with_index do |frame, index|
+        frames[1..].each_with_index do |frame, index|
           next unless frame
 
           logger.debug "Checking iframe #{index + 1}: #{frame.url}"
@@ -335,13 +335,15 @@ module FerrumMCP
         patterns.each do |pattern|
           elements = frame.css('button')
           button = elements.find do |el|
-            text = el.text.downcase.strip rescue ''
+            text = begin
+              el.text.downcase.strip
+            rescue StandardError
+              ''
+            end
             text.include?(pattern)
           end
 
-          if button && click_element(button)
-            return { found: true, selector: "button:contains('#{pattern}')" }
-          end
+          return { found: true, selector: "button:contains('#{pattern}')" } if button && click_element(button)
         rescue StandardError => e
           logger.debug "Iframe text pattern '#{pattern}' failed: #{e.message}"
         end
@@ -361,9 +363,7 @@ module FerrumMCP
           element = frame.at_css(selector)
           next unless element
 
-          if click_element(element)
-            return { found: true, selector: selector }
-          end
+          return { found: true, selector: selector } if click_element(element)
         rescue StandardError => e
           logger.debug "Iframe CSS selector '#{selector}' failed: #{e.message}"
         end
