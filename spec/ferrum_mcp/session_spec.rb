@@ -133,18 +133,18 @@ RSpec.describe FerrumMCP::Session do
     context 'with BotBrowser profile' do
       let(:options) { { botbrowser_profile: '/fake/profile/path' } }
 
-      it 'identifies as BotBrowser' do
+      it 'identifies as BotBrowser with profile name' do
         info = session.info
-        expect(info[:browser_type]).to eq('BotBrowser')
+        expect(info[:browser_type]).to eq('BotBrowser (Custom Profile)')
       end
     end
 
     context 'with custom browser path' do
       let(:options) { { browser_path: '/custom/chrome/path' } }
 
-      it 'identifies as custom Chrome' do
+      it 'identifies with browser name' do
         info = session.info
-        expect(info[:browser_type]).to eq('Custom Chrome/Chromium')
+        expect(info[:browser_type]).to eq('Custom Browser')
       end
     end
   end

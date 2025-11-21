@@ -5,7 +5,7 @@ require 'stringio'
 require 'json'
 
 RSpec.describe FerrumMCP::Transport::StdioServer do
-  let(:config) { test_config }
+  let(:config) { test_base_config }
   let(:mcp_server) { FerrumMCP::Server.new(config) }
   let(:stdio_server) { described_class.new(mcp_server, config) }
 

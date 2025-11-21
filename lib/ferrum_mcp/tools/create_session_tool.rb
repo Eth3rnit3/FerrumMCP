@@ -19,13 +19,25 @@ module FerrumMCP
         {
           type: 'object',
           properties: {
+            browser_id: {
+              type: 'string',
+              description: 'Optional: Browser ID to use (from ferrum://browsers resource)'
+            },
+            user_profile_id: {
+              type: 'string',
+              description: 'Optional: User profile ID to use (from ferrum://user-profiles resource)'
+            },
+            bot_profile_id: {
+              type: 'string',
+              description: 'Optional: BotBrowser profile ID to use (from ferrum://bot-profiles resource)'
+            },
             browser_path: {
               type: 'string',
-              description: 'Optional: Path to browser executable (Chrome/Chromium or BotBrowser)'
+              description: 'Optional: Path to browser executable (legacy, prefer browser_id)'
             },
             botbrowser_profile: {
               type: 'string',
-              description: 'Optional: Path to BotBrowser profile for anti-detection mode'
+              description: 'Optional: Path to BotBrowser profile (legacy, prefer bot_profile_id)'
             },
             headless: {
               type: 'boolean',
@@ -69,6 +81,22 @@ module FerrumMCP
 
       def build_options(params)
         options = {}
+
+        # New resource-based parameters (preferred)
+        if params[:browser_id] || params['browser_id']
+          options[:browser_id] =
+            params[:browser_id] || params['browser_id']
+        end
+        if params[:user_profile_id] || params['user_profile_id']
+          options[:user_profile_id] =
+            params[:user_profile_id] || params['user_profile_id']
+        end
+        if params[:bot_profile_id] || params['bot_profile_id']
+          options[:bot_profile_id] =
+            params[:bot_profile_id] || params['bot_profile_id']
+        end
+
+        # Legacy parameters (for backward compatibility)
         if params[:browser_path] || params['browser_path']
           options[:browser_path] =
             params[:browser_path] || params['browser_path']
@@ -77,6 +105,8 @@ module FerrumMCP
           options[:botbrowser_profile] =
             params[:botbrowser_profile] || params['botbrowser_profile']
         end
+
+        # Other options
         if params.key?(:headless) || params.key?('headless')
           options[:headless] =
             params[:headless] || params['headless']
@@ -87,6 +117,7 @@ module FerrumMCP
             params[:browser_options] || params['browser_options']
         end
         options[:metadata] = params[:metadata] || params['metadata'] if params[:metadata] || params['metadata']
+
         options
       end
     end

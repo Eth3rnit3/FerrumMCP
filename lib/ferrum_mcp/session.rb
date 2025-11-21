@@ -5,7 +5,7 @@ require 'securerandom'
 module FerrumMCP
   # Represents a browser session with its own BrowserManager and configuration
   class Session
-    attr_reader :id, :browser_manager, :config, :created_at, :last_used_at, :metadata, :options
+    attr_reader :id, :browser_manager, :config, :session_config, :created_at, :last_used_at, :metadata, :options
 
     def initialize(config:, options: {})
       @id = SecureRandom.uuid
@@ -15,7 +15,7 @@ module FerrumMCP
       @last_used_at = Time.now
       @metadata = options[:metadata] || {}
       @mutex = Mutex.new
-      @browser_manager = create_browser_manager
+      @session_config, @browser_manager = create_browser_manager
     end
 
     # Execute a block with thread-safe access to the browser
@@ -67,10 +67,17 @@ module FerrumMCP
 
     # Get browser type (public method for logging and info)
     def browser_type
-      if @options[:botbrowser_profile] || @options[:browser_path]&.include?('botbrowser')
-        'BotBrowser'
-      elsif @options[:browser_path]
-        'Custom Chrome/Chromium'
+      if @session_config.bot_profile
+        "BotBrowser (#{@session_config.bot_profile.name})"
+      elsif @session_config.browser
+        # Check ID first (for system browser), then type
+        if @session_config.browser.id == 'system'
+          'System Chrome/Chromium'
+        elsif @session_config.browser.type == 'botbrowser'
+          "BotBrowser (#{@session_config.browser.name})"
+        else
+          @session_config.browser.name
+        end
       else
         'System Chrome/Chromium'
       end
@@ -80,7 +87,10 @@ module FerrumMCP
 
     def normalize_options(options)
       {
+        browser_id: options[:browser_id] || options['browser_id'],
         browser_path: options[:browser_path] || options['browser_path'],
+        user_profile_id: options[:user_profile_id] || options['user_profile_id'],
+        bot_profile_id: options[:bot_profile_id] || options['bot_profile_id'],
         botbrowser_profile: options[:botbrowser_profile] || options['botbrowser_profile'],
         headless: options.fetch(:headless, options.fetch('headless', @config.headless)),
         timeout: options.fetch(:timeout, options.fetch('timeout', @config.timeout)),
@@ -95,7 +105,7 @@ module FerrumMCP
         base_config: @config,
         overrides: @options
       )
-      BrowserManager.new(session_config)
+      [session_config, BrowserManager.new(session_config)]
     end
 
     # Return sanitized options (without sensitive data)
@@ -106,14 +116,12 @@ module FerrumMCP
 
   # Session-specific configuration that overrides base configuration
   class SessionConfiguration
-    attr_reader :browser_path, :botbrowser_profile, :headless, :timeout,
+    attr_reader :browser, :user_profile, :bot_profile, :headless, :timeout,
                 :server_host, :server_port, :log_level, :transport,
                 :browser_options
 
     def initialize(base_config:, overrides:)
       @base_config = base_config
-      @browser_path = overrides[:browser_path] || base_config.browser_path
-      @botbrowser_profile = overrides[:botbrowser_profile] || base_config.botbrowser_profile
       @headless = overrides[:headless]
       @timeout = overrides[:timeout]
       @browser_options = overrides[:browser_options] || {}
@@ -121,18 +129,75 @@ module FerrumMCP
       @server_port = base_config.server_port
       @log_level = base_config.log_level
       @transport = base_config.transport
+
+      # Resolve browser configuration
+      @browser = resolve_browser(overrides, base_config)
+      @user_profile = resolve_user_profile(overrides, base_config)
+      @bot_profile = resolve_bot_profile(overrides, base_config)
     end
 
     def valid?
-      browser_path.nil? || File.exist?(browser_path)
+      browser&.path.nil? || File.exist?(browser.path)
     end
 
     def using_botbrowser?
-      !botbrowser_profile.nil? && !botbrowser_profile.empty?
+      browser&.type == 'botbrowser' || !bot_profile.nil?
+    end
+
+    # Legacy compatibility methods
+    def browser_path
+      browser&.path
+    end
+
+    def botbrowser_profile
+      bot_profile&.path
     end
 
     def logger
       @base_config.logger
+    end
+
+    private
+
+    def resolve_browser(overrides, base_config)
+      # Priority: browser_id > browser_path (legacy) > default browser
+      if overrides[:browser_id]
+        base_config.find_browser(overrides[:browser_id])
+      elsif overrides[:browser_path]
+        # Legacy: create a temporary browser config
+        Configuration::BrowserConfig.new(
+          id: 'custom',
+          name: 'Custom Browser',
+          path: overrides[:browser_path],
+          type: overrides[:botbrowser_profile] ? 'botbrowser' : 'chrome',
+          description: 'Session-specific browser'
+        )
+      else
+        base_config.default_browser
+      end
+    end
+
+    def resolve_user_profile(overrides, base_config)
+      # Priority: user_profile_id > nil
+      return nil unless overrides[:user_profile_id]
+
+      base_config.find_user_profile(overrides[:user_profile_id])
+    end
+
+    def resolve_bot_profile(overrides, base_config)
+      # Priority: bot_profile_id > botbrowser_profile (legacy) > nil
+      if overrides[:bot_profile_id]
+        base_config.find_bot_profile(overrides[:bot_profile_id])
+      elsif overrides[:botbrowser_profile]
+        # Legacy: create a temporary bot profile config
+        Configuration::BotProfileConfig.new(
+          id: 'custom',
+          name: 'Custom Profile',
+          path: overrides[:botbrowser_profile],
+          encrypted: overrides[:botbrowser_profile].end_with?('.enc'),
+          description: 'Session-specific profile'
+        )
+      end
     end
 
     # Merge session-specific browser options with base options
@@ -141,21 +206,19 @@ module FerrumMCP
       base_options.merge(@browser_options)
     end
 
-    private
-
     def default_browser_options
       options = {
-        '--no-sandbox' => nil,
-        '--disable-dev-shm-usage' => nil,
-        '--disable-blink-features' => 'AutomationControlled',
-        '--disable-gpu' => nil
+        'no-sandbox' => nil,
+        'disable-dev-shm-usage' => nil,
+        'disable-blink-features' => 'AutomationControlled',
+        'disable-gpu' => nil
       }
 
-      options['--disable-setuid-sandbox'] = nil if ENV['CI']
+      options['disable-setuid-sandbox'] = nil if ENV['CI']
 
       # Add BotBrowser profile if configured
       if using_botbrowser? && botbrowser_profile && File.exist?(botbrowser_profile)
-        options['--bot-profile'] = botbrowser_profile
+        options['bot-profile'] = botbrowser_profile
       end
 
       options

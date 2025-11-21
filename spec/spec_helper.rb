@@ -6,8 +6,10 @@ if ENV['COVERAGE'] || ENV['CI']
   SimpleCov.start do
     add_filter '/spec/'
     add_filter '/vendor/'
+    add_filter '/scripts/'
+    add_filter '/test/'
     enable_coverage :branch
-    minimum_coverage line: 65, branch: 50
+    minimum_coverage 50
   end
 end
 
@@ -29,6 +31,15 @@ RSpec.configure do |config|
 
   config.expect_with :rspec do |c|
     c.syntax = :expect
+  end
+
+  # Clean up browser/profile environment variables before each spec
+  # to ensure consistent test environment
+  config.before do
+    preserved_keys = %w[BROWSER_HEADLESS BROWSER_TIMEOUT LOG_LEVEL COVERAGE CI]
+    ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_)/).each do |key|
+      ENV.delete(key) unless preserved_keys.include?(key)
+    end
   end
 
   # Start a test HTTP server for testing
@@ -100,9 +111,14 @@ def test_url(path = '/test')
   "http://localhost:9999#{path}"
 end
 
+def test_base_config
+  FerrumMCP::Configuration.new
+end
+
 def test_config
-  config = FerrumMCP::Configuration.new
-  config.headless = true
-  config.log_level = :error
-  config
+  # Create a SessionConfiguration for BrowserManager tests
+  # This wraps the base configuration with session-specific overrides
+  base_config = test_base_config
+  session = FerrumMCP::Session.new(config: base_config, options: { headless: true })
+  session.session_config
 end

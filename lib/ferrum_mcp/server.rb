@@ -3,7 +3,7 @@
 module FerrumMCP
   # Main MCP Server implementation
   class Server
-    attr_reader :mcp_server, :session_manager, :config, :logger
+    attr_reader :mcp_server, :session_manager, :resource_manager, :config, :logger
 
     TOOL_CLASSES = [
       # Session Management
@@ -23,6 +23,7 @@ module FerrumMCP
       Tools::HoverTool,
       Tools::DragAndDropTool,
       Tools::AcceptCookiesTool,
+      Tools::SolveCaptchaTool,
       # Extraction
       Tools::GetTextTool,
       Tools::GetHTMLTool,
@@ -31,9 +32,9 @@ module FerrumMCP
       Tools::GetURLTool,
       Tools::FindByTextTool,
       # Waiting
-      Tools::WaitForElementTool,
-      Tools::WaitForNavigationTool,
-      Tools::WaitTool,
+      # Tools::WaitForElementTool,
+      # Tools::WaitForNavigationTool,
+      # Tools::WaitTool,
       # Advanced
       Tools::ExecuteScriptTool,
       Tools::EvaluateJSTool,
@@ -48,10 +49,12 @@ module FerrumMCP
       @config = config
       @logger = config.logger
       @session_manager = SessionManager.new(config)
-      @mcp_server = create_mcp_server
+      @resource_manager = ResourceManager.new(config)
       @tool_instances = {}
+      @mcp_server = create_mcp_server
 
       setup_tools
+      setup_resources
       setup_error_handling
     end
 
@@ -96,7 +99,8 @@ module FerrumMCP
       MCP::Server.new(
         name: 'ferrum-browser',
         version: FerrumMCP::VERSION,
-        instructions: 'A browser automation server using Ferrum and BotBrowser for web scraping and testing'
+        instructions: 'A browser automation server using Ferrum and BotBrowser for web scraping and testing',
+        resources: resource_manager.resources
       )
     end
 
@@ -116,6 +120,27 @@ module FerrumMCP
       end
 
       logger.info "Registered #{TOOL_CLASSES.length} tools"
+    end
+
+    def setup_resources
+      # Capture references to instance variables for use in the block
+      manager = resource_manager
+
+      # Define the resources_read handler
+      mcp_server.resources_read_handler do |params|
+        uri = params[:uri]
+        logger.debug "Reading resource: #{uri}"
+
+        result = manager.read_resource(uri)
+        if result
+          [result]
+        else
+          logger.error "Resource not found: #{uri}"
+          []
+        end
+      end
+
+      logger.info "Registered #{resource_manager.resources.length} resources"
     end
 
     def execute_tool(tool_class, params)
