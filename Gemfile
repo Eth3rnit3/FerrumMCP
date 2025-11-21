@@ -4,6 +4,7 @@ source 'https://rubygems.org'
 
 ruby '~> 3.2'
 
+gem 'dotenv', '~> 3.1'
 gem 'ferrum', '~> 0.17.1'
 gem 'json', '~> 2.16'
 gem 'logger', '~> 1.7'
@@ -12,7 +13,6 @@ gem 'puma', '~> 7.1'
 gem 'rack', '~> 3.2'
 gem 'ruby-vips', '~> 2.2'
 gem 'zeitwerk', '~> 2.7'
-gem "dotenv", "~> 3.1"
 
 group :development, :test do
   gem 'debug', '~> 1.11'
