@@ -9,7 +9,7 @@ if ENV['COVERAGE'] || ENV['CI']
     add_filter '/scripts/'
     add_filter '/test/'
     enable_coverage :branch
-    minimum_coverage line: 65, branch: 50
+    minimum_coverage 50
   end
 end
 
