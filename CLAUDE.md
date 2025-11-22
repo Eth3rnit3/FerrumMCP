@@ -10,7 +10,7 @@ FerrumMCP is a browser automation server implementing the Model Context Protocol
 
 ### Core Components
 
-**Server Layer** (`lib/ferrum_mcp/server.rb`)
+**Server Layer** (`lib/ferrum_mcp/bin/ferrum-mcp`)
 - `FerrumMCP::Server`: Main MCP server implementation
 - Manages 27+ browser automation tools organized into 6 categories (Session Management, Navigation, Interaction, Extraction, Waiting, Advanced)
 - Tools are defined in `TOOL_CLASSES` constant and registered with the MCP server at initialization
@@ -65,18 +65,18 @@ Uses Zeitwerk for autoloading with custom inflections for acronyms (MCP, HTML, U
 
 ```bash
 # Start with HTTP transport (default)
-ruby server.rb
+ruby bin/ferrum-mcp
 # or explicitly
-ruby server.rb --transport http
+ruby bin/ferrum-mcp --transport http
 
 # Start with STDIO transport (for MCP clients like Claude Desktop)
-ruby server.rb --transport stdio
+ruby bin/ferrum-mcp --transport stdio
 
 # View help
-ruby server.rb --help
+ruby bin/ferrum-mcp --help
 
 # View version
-ruby server.rb --version
+ruby bin/ferrum-mcp --version
 ```
 
 ### Testing
@@ -265,7 +265,7 @@ Old environment variables still work:
    - `.input_schema`: JSON schema for parameters
      - **IMPORTANT**: Add `session_id` as a **required** parameter in your schema
    - `#execute(params)`: Main logic, returns `success_response(data)` or `error_response(message)`
-3. Add to `TOOL_CLASSES` array in `lib/ferrum_mcp/server.rb`
+3. Add to `TOOL_CLASSES` array in `lib/ferrum_mcp/bin/ferrum-mcp`
 4. Tool will be auto-registered with MCP server at startup
 
 Example schema with session_id:
@@ -313,7 +313,7 @@ end
 - `BROWSER_PATH` / `BOTBROWSER_PATH`: Path to browser executable (creates browser with id "default")
 - `BOTBROWSER_PROFILE`: Path to BotBrowser profile (creates profile with id "default")
 
-All environment variables can be set via `.env` file in project root (automatically loaded by `server.rb`).
+All environment variables can be set via `.env` file in project root (automatically loaded by `bin/ferrum-mcp`).
 See `.env.example` for detailed configuration examples.
 
 ## Key Implementation Details

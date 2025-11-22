@@ -24,11 +24,20 @@ module FerrumMCP
     # Create a new session with custom options
     # @param options [Hash] Browser options for this session
     # @return [String] Session ID
+    # @raise [SessionError] If max concurrent sessions limit is reached
     def create_session(options = {})
       @mutex.synchronize do
+        # Check session limit
+        if @sessions.size >= @config.max_sessions
+          logger.warn "Session limit reached: #{@sessions.size}/#{@config.max_sessions}"
+          raise SessionError, "Maximum concurrent sessions limit reached (#{@config.max_sessions}). " \
+                              'Please close some sessions before creating new ones.'
+        end
+
         session = Session.new(config: @config, options: options)
         @sessions[session.id] = session
-        logger.info "Created session #{session.id} (#{session.browser_type})"
+        logger.info "Created session #{session.id} (#{session.browser_type}) - " \
+                    "Active sessions: #{@sessions.size}/#{@config.max_sessions}"
         session.id
       end
     end

@@ -1,0 +1,66 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'optparse'
+# Load main module first to enable eager loading in production
+require_relative '../lib/ferrum_mcp'
+require_relative '../lib/ferrum_mcp/cli/command_handler'
+
+# Default options
+options = {
+  transport: 'http',
+  host: ENV.fetch('MCP_SERVER_HOST', '0.0.0.0'),
+  port: ENV.fetch('MCP_SERVER_PORT', '3000').to_i,
+  log_level: ENV.fetch('LOG_LEVEL', 'info')
+}
+
+command = ARGV[0]
+
+# Parse options for 'start' command
+if command == 'start' || command.nil?
+  ARGV.shift if command == 'start'
+
+  OptionParser.new do |opts|
+    opts.banner = "Usage: ferrum-mcp start [options]"
+    opts.separator ""
+    opts.separator "Options:"
+
+    opts.on('-t', '--transport TYPE', [:http, :stdio],
+            'Transport type (http or stdio)',
+            "  Default: #{options[:transport]}") do |t|
+      options[:transport] = t.to_s
+    end
+
+    opts.on('-H', '--host HOST',
+            'Server host (HTTP only)',
+            "  Default: #{options[:host]}") do |h|
+      options[:host] = h
+    end
+
+    opts.on('-p', '--port PORT', Integer,
+            'Server port (HTTP only)',
+            "  Default: #{options[:port]}") do |p|
+      options[:port] = p
+    end
+
+    opts.on('-l', '--log-level LEVEL', [:debug, :info, :warn, :error],
+            'Log level (debug, info, warn, error)',
+            "  Default: #{options[:log_level]}") do |l|
+      options[:log_level] = l.to_s
+    end
+
+    opts.on('-h', '--help', 'Show this help message') do
+      puts opts
+      exit
+    end
+
+    opts.on('-v', '--version', 'Show version') do
+      require_relative '../lib/ferrum_mcp/version'
+      puts "FerrumMCP #{FerrumMCP::VERSION}"
+      exit
+    end
+  end.parse!
+end
+
+# Delegate to command handler
+FerrumMCP::CLI::CommandHandler.handle(command, options)

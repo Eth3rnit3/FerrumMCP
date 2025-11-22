@@ -13,6 +13,7 @@ loader = Zeitwerk::Loader.for_gem
 loader.inflector.inflect(
   'ferrum_mcp' => 'FerrumMCP',
   'mcp' => 'MCP',
+  'cli' => 'CLI',
   'get_html_tool' => 'GetHTMLTool',
   'get_url_tool' => 'GetURLTool',
   'evaluate_js_tool' => 'EvaluateJSTool',
@@ -30,4 +31,5 @@ module FerrumMCP
 end
 
 # Eager load in production, lazy load in development
+# Note: bin/ferrum-mcp loads this file first to avoid circular dependencies
 loader.eager_load unless ENV['RACK_ENV'] == 'development'

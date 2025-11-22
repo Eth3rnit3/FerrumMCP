@@ -3,173 +3,356 @@
 require 'spec_helper'
 
 RSpec.describe 'Advanced Tools' do
-  let(:config) { test_config }
-  let(:browser_manager) { FerrumMCP::BrowserManager.new(config) }
-  let(:navigate_tool) { FerrumMCP::Tools::NavigateTool.new(browser_manager) }
-  let(:execute_script_tool) { FerrumMCP::Tools::ExecuteScriptTool.new(browser_manager) }
-  let(:evaluate_js_tool) { FerrumMCP::Tools::EvaluateJSTool.new(browser_manager) }
-  let(:get_cookies_tool) { FerrumMCP::Tools::GetCookiesTool.new(browser_manager) }
-  let(:set_cookie_tool) { FerrumMCP::Tools::SetCookieTool.new(browser_manager) }
-  let(:clear_cookies_tool) { FerrumMCP::Tools::ClearCookiesTool.new(browser_manager) }
-  let(:get_attribute_tool) { FerrumMCP::Tools::GetAttributeTool.new(browser_manager) }
-
-  before do
-    browser_manager.start
-    navigate_tool.execute({ url: test_url })
-  end
+  let(:config) { FerrumMCP::Configuration.new }
+  let(:session_manager) { FerrumMCP::SessionManager.new(config) }
 
   after do
-    browser_manager.stop
+    session_manager.shutdown
+  end
+
+  # Helper to execute tool within session context
+  def execute_tool_in_session(tool_class, session_id, params)
+    session_manager.with_session(session_id) do |browser_manager|
+      tool = tool_class.new(browser_manager)
+      tool.execute(params)
+    end
   end
 
   describe FerrumMCP::Tools::ExecuteScriptTool do
-    it 'executes JavaScript code' do
-      result = execute_script_tool.execute({ script: 'document.title = "Modified Title";' })
-
-      expect(result[:success]).to be true
-      expect(result[:data][:message]).to include('Script executed successfully')
+    describe '.tool_name' do
+      it 'returns execute_script' do
+        expect(described_class.tool_name).to eq('execute_script')
+      end
     end
 
-    it 'executes complex script' do
-      script = <<~JS
-        const elem = document.createElement('div');
-        elem.id = 'new-element';
-        document.body.appendChild(elem);
-      JS
+    describe '#execute' do
+      it 'executes JavaScript code' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
 
-      result = execute_script_tool.execute({ script: script })
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, script: 'document.title = "Modified Title";' }
+        )
 
-      expect(result[:success]).to be true
+        expect(result[:success]).to be true
+        expect(result[:data][:message]).to include('Script executed successfully')
+
+        # Verify the script executed
+        session_manager.with_session(sid) do |browser_manager|
+          expect(browser_manager.browser.evaluate('document.title')).to eq('Modified Title')
+        end
+      end
+
+      it 'executes complex script' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        script = <<~JS
+          const elem = document.createElement('div');
+          elem.id = 'new-element';
+          elem.textContent = 'Dynamic Element';
+          document.body.appendChild(elem);
+        JS
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, script: script }
+        )
+
+        expect(result[:success]).to be true
+
+        # Verify element was created
+        session_manager.with_session(sid) do |browser_manager|
+          new_elem = browser_manager.browser.at_css('#new-element')
+          expect(new_elem).not_to be_nil
+          expect(new_elem.text).to eq('Dynamic Element')
+        end
+      end
     end
   end
 
   describe FerrumMCP::Tools::EvaluateJSTool do
-    it 'evaluates JavaScript and returns result' do
-      result = evaluate_js_tool.execute({ expression: 'document.title' })
-
-      expect(result[:success]).to be true
-      expect(result[:data][:result]).to eq('Test Page')
+    describe '.tool_name' do
+      it 'returns evaluate_js' do
+        expect(described_class.tool_name).to eq('evaluate_js')
+      end
     end
 
-    it 'evaluates arithmetic expression' do
-      result = evaluate_js_tool.execute({ expression: '2 + 2' })
+    describe '#execute' do
+      it 'evaluates JavaScript and returns result' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
 
-      expect(result[:success]).to be true
-      expect(result[:data][:result]).to eq(4)
-    end
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, expression: 'document.title' }
+        )
 
-    it 'evaluates DOM query' do
-      result = evaluate_js_tool.execute({ expression: 'document.querySelectorAll("p").length' })
+        expect(result[:success]).to be true
+        expect(result[:data][:result]).to eq('Test Page')
+      end
 
-      expect(result[:success]).to be true
-      expect(result[:data][:result]).to be > 0
+      it 'evaluates arithmetic expression' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, expression: '2 + 2' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:result]).to eq(4)
+      end
+
+      it 'evaluates DOM query' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, expression: 'document.querySelectorAll("p").length' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:result]).to eq(3)
+      end
     end
   end
 
   describe FerrumMCP::Tools::GetCookiesTool do
-    it 'gets all cookies' do
-      # Set a cookie first
-      set_cookie_tool.execute({
-                                name: 'test_cookie',
-                                value: 'test_value',
-                                domain: 'localhost'
-                              })
-
-      result = get_cookies_tool.execute({})
-
-      expect(result[:success]).to be true
-      expect(result[:data][:cookies]).to be_an(Array)
-      expect(result[:data][:count]).to be >= 0
+    describe '.tool_name' do
+      it 'returns get_cookies' do
+        expect(described_class.tool_name).to eq('get_cookies')
+      end
     end
 
-    it 'filters cookies by domain' do
-      set_cookie_tool.execute({
-                                name: 'test_cookie',
-                                value: 'test_value',
-                                domain: 'localhost'
-                              })
+    describe '#execute' do
+      it 'gets all cookies' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
 
-      result = get_cookies_tool.execute({ domain: 'localhost' })
+        # Set a cookie first
+        execute_tool_in_session(
+          FerrumMCP::Tools::SetCookieTool,
+          sid,
+          {
+            session_id: sid,
+            name: 'test_cookie',
+            value: 'test_value',
+            domain: 'localhost'
+          }
+        )
 
-      expect(result[:success]).to be true
-      expect(result[:data][:cookies]).to be_an(Array)
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:cookies]).to be_an(Array)
+        expect(result[:data][:count]).to be >= 1
+      end
+
+      it 'returns success when filtering cookies by domain' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        execute_tool_in_session(
+          FerrumMCP::Tools::SetCookieTool,
+          sid,
+          {
+            session_id: sid,
+            name: 'test_cookie',
+            value: 'test_value',
+            domain: 'localhost'
+          }
+        )
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, domain: 'localhost' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:cookies]).to be_an(Array)
+      end
     end
   end
 
   describe FerrumMCP::Tools::SetCookieTool do
-    it 'sets a cookie' do
-      result = set_cookie_tool.execute({
-                                         name: 'my_cookie',
-                                         value: 'my_value',
-                                         domain: 'localhost',
-                                         path: '/'
-                                       })
-
-      expect(result[:success]).to be true
-      expect(result[:data][:message]).to include('Cookie set: my_cookie')
+    describe '.tool_name' do
+      it 'returns set_cookie' do
+        expect(described_class.tool_name).to eq('set_cookie')
+      end
     end
 
-    it 'sets cookie with security flags' do
-      result = set_cookie_tool.execute({
-                                         name: 'secure_cookie',
-                                         value: 'secure_value',
-                                         domain: 'localhost',
-                                         secure: false,
-                                         httponly: true
-                                       })
+    describe '#execute' do
+      it 'sets a cookie' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
 
-      expect(result[:success]).to be true
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          {
+            session_id: sid,
+            name: 'my_cookie',
+            value: 'my_value',
+            domain: 'localhost',
+            path: '/'
+          }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:message]).to include('Cookie set: my_cookie')
+      end
+
+      it 'sets cookie with security flags' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          {
+            session_id: sid,
+            name: 'secure_cookie',
+            value: 'secure_value',
+            domain: 'localhost',
+            secure: false,
+            httponly: true
+          }
+        )
+
+        expect(result[:success]).to be true
+      end
     end
   end
 
   describe FerrumMCP::Tools::ClearCookiesTool do
-    it 'clears all cookies' do
-      # Set some cookies
-      set_cookie_tool.execute({ name: 'cookie1', value: 'value1', domain: 'localhost' })
-      set_cookie_tool.execute({ name: 'cookie2', value: 'value2', domain: 'localhost' })
-
-      result = clear_cookies_tool.execute({})
-
-      expect(result[:success]).to be true
-      expect(result[:data][:message]).to include('All cookies cleared')
-
-      # Verify cookies are cleared
-      cookies_result = get_cookies_tool.execute({})
-      expect(cookies_result[:data][:count]).to eq(0)
+    describe '.tool_name' do
+      it 'returns clear_cookies' do
+        expect(described_class.tool_name).to eq('clear_cookies')
+      end
     end
 
-    it 'clears cookies for specific domain' do
-      # Set cookies
-      set_cookie_tool.execute({ name: 'test_cookie', value: 'test_value', domain: 'localhost' })
+    describe '#execute' do
+      it 'clears all cookies' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
 
-      result = clear_cookies_tool.execute({ domain: 'localhost' })
+        # Set some cookies
+        execute_tool_in_session(
+          FerrumMCP::Tools::SetCookieTool,
+          sid,
+          { session_id: sid, name: 'cookie1', value: 'value1', domain: 'localhost' }
+        )
+        execute_tool_in_session(
+          FerrumMCP::Tools::SetCookieTool,
+          sid,
+          { session_id: sid, name: 'cookie2', value: 'value2', domain: 'localhost' }
+        )
 
-      expect(result[:success]).to be true
-      expect(result[:data][:message]).to include('Cleared')
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:message]).to include('All cookies cleared')
+
+        # Verify cookies are cleared
+        cookies_result = execute_tool_in_session(
+          FerrumMCP::Tools::GetCookiesTool,
+          sid,
+          { session_id: sid }
+        )
+        expect(cookies_result[:data][:count]).to eq(0)
+      end
+
+      it 'clears cookies for specific domain' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        # Set cookies
+        execute_tool_in_session(
+          FerrumMCP::Tools::SetCookieTool,
+          sid,
+          { session_id: sid, name: 'test_cookie', value: 'test_value', domain: 'localhost' }
+        )
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, domain: 'localhost' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:message]).to include('Cleared')
+      end
     end
   end
 
   describe FerrumMCP::Tools::GetAttributeTool do
-    it 'gets attribute from element' do
-      result = get_attribute_tool.execute({ selector: '#name-input', attribute: 'placeholder' })
-
-      expect(result[:success]).to be true
-      expect(result[:data][:selector]).to eq('#name-input')
-      expect(result[:data][:attribute]).to eq('placeholder')
-      expect(result[:data][:value]).to eq('Enter name')
+    describe '.tool_name' do
+      it 'returns get_attribute' do
+        expect(described_class.tool_name).to eq('get_attribute')
+      end
     end
 
-    it 'gets id attribute' do
-      result = get_attribute_tool.execute({ selector: '#title', attribute: 'id' })
+    describe '#execute' do
+      it 'gets attribute from element' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
 
-      expect(result[:success]).to be true
-      expect(result[:data][:value]).to eq('title')
-    end
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#name-input', attribute: 'placeholder' }
+        )
 
-    it 'returns error when element not found' do
-      result = get_attribute_tool.execute({ selector: '#non-existent', attribute: 'id' })
+        expect(result[:success]).to be true
+        expect(result[:data][:selector]).to eq('#name-input')
+        expect(result[:data][:attribute]).to eq('placeholder')
+        expect(result[:data][:value]).to eq('Enter name')
+      end
 
-      expect(result[:success]).to be false
+      it 'gets id attribute' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#title', attribute: 'id' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:value]).to eq('title')
+      end
+
+      it 'gets data attribute' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#data-element', attribute: 'data-id' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:value]).to eq('123')
+      end
+
+      it 'returns error when element not found' do
+        sid = setup_session_with_fixture(session_manager, 'advanced_page.html', subdir: 'advanced')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#non-existent', attribute: 'id' }
+        )
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to include('Element not found')
+      end
     end
   end
 end

@@ -61,6 +61,12 @@ def start_test_server
     AccessLog: []
   )
 
+  # Mount all HTML fixtures automatically
+  fixtures_dir = File.join(File.dirname(__FILE__), 'fixtures', 'pages')
+
+  mount_fixtures(server, fixtures_dir, '/fixtures') if Dir.exist?(fixtures_dir)
+
+  # Keep the default test page for backward compatibility
   server.mount_proc '/test' do |_req, res|
     res.status = 200
     res['Content-Type'] = 'text/html'
@@ -107,6 +113,27 @@ def start_test_server
   server
 end
 
+# Recursively mount all HTML fixtures from a directory
+def mount_fixtures(server, dir, url_prefix)
+  Dir.glob(File.join(dir, '**', '*.html')).each do |file_path|
+    # Calculate the URL path relative to fixtures/pages
+    relative_path = file_path.sub(dir, '').sub(/\.html$/, '')
+    url_path = File.join(url_prefix, relative_path)
+
+    # Read the HTML content
+    html_content = File.read(file_path)
+
+    # Mount the fixture
+    server.mount_proc url_path do |_req, res|
+      res.status = 200
+      res['Content-Type'] = 'text/html'
+      res.body = html_content
+    end
+
+    puts "Mounted fixture: #{url_path} -> #{file_path}" if ENV['DEBUG_FIXTURES']
+  end
+end
+
 def test_url(path = '/test')
   "http://localhost:9999#{path}"
 end
@@ -121,4 +148,83 @@ def test_config
   base_config = test_base_config
   session = FerrumMCP::Session.new(config: base_config, options: { headless: true })
   session.session_config
+end
+
+# Session test helpers for tool tests
+module SessionTestHelpers
+  # Create a session and navigate to a fixture file via test server
+  # @param session_manager [FerrumMCP::SessionManager] The session manager instance
+  # @param fixture_file [String] Fixture filename (e.g., 'banner_with_id.html')
+  # @param subdir [String] Optional subdirectory within pages/ (e.g., 'cookies')
+  # @return [String] The session ID
+  def setup_session_with_fixture(session_manager, fixture_file, subdir: nil)
+    session_params = {
+      headless: true,
+      timeout: 30,
+      browser_options: {}
+    }
+    # create_session returns the session_id directly (string)
+    sid = session_manager.create_session(session_params)
+
+    # Build URL path for mounted fixture
+    # Remove .html extension as it's removed during mounting
+    fixture_name = fixture_file.sub(/\.html$/, '')
+    url_path = if subdir
+                 "/fixtures/#{subdir}/#{fixture_name}"
+               else
+                 "/fixtures/#{fixture_name}"
+               end
+
+    session_manager.with_session(sid) do |browser_manager|
+      browser_manager.browser.goto(test_url(url_path))
+      sleep 0.5 # Give time for page to load
+    end
+
+    sid
+  end
+
+  # Check if a specific element exists in the page
+  # @param session_manager [FerrumMCP::SessionManager] The session manager instance
+  # @param session_id [String] The session ID
+  # @param selector [String] CSS selector
+  # @return [Boolean] true if element exists
+  def element_exists?(session_manager, session_id, selector)
+    session_manager.with_session(session_id) do |browser_manager|
+      element = browser_manager.browser.at_css(selector)
+      return !element.nil?
+    end
+  rescue StandardError
+    false
+  end
+
+  # Get element text content
+  # @param session_manager [FerrumMCP::SessionManager] The session manager instance
+  # @param session_id [String] The session ID
+  # @param selector [String] CSS selector
+  # @return [String, nil] Element text or nil if not found
+  def get_element_text(session_manager, session_id, selector)
+    session_manager.with_session(session_id) do |browser_manager|
+      element = browser_manager.browser.at_css(selector)
+      return element&.text
+    end
+  rescue StandardError
+    nil
+  end
+
+  # Execute JavaScript in the browser context
+  # @param session_manager [FerrumMCP::SessionManager] The session manager instance
+  # @param session_id [String] The session ID
+  # @param script [String] JavaScript code to execute
+  # @return [Object] Result of JavaScript execution
+  def execute_js(session_manager, session_id, script)
+    session_manager.with_session(session_id) do |browser_manager|
+      browser_manager.browser.execute(script)
+    end
+  rescue StandardError => e
+    raise "JavaScript execution failed: #{e.message}"
+  end
+end
+
+RSpec.configure do |config|
+  config.include SessionTestHelpers
 end

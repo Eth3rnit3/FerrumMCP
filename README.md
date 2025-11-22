@@ -1,185 +1,333 @@
 # FerrumMCP 🌐
 
-A browser automation server for the Model Context Protocol (MCP), enabling AI assistants to interact with web pages through a standardized interface.
+[![CI](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/ci.yml)
+[![Docker](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/docker-publish.yml)
+[![Ruby](https://img.shields.io/badge/ruby-3.2+-red.svg)](https://www.ruby-lang.org)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docker Hub](https://img.shields.io/docker/pulls/eth3rnit3/ferrum-mcp.svg)](https://hub.docker.com/r/eth3rnit3/ferrum-mcp)
+
+> A browser automation server for the Model Context Protocol (MCP), enabling AI assistants to interact with web pages through a standardized interface.
+
+---
+
+## 🚀 Quick Links
+
+| Documentation | Description |
+|---------------|-------------|
+| [**Getting Started**](docs/GETTING_STARTED.md) | Installation, setup, and first steps |
+| [**Docker Deployment**](docs/DOCKER.md) | Complete Docker guide with Claude Desktop integration |
+| [**API Reference**](docs/API_REFERENCE.md) | Complete documentation of all 27+ tools |
+| [**Configuration**](docs/CONFIGURATION.md) | Environment variables and advanced configuration |
+| [**Troubleshooting**](docs/TROUBLESHOOTING.md) | Common issues and solutions |
+| [**Deployment**](docs/DEPLOYMENT.md) | Production deployment guide |
+| [**Migration**](docs/MIGRATION.md) | Upgrade guide between versions |
+| [**BotBrowser Integration**](docs/BOTBROWSER_INTEGRATION.md) | Anti-detection browser setup |
+
+---
+
+## 📖 Table of Contents
+
+- [What is FerrumMCP?](#what-is-ferrummcp)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Documentation](#documentation)
+- [Tools & Capabilities](#tools--capabilities)
+- [Project Resources](#project-resources)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ## What is FerrumMCP?
 
-FerrumMCP provides AI assistants with browser automation capabilities via the MCP protocol. It allows your AI to navigate websites, interact with elements, extract content, and take screenshots - all through a simple HTTP interface.
+FerrumMCP is a **browser automation server** that implements the **Model Context Protocol (MCP)** by Anthropic. It provides AI assistants with the ability to navigate websites, interact with elements, extract content, and perform complex browser automation tasks through a simple, standardized interface.
 
-**Key features:**
-- 🌐 Full browser automation (navigate, click, fill forms, etc.)
-- 📸 Screenshot capture (full page or specific elements)
-- 🔍 Content extraction (text, HTML, attributes)
-- 🍪 Cookie management
-- ⚡ JavaScript execution
-- 🔄 Wait conditions for dynamic content
+**Key Benefits:**
+- 🤖 **AI-Native Design**: Purpose-built for AI assistants like Claude
+- 🔄 **Session-Based**: Multiple concurrent browser sessions with isolated configurations
+- 🌐 **Multi-Browser**: Support for Chrome, Edge, Brave, and BotBrowser
+- 🧩 **Smart Automation**: Cookie banner detection and CAPTCHA solving
+- 📦 **Easy Deployment**: Docker, systemd, or Kubernetes ready
+- 🔌 **Dual Transport**: HTTP and STDIO for maximum compatibility
+
+---
+
+## Features
+
+### Core Capabilities
+
+✅ **Session Management**
+- Create/manage multiple browser sessions
+- Automatic cleanup (30min idle timeout)
+- Custom browser configurations per session
+
+✅ **Navigation**
+- URL navigation with network idle detection
+- Browser history (back/forward)
+- Page refresh
+
+✅ **Interaction**
+- Click, hover, drag-and-drop
+- Form filling with typing delays
+- Keyboard input simulation
+- **Smart cookie banner acceptance** (8 strategies, multi-language)
+- **AI-powered CAPTCHA solving** (Whisper integration)
+
+✅ **Extraction**
+- Text and HTML content extraction
+- Screenshot capture (base64)
+- Page metadata (title, URL)
+- XPath-based text search
+
+✅ **Advanced**
+- JavaScript execution and evaluation
+- Cookie management (get/set/clear)
+- Shadow DOM querying
+- Element attribute retrieval
+
+### Enterprise Features
+
+🦾 **BotBrowser Integration**
+- Anti-detection browser automation
+- Fingerprint management
+- Profile encryption support
+
+🔒 **Security** (v1.0+)
+- Session limits
+- Rate limiting
+- Health check endpoint
+- Non-root Docker user
+
+📊 **Observability**
+- File-based logging
+- Health checks
+- Metrics endpoint (planned)
+
+---
 
 ## Quick Start
 
-### Option 1: Using Docker (Recommended)
+### Option 1: Docker (Recommended)
 
-Pull and run the official Docker image:
-
+**Standard Image** (Chromium only):
 ```bash
 docker pull eth3rnit3/ferrum-mcp:latest
-docker run -p 3000:3000 eth3rnit3/ferrum-mcp:latest
+docker run --security-opt seccomp=unconfined -p 3000:3000 eth3rnit3/ferrum-mcp:latest
 ```
 
-The server will be available at `http://0.0.0.0:3000`.
+**BotBrowser Image** (Anti-detection):
+```bash
+docker pull eth3rnit3/ferrum-mcp:botbrowser
+docker run --security-opt seccomp=unconfined -p 3000:3000 \
+  -v ./profiles:/app/profiles:ro \
+  eth3rnit3/ferrum-mcp:botbrowser
+```
 
-**Docker Hub:** [eth3rnit3/ferrum-mcp](https://hub.docker.com/r/eth3rnit3/ferrum-mcp)
+### Option 2: Gem Installation
 
-### Option 2: Local Installation
+```bash
+gem install ferrum-mcp
+ferrum-mcp start
+```
+
+### Option 3: From Source
 
 ```bash
 git clone https://github.com/Eth3rnit3/FerrumMCP.git
 cd FerrumMCP
 bundle install
+ruby bin/ferrum-mcp
 ```
 
-### Start the Server
+**➡️ [Full installation guide](docs/GETTING_STARTED.md)**
 
-#### HTTP Transport (Default)
+---
 
-```bash
-ruby server.rb
-# or explicitly
-ruby server.rb --transport http
-```
+## Documentation
 
-The server will start on `http://0.0.0.0:3000` by default.
+### Getting Started
 
-#### STDIO Transport
+| Guide | Description |
+|-------|-------------|
+| [**Installation**](docs/GETTING_STARTED.md#quick-start) | Docker, gem, and source installation |
+| [**Claude Desktop Setup**](docs/GETTING_STARTED.md#claude-desktop) | Integrate with Claude Desktop (STDIO) |
+| [**First Session**](docs/GETTING_STARTED.md#usage-examples) | Create your first browser automation |
 
-For MCP clients that require stdio protocol:
+### Configuration
 
-```bash
-ruby server.rb --transport stdio
-```
+| Topic | Link |
+|-------|------|
+| **Environment Variables** | [Configuration Guide](docs/CONFIGURATION.md) |
+| **Multi-Browser Setup** | [Multi-Browser Config](docs/CONFIGURATION.md#multi-browser-configuration) |
+| **BotBrowser Integration** | [BotBrowser Guide](docs/BOTBROWSER_INTEGRATION.md) |
+| **Resource Discovery** | [Resource Config](docs/CONFIGURATION.md#resource-discovery) |
 
-#### Help and Options
+### API Documentation
 
-View all available options:
+| Resource | Description |
+|----------|-------------|
+| [**API Reference**](docs/API_REFERENCE.md) | Complete tool documentation with examples |
+| [**Session Management**](docs/API_REFERENCE.md#session-management) | Create, list, and manage browser sessions |
+| [**Navigation Tools**](docs/API_REFERENCE.md#navigation-tools) | URL navigation and history |
+| [**Interaction Tools**](docs/API_REFERENCE.md#interaction-tools) | Click, fill forms, solve CAPTCHAs |
+| [**Extraction Tools**](docs/API_REFERENCE.md#extraction-tools) | Get content, screenshots, metadata |
+| [**Advanced Tools**](docs/API_REFERENCE.md#advanced-tools) | JavaScript, cookies, Shadow DOM |
 
-```bash
-ruby server.rb --help
-```
+### Operations
 
-## Connect Your AI Assistant
+| Guide | Description |
+|-------|-------------|
+| [**Troubleshooting**](docs/TROUBLESHOOTING.md) | Common issues and solutions |
+| [**Deployment**](docs/DEPLOYMENT.md) | Docker, K8s, systemd deployment |
+| [**Migration**](docs/MIGRATION.md) | Upgrade between versions |
 
-### Claude Desktop
+---
 
-#### Using STDIO Transport (Recommended)
+## Tools & Capabilities
 
-Add this configuration to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+FerrumMCP provides **27+ browser automation tools** organized into 6 categories:
 
-```json
-{
-  "mcpServers": {
-    "ferrum-mcp": {
-      "command": "/path/to/ruby",
-      "args": [
-        "/path/to/ferrum-mcp/server.rb",
-        "--transport",
-        "stdio"
-      ],
-      "env": {
-        "BROWSER_HEADLESS": "false"
-      }
-    }
-  }
-}
-```
+### 1. Session Management (4 tools)
+- `create_session` - Create browser sessions with custom config
+- `list_sessions` - List all active sessions
+- `get_session_info` - Get detailed session information
+- `close_session` - Manually close a session
 
-**Important**: Replace the paths with your actual paths:
-- **Ruby path**: Find it with `which ruby` (e.g., `/Users/username/.rbenv/versions/3.3.5/bin/ruby`)
-- **Server path**: Full path to your `server.rb` (e.g., `/Users/username/code/ferrum-mcp/server.rb`)
+### 2. Navigation (4 tools)
+- `navigate` - Navigate to URLs
+- `go_back` - Browser back button
+- `go_forward` - Browser forward button
+- `refresh` - Reload current page
 
-**Example with rbenv**:
-```json
-{
-  "mcpServers": {
-    "ferrum-mcp": {
-      "command": "/Users/username/.rbenv/versions/3.3.5/bin/ruby",
-      "args": [
-        "/Users/username/code/ferrum-mcp/server.rb",
-        "--transport",
-        "stdio"
-      ],
-      "env": {
-        "BROWSER_HEADLESS": "false"
-      }
-    }
-  }
-}
-```
+### 3. Interaction (7 tools)
+- `click` - Click elements
+- `fill_form` - Fill form fields
+- `press_key` - Keyboard input
+- `hover` - Mouse hover
+- `drag_and_drop` - Drag elements
+- `accept_cookies` - **Smart cookie banner detection** (8 strategies)
+- `solve_captcha` - **AI-powered CAPTCHA solving** (Whisper)
 
-After updating the config, restart Claude Desktop.
+### 4. Extraction (6 tools)
+- `get_text` - Extract text content
+- `get_html` - Get HTML content
+- `screenshot` - Capture screenshots
+- `get_title` - Get page title
+- `get_url` - Get current URL
+- `find_by_text` - XPath text search
 
-#### Using HTTP Transport
+### 5. Advanced (9 tools)
+- `execute_script` - Run JavaScript
+- `evaluate_js` - Evaluate JavaScript with return value
+- `get_cookies` - Get browser cookies
+- `set_cookie` - Set cookies
+- `clear_cookies` - Clear cookies
+- `get_attribute` - Get element attributes
+- `query_shadow_dom` - Interact with Shadow DOM
 
-Alternative setup using HTTP (requires manual server start):
+### 6. MCP Resources (7 resources)
+- `ferrum://browsers` - Discover configured browsers
+- `ferrum://user-profiles` - Discover Chrome profiles
+- `ferrum://bot-profiles` - Discover BotBrowser profiles
+- `ferrum://capabilities` - Server capabilities
 
-```bash
-# Start the server
-ruby server.rb --transport http
+**➡️ [Complete API Reference](docs/API_REFERENCE.md)**
 
-# In another terminal, add to Claude
-claude mcp add --transport http ferrum-mcp http://0.0.0.0:3000/mcp
-```
+---
 
-### Other MCP Clients
+## Project Resources
 
-For any MCP-compatible client:
-- **HTTP Transport**: Configure pointing to `http://0.0.0.0:3000/mcp`
-- **STDIO Transport**: Run `ruby server.rb --transport stdio` as a subprocess
+### Development
 
-## Usage Examples
+| Resource | Link |
+|----------|------|
+| **Contributing Guide** | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| **Security Policy** | [SECURITY.md](SECURITY.md) |
+| **Changelog** | [CHANGELOG.md](CHANGELOG.md) |
+| **AI Development Guide** | [CLAUDE.md](CLAUDE.md) |
 
-Once connected, your AI assistant can perform browser automation tasks:
+### Community
 
-**Navigate to a website:**
-> "Navigate to https://example.com"
+| Platform | Link |
+|----------|------|
+| **GitHub Issues** | [Report bugs](https://github.com/Eth3rnit3/FerrumMCP/issues) |
+| **GitHub Discussions** | [Ask questions](https://github.com/Eth3rnit3/FerrumMCP/discussions) |
+| **Docker Hub** | [eth3rnit3/ferrum-mcp](https://hub.docker.com/r/eth3rnit3/ferrum-mcp) |
 
-**Extract information:**
-> "Go to GitHub trending and tell me the top 3 repositories"
+### Links
 
-**Take screenshots:**
-> "Take a screenshot of the current page"
+| Resource | URL |
+|----------|-----|
+| **Repository** | https://github.com/Eth3rnit3/FerrumMCP |
+| **Documentation** | https://github.com/Eth3rnit3/FerrumMCP/tree/main/docs |
+| **Releases** | https://github.com/Eth3rnit3/FerrumMCP/releases |
+| **RubyGems** | Coming soon! |
 
-**Interact with forms:**
-> "Fill in the search box with 'AI tools' and submit the form"
-
-**Execute JavaScript:**
-> "Click the login button and wait for the page to load"
-
-## Available Tools
-
-FerrumMCP provides 23 browser automation tools organized in 5 categories:
-
-- **Navigation**: navigate, go back/forward, refresh
-- **Interaction**: click, fill forms, press keys, hover
-- **Extraction**: get text, HTML, screenshots, page info
-- **Waiting**: wait for elements, navigation, delays
-- **Advanced**: execute JavaScript, manage cookies, get attributes
-
-## Configuration
-
-Environment variables:
-- `PORT` - Server port (default: 3000)
-- `HOST` - Server host (default: 0.0.0.0)
-- `BROWSER_HEADLESS` - Run browser in headless mode (default: true)
-- `LOG_LEVEL` - Logging level: debug, info, warn, error (default: info)
+---
 
 ## Requirements
 
-- Ruby 3.2 or higher
-- Chrome/Chromium browser
+### System Requirements
+- **Ruby**: 3.2 or higher
+- **Browser**: Chrome, Chromium, Edge, or Brave
+- **OS**: Linux, macOS, or Windows
 
-## License
+### Optional Dependencies
+- **whisper-cli**: For CAPTCHA solving
+- **BotBrowser**: For anti-detection automation
+- **Docker**: For containerized deployment
 
-MIT License - see [LICENSE](LICENSE) file for details.
+---
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues or submit pull requests.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+**Quick contribution checklist:**
+- 📖 Read [CONTRIBUTING.md](CONTRIBUTING.md)
+- 🐛 Use issue templates for bugs
+- ✨ Use feature request template
+- ✅ Run tests: `bundle exec rspec`
+- 📝 Update documentation
+- 🎨 Follow RuboCop style
+
+---
+
+## Security
+
+For security vulnerabilities, please email [eth3rnit3@gmail.com](mailto:eth3rnit3@gmail.com). See [SECURITY.md](SECURITY.md) for our security policy.
+
+---
+
+## License
+
+FerrumMCP is released under the [MIT License](LICENSE).
+
+---
+
+## Credits
+
+Built with:
+- [Ferrum](https://github.com/rubycdp/ferrum) - Ruby Chrome DevTools Protocol
+- [Model Context Protocol](https://github.com/anthropics/mcp) by Anthropic
+- [Whisper](https://github.com/ggerganov/whisper.cpp) for CAPTCHA solving
+- [BotBrowser](https://botbrowser.com) for anti-detection (optional)
+
+---
+
+## Support
+
+- 📚 **Documentation**: [docs/](docs/)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/Eth3rnit3/FerrumMCP/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/Eth3rnit3/FerrumMCP/issues)
+- 📧 **Email**: [eth3rnit3@gmail.com](mailto:eth3rnit3@gmail.com)
+
+---
+
+<p align="center">
+  <strong>Made with ❤️ by <a href="https://github.com/Eth3rnit3">Eth3rnit3</a></strong>
+</p>
+
+<p align="center">
+  <a href="#-quick-links">Back to Top</a>
+</p>

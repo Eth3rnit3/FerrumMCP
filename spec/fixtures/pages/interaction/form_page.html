@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Interaction Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; }
+    input, select, textarea { width: 300px; padding: 8px; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    #status { margin-top: 20px; padding: 10px; background: #f0f0f0; }
+    .tooltip { display: none; position: absolute; background: #333; color: white; padding: 5px; border-radius: 3px; }
+    .hoverable:hover + .tooltip { display: block; }
+  </style>
+</head>
+<body>
+  <h1>Form Interaction Test Page</h1>
+
+  <form id="test-form">
+    <div class="form-group">
+      <label for="name-input">Name:</label>
+      <input type="text" id="name-input" name="name" placeholder="Enter your name">
+    </div>
+
+    <div class="form-group">
+      <label for="email-input">Email:</label>
+      <input type="email" id="email-input" name="email" placeholder="Enter your email">
+    </div>
+
+    <div class="form-group">
+      <label for="country-select">Country:</label>
+      <select id="country-select" name="country">
+        <option value="">Select a country</option>
+        <option value="us">United States</option>
+        <option value="uk">United Kingdom</option>
+        <option value="fr">France</option>
+        <option value="de">Germany</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="message-textarea">Message:</label>
+      <textarea id="message-textarea" name="message" rows="4"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="agree-checkbox" name="agree">
+        I agree to the terms
+      </label>
+    </div>
+
+    <button type="submit" id="submit-button">Submit</button>
+    <button type="reset" id="reset-button">Reset</button>
+  </form>
+
+  <div id="status"></div>
+
+  <div style="margin-top: 30px;">
+    <h2>Interactive Elements</h2>
+    <button id="click-test" class="hoverable">Click Me</button>
+    <div class="tooltip">This is a tooltip</div>
+
+    <button id="double-click-test">Double Click Me</button>
+
+    <div id="hover-zone" class="hoverable" style="width: 200px; height: 100px; background: #e0e0e0; margin: 10px 0; text-align: center; line-height: 100px;">
+      Hover Over Me
+    </div>
+    <div class="tooltip">Hover detected!</div>
+
+    <div id="drag-source" draggable="true" style="width: 100px; height: 100px; background: #4CAF50; color: white; text-align: center; line-height: 100px; margin: 10px 0;">
+      Drag Me
+    </div>
+
+    <div id="drop-target" style="width: 200px; height: 100px; border: 2px dashed #999; text-align: center; line-height: 100px; margin: 10px 0;">
+      Drop Here
+    </div>
+  </div>
+
+  <div id="results" style="margin-top: 20px; padding: 10px; background: #f9f9f9; display: none;"></div>
+
+  <script>
+    const form = document.getElementById('test-form');
+    const status = document.getElementById('status');
+    const results = document.getElementById('results');
+    const clickTest = document.getElementById('click-test');
+    const doubleClickTest = document.getElementById('double-click-test');
+    const hoverZone = document.getElementById('hover-zone');
+    const dragSource = document.getElementById('drag-source');
+    const dropTarget = document.getElementById('drop-target');
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const data = {};
+      for (let [key, value] of formData.entries()) {
+        data[key] = value;
+      }
+      status.textContent = 'Form submitted: ' + JSON.stringify(data);
+      status.setAttribute('data-status', 'submitted');
+    });
+
+    // Click test
+    clickTest.addEventListener('click', function() {
+      results.style.display = 'block';
+      results.textContent = 'Button clicked!';
+      results.setAttribute('data-action', 'clicked');
+    });
+
+    // Double click test
+    doubleClickTest.addEventListener('dblclick', function() {
+      results.style.display = 'block';
+      results.textContent = 'Button double-clicked!';
+      results.setAttribute('data-action', 'double-clicked');
+    });
+
+    // Hover test
+    hoverZone.addEventListener('mouseenter', function() {
+      hoverZone.style.background = '#4CAF50';
+      hoverZone.setAttribute('data-hovered', 'true');
+    });
+
+    hoverZone.addEventListener('mouseleave', function() {
+      hoverZone.style.background = '#e0e0e0';
+      hoverZone.removeAttribute('data-hovered');
+    });
+
+    // Drag and drop
+    dragSource.addEventListener('dragstart', function(e) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', this.innerHTML);
+      this.style.opacity = '0.5';
+    });
+
+    dragSource.addEventListener('dragend', function() {
+      this.style.opacity = '1';
+    });
+
+    dropTarget.addEventListener('dragover', function(e) {
+      if (e.preventDefault) {
+        e.preventDefault();
+      }
+      e.dataTransfer.dropEffect = 'move';
+      this.style.borderColor = '#4CAF50';
+      return false;
+    });
+
+    dropTarget.addEventListener('dragleave', function() {
+      this.style.borderColor = '#999';
+    });
+
+    dropTarget.addEventListener('drop', function(e) {
+      if (e.stopPropagation) {
+        e.stopPropagation();
+      }
+      const data = e.dataTransfer.getData('text/html');
+      this.innerHTML = data;
+      this.style.background = '#4CAF50';
+      this.setAttribute('data-dropped', 'true');
+      return false;
+    });
+
+    // Keyboard event tracking
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && document.activeElement.id === 'name-input') {
+        results.style.display = 'block';
+        results.textContent = 'Enter key pressed on name input';
+        results.setAttribute('data-key-pressed', 'enter');
+      }
+      if (e.key === 'Tab') {
+        results.style.display = 'block';
+        results.textContent = 'Tab key pressed';
+        results.setAttribute('data-key-pressed', 'tab');
+      }
+    });
+  </script>
+</body>
+</html>
