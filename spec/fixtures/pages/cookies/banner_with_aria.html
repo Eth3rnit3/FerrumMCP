@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Banner - ARIA Strategy</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .privacy-notice {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #9C27B0;
+            color: white;
+            padding: 20px;
+            display: block;
+        }
+        .privacy-notice.hidden { display: none; }
+        button {
+            background: white;
+            color: #9C27B0;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Page - Cookie Banner with ARIA</h1>
+    <p>This page has an accessible cookie banner with ARIA attributes.</p>
+
+    <div class="privacy-notice" role="dialog" aria-label="Cookie consent">
+        <p>We value your privacy. This site uses cookies for analytics.</p>
+        <button aria-label="Accept cookies" data-action="accept">Got it</button>
+        <button aria-label="Decline cookies" data-action="decline">No thanks</button>
+    </div>
+
+    <script>
+        document.querySelectorAll('button[data-action]').forEach(button => {
+            button.addEventListener('click', function() {
+                const action = this.dataset.action;
+                document.querySelector('.privacy-notice').classList.add('hidden');
+                if (action === 'accept') {
+                    document.body.innerHTML += '<div id="banner-accepted">Banner accepted via ARIA!</div>';
+                } else {
+                    document.body.innerHTML += '<div id="banner-rejected">Banner declined!</div>';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

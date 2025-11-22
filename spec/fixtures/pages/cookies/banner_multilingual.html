@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bandeau Cookies - Multilingue</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .cookie-notice {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #607D8B;
+            color: white;
+            padding: 20px;
+            display: block;
+        }
+        .cookie-notice.hidden { display: none; }
+        button {
+            background: white;
+            color: #607D8B;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Page de Test - Bandeau Multilingue</h1>
+    <p>Cette page contient un bandeau de cookies en français.</p>
+
+    <div class="cookie-notice">
+        <p>Nous utilisons des cookies pour améliorer votre expérience.</p>
+        <button class="accept-btn">Tout accepter</button>
+        <button class="reject-btn">Tout refuser</button>
+        <button class="customize-btn">Personnaliser</button>
+    </div>
+
+    <script>
+        document.querySelector('.accept-btn').addEventListener('click', function() {
+            document.querySelector('.cookie-notice').classList.add('hidden');
+            document.body.innerHTML += '<div id="banner-accepted">Bandeau accepté en français!</div>';
+        });
+        document.querySelector('.reject-btn').addEventListener('click', function() {
+            document.querySelector('.cookie-notice').classList.add('hidden');
+            document.body.innerHTML += '<div id="banner-rejected">Bandeau refusé!</div>';
+        });
+        document.querySelector('.customize-btn').addEventListener('click', function() {
+            document.querySelector('.cookie-notice').classList.add('hidden');
+            document.body.innerHTML += '<div id="banner-customized">Bandeau personnalisé!</div>';
+        });
+    </script>
+</body>
+</html>

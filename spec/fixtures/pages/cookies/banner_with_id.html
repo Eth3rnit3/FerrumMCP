@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Banner - ID Strategy</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #cookie-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #333;
+            color: white;
+            padding: 20px;
+            display: block;
+        }
+        #cookie-banner.hidden { display: none; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Page - Cookie Banner with ID</h1>
+    <p>This page has a cookie banner that can be detected by ID.</p>
+
+    <div id="cookie-banner">
+        <p>We use cookies to improve your experience.</p>
+        <button id="accept-cookies">Accept All</button>
+        <button id="reject-cookies">Reject</button>
+    </div>
+
+    <script>
+        document.getElementById('accept-cookies').addEventListener('click', function() {
+            document.getElementById('cookie-banner').classList.add('hidden');
+            document.body.innerHTML += '<div id="banner-accepted">Banner accepted!</div>';
+        });
+        document.getElementById('reject-cookies').addEventListener('click', function() {
+            document.getElementById('cookie-banner').classList.add('hidden');
+            document.body.innerHTML += '<div id="banner-rejected">Banner rejected!</div>';
+        });
+    </script>
+</body>
+</html>

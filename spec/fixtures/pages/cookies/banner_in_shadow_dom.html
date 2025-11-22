@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Banner - Shadow DOM Strategy</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Test Page - Cookie Banner in Shadow DOM</h1>
+    <p>This page has a cookie banner inside a shadow DOM.</p>
+
+    <div id="cookie-widget"></div>
+
+    <script>
+        // Create shadow DOM
+        const host = document.getElementById('cookie-widget');
+        const shadow = host.attachShadow({ mode: 'open' });
+
+        // Add styles to shadow DOM
+        const style = document.createElement('style');
+        style.textContent = `
+            .cookie-banner {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #673AB7;
+                color: white;
+                padding: 20px;
+                display: block;
+            }
+            .cookie-banner.hidden { display: none; }
+            button {
+                background: white;
+                color: #673AB7;
+                border: none;
+                padding: 10px 20px;
+                cursor: pointer;
+                margin: 5px;
+            }
+        `;
+        shadow.appendChild(style);
+
+        // Add banner content to shadow DOM
+        const banner = document.createElement('div');
+        banner.className = 'cookie-banner';
+        banner.innerHTML = `
+            <p>Cookies help us deliver our services.</p>
+            <button id="shadow-accept">Accept</button>
+            <button id="shadow-reject">Reject</button>
+        `;
+        shadow.appendChild(banner);
+
+        // Add event listeners
+        shadow.getElementById('shadow-accept').addEventListener('click', function() {
+            banner.classList.add('hidden');
+            document.body.innerHTML += '<div id="banner-accepted">Shadow banner accepted!</div>';
+        });
+        shadow.getElementById('shadow-reject').addEventListener('click', function() {
+            banner.classList.add('hidden');
+            document.body.innerHTML += '<div id="banner-rejected">Shadow banner rejected!</div>';
+        });
+    </script>
+</body>
+</html>
