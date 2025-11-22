@@ -60,7 +60,7 @@ RSpec.describe FerrumMCP::SessionManager do
 
     it 'allows creating new session after closing one when at limit' do
       # Fill to capacity
-      session_ids = config.max_sessions.times.map { session_manager.create_session }
+      session_ids = Array.new(config.max_sessions) { session_manager.create_session }
 
       # Close one session
       session_manager.close_session(session_ids.first)

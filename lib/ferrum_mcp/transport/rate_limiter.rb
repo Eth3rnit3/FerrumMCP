@@ -16,9 +16,7 @@ module FerrumMCP
       def call(env)
         client_ip = extract_ip(env)
 
-        if rate_limited?(client_ip)
-          return rate_limit_response
-        end
+        return rate_limit_response if rate_limited?(client_ip)
 
         track_request(client_ip)
         @app.call(env)
@@ -70,10 +68,10 @@ module FerrumMCP
             'Retry-After' => @window.to_s
           },
           [JSON.generate({
-            error: 'Rate limit exceeded',
-            message: "Maximum #{@max_requests} requests per #{@window} seconds allowed",
-            retry_after: @window
-          })]
+                           error: 'Rate limit exceeded',
+                           message: "Maximum #{@max_requests} requests per #{@window} seconds allowed",
+                           retry_after: @window
+                         })]
         ]
       end
     end

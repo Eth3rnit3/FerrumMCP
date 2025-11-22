@@ -58,19 +58,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'ruby-vips', '~> 2.2'
   spec.add_dependency 'zeitwerk', '~> 2.7'
 
-  # Development dependencies
-  spec.add_development_dependency 'debug', '~> 1.11'
-  spec.add_development_dependency 'rack-test', '~> 2.1'
-  spec.add_development_dependency 'rake', '~> 13.3'
-  spec.add_development_dependency 'rspec', '~> 3.13'
-  spec.add_development_dependency 'rspec_junit_formatter', '~> 0.6.0'
-  spec.add_development_dependency 'rubocop', '~> 1.81'
-  spec.add_development_dependency 'rubocop-performance', '~> 1.26'
-  spec.add_development_dependency 'rubocop-rake', '~> 0.7.1'
-  spec.add_development_dependency 'rubocop-rspec', '~> 3.7'
-  spec.add_development_dependency 'simplecov', '~> 0.22.0'
-  spec.add_development_dependency 'webrick', '~> 1.9'
-
   # Post-install message
   spec.post_install_message = <<~MESSAGE
 

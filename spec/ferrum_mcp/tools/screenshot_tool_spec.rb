@@ -4,9 +4,18 @@ require 'spec_helper'
 require 'vips'
 
 RSpec.describe FerrumMCP::Tools::ScreenshotTool do
-  let(:config) { test_config }
-  let(:browser_manager) { FerrumMCP::BrowserManager.new(config) }
-  let(:screenshot_tool) { described_class.new(browser_manager) }
+  let(:config) { FerrumMCP::Configuration.new }
+  let(:session_manager) { FerrumMCP::SessionManager.new(config) }
+  let(:screenshot_tool) do
+    sid = session_manager.create_session(headless: true)
+    session_manager.with_session(sid) do |browser_manager|
+      described_class.new(browser_manager)
+    end
+  end
+
+  after do
+    session_manager.shutdown
+  end
 
   describe '#resize_if_needed' do
     let(:small_image_data) { create_test_image(800, 600) }

@@ -64,9 +64,7 @@ def start_test_server
   # Mount all HTML fixtures automatically
   fixtures_dir = File.join(File.dirname(__FILE__), 'fixtures', 'pages')
 
-  if Dir.exist?(fixtures_dir)
-    mount_fixtures(server, fixtures_dir, '/fixtures')
-  end
+  mount_fixtures(server, fixtures_dir, '/fixtures') if Dir.exist?(fixtures_dir)
 
   # Keep the default test page for backward compatibility
   server.mount_proc '/test' do |_req, res|

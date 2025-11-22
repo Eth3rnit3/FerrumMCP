@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Extraction Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { color: #333; }
+    .highlight { background: yellow; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 id="main-title">Content Extraction Test Page</h1>
+
+    <article id="main-article">
+      <h2 class="article-title">Article Title</h2>
+      <p class="paragraph">This is the first paragraph with some <span class="highlight">highlighted text</span>.</p>
+      <p class="paragraph">This is the second paragraph with more content.</p>
+      <p class="paragraph">This is the third paragraph for testing multiple elements.</p>
+    </article>
+
+    <section id="data-section" data-test="attribute-value">
+      <h3>Data Section</h3>
+      <div class="data-item" data-id="1" data-name="Item One">First Item</div>
+      <div class="data-item" data-id="2" data-name="Item Two">Second Item</div>
+      <div class="data-item" data-id="3" data-name="Item Three">Third Item</div>
+    </section>
+
+    <ul id="list">
+      <li class="list-item">List item 1</li>
+      <li class="list-item">List item 2</li>
+      <li class="list-item">List item 3</li>
+    </ul>
+
+    <div id="html-content">
+      <strong>Bold text</strong>
+      <em>Italic text</em>
+      <a href="/test">Link</a>
+    </div>
+
+    <div class="hidden" id="hidden-element">This content is hidden</div>
+
+    <footer id="page-footer">
+      <p>Footer content - © 2025</p>
+    </footer>
+  </div>
+</body>
+</html>

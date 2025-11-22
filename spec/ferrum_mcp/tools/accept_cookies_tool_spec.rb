@@ -6,7 +6,7 @@ RSpec.describe FerrumMCP::Tools::AcceptCookiesTool do
   let(:config) { FerrumMCP::Configuration.new }
   let(:session_manager) { FerrumMCP::SessionManager.new(config) }
 
-  after(:each) do
+  after do
     # Cleanup all sessions
     session_manager.shutdown
   end
