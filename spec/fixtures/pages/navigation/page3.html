@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navigation Test - Page 3</title>
+</head>
+<body>
+  <h1 id="page-title">Navigation Test Page 3</h1>
+  <p id="page-content">This is the third page for navigation testing.</p>
+
+  <nav>
+    <a href="/fixtures/navigation/page1" id="link-to-page1">Go to Page 1</a>
+    <a href="/fixtures/navigation/page2" id="link-to-page2">Go to Page 2</a>
+  </nav>
+
+  <div id="page-marker" data-page="3">Page 3</div>
+
+  <button id="refresh-counter" onclick="incrementCounter()">Refresh Counter: <span id="counter">0</span></button>
+
+  <script>
+    function incrementCounter() {
+      const counter = document.getElementById('counter');
+      const currentCount = parseInt(localStorage.getItem('refreshCount') || '0');
+      const newCount = currentCount + 1;
+      localStorage.setItem('refreshCount', newCount);
+      counter.textContent = newCount;
+    }
+
+    // Load counter on page load
+    window.addEventListener('load', function() {
+      const counter = document.getElementById('counter');
+      counter.textContent = localStorage.getItem('refreshCount') || '0';
+    });
+  </script>
+</body>
+</html>

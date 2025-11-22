@@ -13,7 +13,7 @@ RSpec.describe 'Multi-Session Integration' do
   describe 'concurrent sessions' do
     it 'handles multiple independent sessions simultaneously' do
       # Create 3 concurrent sessions
-      session_ids = 3.times.map { session_manager.create_session(headless: true) }
+      session_ids = Array.new(3) { session_manager.create_session(headless: true) }
 
       # Verify all sessions are active
       expect(session_manager.session_count).to eq(3)
@@ -79,7 +79,7 @@ RSpec.describe 'Multi-Session Integration' do
 
     it 'handles session cleanup correctly' do
       # Create sessions
-      session_ids = 5.times.map { session_manager.create_session(headless: true) }
+      session_ids = Array.new(5) { session_manager.create_session(headless: true) }
       expect(session_manager.session_count).to eq(5)
 
       # Close 3 sessions
@@ -101,7 +101,7 @@ RSpec.describe 'Multi-Session Integration' do
       max_sessions = config.max_sessions
 
       # Create sessions up to the limit
-      session_ids = max_sessions.times.map { session_manager.create_session(headless: true) }
+      session_ids = Array.new(max_sessions) { session_manager.create_session(headless: true) }
       expect(session_manager.session_count).to eq(max_sessions)
 
       # Attempt to exceed limit should raise error
@@ -125,7 +125,7 @@ RSpec.describe 'Multi-Session Integration' do
   describe 'concurrent tool execution' do
     it 'executes tools concurrently across sessions' do
       # Create multiple sessions
-      session_ids = 3.times.map do
+      session_ids = Array.new(3) do
         sid = session_manager.create_session(headless: true)
         session_manager.with_session(sid) do |browser_manager|
           browser_manager.browser.goto(test_url('/test'))
@@ -150,7 +150,7 @@ RSpec.describe 'Multi-Session Integration' do
 
     it 'handles errors in one session without affecting others' do
       # Create 3 sessions
-      session_ids = 3.times.map { session_manager.create_session(headless: true) }
+      session_ids = Array.new(3) { session_manager.create_session(headless: true) }
 
       # Navigate first two sessions successfully
       session_manager.with_session(session_ids[0]) do |browser_manager|
@@ -187,20 +187,18 @@ RSpec.describe 'Multi-Session Integration' do
   describe 'session info and listing' do
     it 'provides accurate session information' do
       # Create sessions with different options
-      session1 = session_manager.create_session(headless: true, timeout: 30)
-      session2 = session_manager.create_session(headless: false, timeout: 60)
+      session_manager.create_session(headless: true, timeout: 30)
+      session_manager.create_session(headless: false, timeout: 60)
 
       # Get session info
       sessions = session_manager.list_sessions
       expect(sessions.length).to eq(2)
 
       # Verify session info structure
-      sessions.each do |info|
-        expect(info).to have_key(:id)
-        expect(info).to have_key(:created_at)
-        expect(info).to have_key(:last_used_at)
-        expect(info).to have_key(:browser_type)
-      end
+      expect(sessions).to all(have_key(:id))
+      expect(sessions).to all(have_key(:created_at))
+      expect(sessions).to all(have_key(:last_used_at))
+      expect(sessions).to all(have_key(:browser_type))
     end
   end
 end

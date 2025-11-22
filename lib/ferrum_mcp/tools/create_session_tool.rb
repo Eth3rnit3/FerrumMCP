@@ -12,6 +12,9 @@ module FerrumMCP
           Create a new browser session with custom options.
           Supports multiple browsers in parallel (Chrome, BotBrowser).
           Returns a session_id to use with other tools.
+
+          Note: When running in Docker (DOCKER=true), headless mode is mandatory.
+          Attempting to create a non-headless session will result in an error.
         DESC
       end
 
@@ -41,7 +44,8 @@ module FerrumMCP
             },
             headless: {
               type: 'boolean',
-              description: 'Optional: Run browser in headless mode (default: false)'
+              description: 'Optional: Run browser in headless mode (default: false). ' \
+                           'REQUIRED to be true when running in Docker.'
             },
             timeout: {
               type: 'number',
@@ -65,6 +69,8 @@ module FerrumMCP
         logger.info 'Creating new browser session'
 
         options = build_options(params)
+        validate_docker_headless!(options)
+
         session_id = session_manager.create_session(options)
 
         success_response(
@@ -78,6 +84,21 @@ module FerrumMCP
       end
 
       private
+
+      def validate_docker_headless!(options)
+        # Check if running in Docker environment
+        return unless ENV['DOCKER'] == 'true'
+
+        # In Docker, headless mode is mandatory
+        # Check if headless is explicitly set to false
+        if options.key?(:headless) && options[:headless] == false
+          raise 'Headless mode is required when running in Docker. ' \
+                'Cannot create a non-headless session in a containerized environment.'
+        end
+
+        # Force headless to true in Docker if not explicitly set
+        options[:headless] = true unless options.key?(:headless)
+      end
 
       def build_options(params)
         options = {}
@@ -108,8 +129,8 @@ module FerrumMCP
 
         # Other options
         if params.key?(:headless) || params.key?('headless')
-          options[:headless] =
-            params[:headless] || params['headless']
+          # Use fetch to handle false values correctly
+          options[:headless] = params.key?(:headless) ? params[:headless] : params['headless']
         end
         options[:timeout] = params[:timeout] || params['timeout'] if params[:timeout] || params['timeout']
         if params[:browser_options] || params['browser_options']
