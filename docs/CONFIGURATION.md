@@ -33,6 +33,16 @@ See `.env.example` for a complete example configuration.
 
 **Note**: When the session limit is reached, new session creation will fail with an error. Close unused sessions to free up capacity.
 
+### Rate Limiting (HTTP Transport Only)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RATE_LIMIT_ENABLED` | Enable/disable rate limiting | `true` |
+| `RATE_LIMIT_MAX_REQUESTS` | Maximum requests per time window | `100` |
+| `RATE_LIMIT_WINDOW` | Time window in seconds | `60` |
+
+**Note**: Rate limiting is applied per client IP address. When exceeded, HTTP 429 (Too Many Requests) is returned with a `Retry-After` header.
+
 ## Multi-Browser Configuration
 
 FerrumMCP supports multiple browser configurations using structured environment variables.

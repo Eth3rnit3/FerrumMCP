@@ -20,9 +20,17 @@ module FerrumMCP
       def app
         mcp_transport = @mcp_transport
         logger = @logger
+        config = @config
 
         Rack::Builder.app do
           use Rack::CommonLogger, logger
+
+          # Add rate limiting middleware if enabled
+          if config.rate_limit_enabled
+            use FerrumMCP::Transport::RateLimiter,
+                max_requests: config.rate_limit_max_requests,
+                window: config.rate_limit_window
+          end
 
           # Health check endpoint
           map '/health' do

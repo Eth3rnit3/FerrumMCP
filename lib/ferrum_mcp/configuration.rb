@@ -3,7 +3,8 @@
 module FerrumMCP
   # Configuration class for Ferrum MCP Server
   class Configuration
-    attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :transport, :max_sessions
+    attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :transport, :max_sessions,
+                  :rate_limit_enabled, :rate_limit_max_requests, :rate_limit_window
     attr_reader :browsers, :user_profiles, :bot_profiles
 
     # Browser configuration structure
@@ -36,6 +37,11 @@ module FerrumMCP
       @log_level = ENV.fetch('LOG_LEVEL', 'debug').to_sym
       @transport = transport
       @max_sessions = ENV.fetch('MAX_CONCURRENT_SESSIONS', '10').to_i
+
+      # Rate limiting configuration
+      @rate_limit_enabled = ENV.fetch('RATE_LIMIT_ENABLED', 'true') == 'true'
+      @rate_limit_max_requests = ENV.fetch('RATE_LIMIT_MAX_REQUESTS', '100').to_i
+      @rate_limit_window = ENV.fetch('RATE_LIMIT_WINDOW', '60').to_i
 
       # Load multi-browser configurations
       @browsers = load_browsers
