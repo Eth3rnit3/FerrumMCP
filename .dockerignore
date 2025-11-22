@@ -15,6 +15,7 @@ LICENSE
 .rubocop.yml
 .ruby-version
 .claude
+config/
 
 # Test files
 spec/
