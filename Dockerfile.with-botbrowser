@@ -1,0 +1,179 @@
+# Dockerfile with optional BotBrowser support
+#
+# This Dockerfile supports two modes:
+# 1. Standard: Uses system Chromium (default, lightweight)
+# 2. BotBrowser: Includes BotBrowser for anti-detection (build with --build-arg INCLUDE_BOTBROWSER=true)
+#
+# Build examples:
+#   Standard:    docker build -t ferrum-mcp:latest .
+#   BotBrowser:  docker build -f Dockerfile.with-botbrowser --build-arg INCLUDE_BOTBROWSER=true -t ferrum-mcp:botbrowser .
+
+# Use Ruby 3.2 with Alpine for smaller image size
+# Supports both AMD64 and ARM64 platforms
+FROM ruby:3.2-alpine as base
+
+# Build argument to control BotBrowser inclusion
+ARG INCLUDE_BOTBROWSER=false
+ARG TARGETARCH
+
+# Install runtime dependencies and build dependencies
+RUN apk add --no-cache \
+    # Runtime: Browser and core dependencies
+    chromium \
+    chromium-chromedriver \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    wget \
+    curl \
+    xvfb \
+    xvfb-run \
+    # Runtime: libvips for ruby-vips gem
+    vips \
+    # Additional dependencies potentially needed for BotBrowser
+    $([ "$INCLUDE_BOTBROWSER" = "true" ] && echo " \
+        libx11 \
+        libxcomposite \
+        libxdamage \
+        libxext \
+        libxfixes \
+        libxrandr \
+        mesa-gbm \
+        at-spi2-core \
+        cups-libs \
+        libdrm \
+        libxkbcommon \
+        nspr \
+        nss \
+    " || echo "") \
+    && \
+    # Build dependencies (will be removed after bundle install)
+    apk add --no-cache --virtual .build-deps \
+    build-base \
+    vips-dev
+
+# Create non-root user
+RUN addgroup -g 1000 ferrum && \
+    adduser -D -u 1000 -G ferrum ferrum
+
+#
+# BotBrowser installation (conditional)
+#
+# Note: BotBrowser is open-source but requires profiles (licensed separately)
+# Options to include BotBrowser:
+#   1. Download from GitHub releases (requires URL)
+#   2. Copy from build context (place binary in ./botbrowser directory)
+#   3. Mount as volume at runtime
+#
+
+# Download and install BotBrowser from GitHub releases using API
+# Note: BotBrowser is open-source, profiles are licensed separately
+ARG BOTBROWSER_REPO=botswin/BotBrowser
+
+RUN if [ "$INCLUDE_BOTBROWSER" = "true" ]; then \
+        # Determine architecture-specific binary name
+        if [ "$TARGETARCH" = "amd64" ]; then \
+            ARCH_NAME="x86_64"; \
+        elif [ "$TARGETARCH" = "arm64" ]; then \
+            ARCH_NAME="arm64"; \
+        else \
+            echo "Unsupported architecture: $TARGETARCH" && exit 1; \
+        fi && \
+        # Install jq and dpkg for JSON parsing and .deb extraction
+        apk add --no-cache jq dpkg && \
+        # Get latest release info from GitHub API
+        echo "Fetching latest BotBrowser release from GitHub API..." && \
+        RELEASE_DATA=$(wget -qO- "https://api.github.com/repos/${BOTBROWSER_REPO}/releases/latest") && \
+        # Extract download URL for the correct architecture
+        DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r ".assets[] | select(.name | contains(\"${ARCH_NAME}.deb\")) | .browser_download_url" | head -1) && \
+        if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then \
+            echo "Error: Could not find BotBrowser .deb for architecture ${ARCH_NAME}" && \
+            echo "Available assets:" && \
+            echo "$RELEASE_DATA" | jq -r '.assets[].name' && \
+            exit 1; \
+        fi && \
+        echo "Downloading BotBrowser from: $DOWNLOAD_URL" && \
+        wget -O /tmp/botbrowser.deb "$DOWNLOAD_URL" && \
+        # Extract the .deb package
+        echo "Extracting BotBrowser package..." && \
+        dpkg-deb -x /tmp/botbrowser.deb /tmp/botbrowser-extract && \
+        ls -la /tmp/botbrowser-extract/ && \
+        # Find and copy BotBrowser files to /opt/botbrowser
+        BOTBROWSER_PATHS=$(find /tmp/botbrowser-extract -type f \( -name "chrome" -o -name "botbrowser" \) 2>/dev/null | head -1) && \
+        if [ -n "$BOTBROWSER_PATHS" ]; then \
+            BOTBROWSER_DIR=$(dirname "$BOTBROWSER_PATHS") && \
+            echo "Found BotBrowser in: $BOTBROWSER_DIR" && \
+            mkdir -p /opt/botbrowser && \
+            cp -r "$BOTBROWSER_DIR"/* /opt/botbrowser/; \
+        else \
+            echo "Error: Could not find BotBrowser executable in package" && \
+            echo "Package contents:" && \
+            find /tmp/botbrowser-extract -type f | head -20 && \
+            exit 1; \
+        fi && \
+        # Cleanup
+        rm -rf /tmp/botbrowser.deb /tmp/botbrowser-extract && \
+        apk del jq dpkg && \
+        # Make executables executable
+        chmod +x /opt/botbrowser/chrome 2>/dev/null || true && \
+        chmod +x /opt/botbrowser/botbrowser 2>/dev/null || true && \
+        chown -R ferrum:ferrum /opt/botbrowser && \
+        echo "BotBrowser installation complete"; \
+    else \
+        mkdir -p /opt/botbrowser; \
+    fi
+
+# Set environment variables
+ENV BROWSER_PATH=/usr/bin/chromium-browser \
+    BROWSER_HEADLESS=true \
+    DOCKER=true \
+    PORT=3000 \
+    HOST=0.0.0.0 \
+    LOG_LEVEL=info \
+    BROWSER_TIMEOUT=120
+
+# Set BotBrowser path if included
+ENV BOTBROWSER_PATH=${INCLUDE_BOTBROWSER:+/opt/botbrowser/chrome}
+
+# Create app directory
+WORKDIR /app
+
+# Copy Gemfile and install dependencies
+COPY Gemfile Gemfile.lock ./
+RUN bundle config set --local without 'development test' && \
+    bundle install --jobs=4 --retry=3 && \
+    # Remove build dependencies to reduce image size
+    apk del .build-deps && \
+    # Clean bundle cache
+    rm -rf /usr/local/bundle/cache/*.gem && \
+    find /usr/local/bundle/gems/ -name "*.c" -delete && \
+    find /usr/local/bundle/gems/ -name "*.o" -delete
+
+# Copy application code (only what's needed)
+COPY --chown=ferrum:ferrum lib ./lib
+COPY --chown=ferrum:ferrum bin ./bin
+COPY --chown=ferrum:ferrum config ./config
+
+# Create directories for logs, temp files, and profiles
+# Profiles should be mounted as volumes at runtime
+RUN mkdir -p logs tmp profiles && \
+    chown -R ferrum:ferrum /app
+
+# Switch to non-root user
+USER ferrum
+
+# Expose the server port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Security options for Chrome/BotBrowser
+# Run with: docker run --security-opt seccomp=unconfined
+# or add --cap-add=SYS_ADMIN if needed
+
+# Run the server
+CMD ["bin/ferrum-mcp", "start"]

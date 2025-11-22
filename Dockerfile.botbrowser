@@ -1,6 +1,14 @@
+# Dockerfile with BotBrowser support
+# This Dockerfile includes BotBrowser binaries for anti-detection capabilities
+# Use this for production deployments requiring advanced stealth features
+
 # Use Ruby 3.2 with Alpine for smaller image size
 # Supports both AMD64 and ARM64 platforms
 FROM ruby:3.2-alpine
+
+# Build arguments for BotBrowser version
+ARG BOTBROWSER_VERSION=latest
+ARG TARGETARCH
 
 # Install runtime dependencies and build dependencies
 RUN apk add --no-cache \
@@ -13,10 +21,27 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     wget \
+    curl \
     xvfb \
     xvfb-run \
     # Runtime: libvips for ruby-vips gem
     vips \
+    # Additional dependencies for BotBrowser
+    libx11 \
+    libxcomposite \
+    libxdamage \
+    libxext \
+    libxfixes \
+    libxrandr \
+    libgbm \
+    libnss \
+    libnspr \
+    libatk \
+    libatk-bridge \
+    libcups \
+    libdrm \
+    libxkbcommon \
+    libxshmfence \
     && \
     # Build dependencies (will be removed after bundle install)
     apk add --no-cache --virtual .build-deps \
@@ -27,8 +52,19 @@ RUN apk add --no-cache \
 RUN addgroup -g 1000 ferrum && \
     adduser -D -u 1000 -G ferrum ferrum
 
-# Set Chrome path for Ferrum
+# Download and install BotBrowser (placeholder - requires actual download URL)
+# Note: This is a placeholder. You need to provide the actual BotBrowser binary
+# or mount it as a volume when running the container
+RUN mkdir -p /opt/botbrowser && \
+    chown ferrum:ferrum /opt/botbrowser
+
+# Alternative: Copy BotBrowser from local build context
+# Uncomment and place BotBrowser binary in ./botbrowser directory
+# COPY --chown=ferrum:ferrum ./botbrowser /opt/botbrowser/
+
+# Set Chrome and BotBrowser paths for Ferrum
 ENV BROWSER_PATH=/usr/bin/chromium-browser \
+    BOTBROWSER_PATH=/opt/botbrowser/chrome \
     BROWSER_HEADLESS=true \
     DOCKER=true \
     PORT=3000 \
@@ -52,11 +88,11 @@ RUN bundle config set --local without 'development test' && \
 
 # Copy application code (only what's needed)
 COPY --chown=ferrum:ferrum lib ./lib
-COPY --chown=ferrum:ferrum bin ./bin
+COPY --chown=ferrum:ferrum server.rb .
 COPY --chown=ferrum:ferrum config ./config
 
-# Create logs directory and set proper permissions
-RUN mkdir -p logs tmp && \
+# Create directories for logs, temp files, and profiles
+RUN mkdir -p logs tmp profiles && \
     chown -R ferrum:ferrum /app
 
 # Switch to non-root user
@@ -69,9 +105,9 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Security options for Chrome
+# Security options for Chrome/BotBrowser
 # Run with: docker run --security-opt seccomp=unconfined
 # or add --cap-add=SYS_ADMIN if needed
 
 # Run the server
-CMD ["bin/ferrum-mcp", "start"]
+CMD ["ruby", "server.rb"]

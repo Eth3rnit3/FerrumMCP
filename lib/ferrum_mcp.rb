@@ -13,6 +13,7 @@ loader = Zeitwerk::Loader.for_gem
 loader.inflector.inflect(
   'ferrum_mcp' => 'FerrumMCP',
   'mcp' => 'MCP',
+  'cli' => 'CLI',
   'get_html_tool' => 'GetHTMLTool',
   'get_url_tool' => 'GetURLTool',
   'evaluate_js_tool' => 'EvaluateJSTool',
@@ -29,5 +30,5 @@ module FerrumMCP
   class ToolError < Error; end
 end
 
-# Eager load in production, lazy load in development
-loader.eager_load unless ENV['RACK_ENV'] == 'development'
+# Eager load disabled to avoid circular loading when required from CLI
+# loader.eager_load unless ENV['RACK_ENV'] == 'development'
