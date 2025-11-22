@@ -236,9 +236,8 @@ click(selector: "...", session_id: "...")
 
 **Solution**:
 ```ruby
-# Wait for page to load
+# Wait for page to load - navigation already waits for load event
 navigate(url: "...", session_id: "...")
-# Add delay (wait tool currently disabled)
 # Take screenshot
 screenshot(session_id: "...")
 ```

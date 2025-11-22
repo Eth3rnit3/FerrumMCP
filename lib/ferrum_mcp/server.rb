@@ -31,10 +31,6 @@ module FerrumMCP
       Tools::GetTitleTool,
       Tools::GetURLTool,
       Tools::FindByTextTool,
-      # Waiting
-      # Tools::WaitForElementTool,
-      # Tools::WaitForNavigationTool,
-      # Tools::WaitTool,
       # Advanced
       Tools::ExecuteScriptTool,
       Tools::EvaluateJSTool,

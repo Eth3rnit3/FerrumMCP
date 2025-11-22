@@ -156,7 +156,6 @@ Initial release of FerrumMCP - Browser automation server implementing the Model 
 
 ### Known Limitations
 
-- **Waiting tools disabled**: `wait_for_element`, `wait_for_navigation`, and `wait` tools exist but are not enabled (commented out in server.rb)
 - **No authentication**: HTTP endpoint is open, intended for trusted environments
 - **No rate limiting**: Session creation and tool execution not rate-limited
 - **Branch coverage**: 55% (line coverage: 79%)
