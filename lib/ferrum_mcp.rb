@@ -30,5 +30,6 @@ module FerrumMCP
   class ToolError < Error; end
 end
 
-# Eager load disabled to avoid circular loading when required from CLI
-# loader.eager_load unless ENV['RACK_ENV'] == 'development'
+# Eager load in production, lazy load in development
+# Note: bin/ferrum-mcp loads this file first to avoid circular dependencies
+loader.eager_load unless ENV['RACK_ENV'] == 'development'

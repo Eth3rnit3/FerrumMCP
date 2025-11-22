@@ -2,6 +2,8 @@
 # frozen_string_literal: true
 
 require 'optparse'
+# Load main module first to enable eager loading in production
+require_relative '../lib/ferrum_mcp'
 require_relative '../lib/ferrum_mcp/cli/command_handler'
 
 # Default options

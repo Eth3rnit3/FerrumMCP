@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../ferrum_mcp'
+# NOTE: ferrum_mcp is loaded in bin/ferrum-mcp before this file
 require_relative '../transport/http_server'
 require_relative '../transport/stdio_server'
 
