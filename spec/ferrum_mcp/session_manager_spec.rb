@@ -45,6 +45,29 @@ RSpec.describe FerrumMCP::SessionManager do
       expect(session_id1).not_to eq(session_id2)
       expect(session_manager.session_count).to eq(2)
     end
+
+    it 'raises error when session limit is reached' do
+      # Create max_sessions sessions
+      config.max_sessions.times do
+        session_manager.create_session
+      end
+
+      # Attempt to create one more should fail
+      expect do
+        session_manager.create_session
+      end.to raise_error(FerrumMCP::SessionError, /Maximum concurrent sessions limit reached/)
+    end
+
+    it 'allows creating new session after closing one when at limit' do
+      # Fill to capacity
+      session_ids = config.max_sessions.times.map { session_manager.create_session }
+
+      # Close one session
+      session_manager.close_session(session_ids.first)
+
+      # Should now be able to create a new session
+      expect { session_manager.create_session }.not_to raise_error
+    end
   end
 
   describe '#get_session' do

@@ -25,6 +25,14 @@ See `.env.example` for a complete example configuration.
 | `BROWSER_HEADLESS` | Run browser in headless mode | `true` |
 | `BROWSER_TIMEOUT` | Browser timeout in seconds | `60` |
 
+### Session Management
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MAX_CONCURRENT_SESSIONS` | Maximum number of concurrent browser sessions | `10` |
+
+**Note**: When the session limit is reached, new session creation will fail with an error. Close unused sessions to free up capacity.
+
 ## Multi-Browser Configuration
 
 FerrumMCP supports multiple browser configurations using structured environment variables.

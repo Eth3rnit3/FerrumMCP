@@ -3,7 +3,7 @@
 module FerrumMCP
   # Configuration class for Ferrum MCP Server
   class Configuration
-    attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :transport
+    attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :transport, :max_sessions
     attr_reader :browsers, :user_profiles, :bot_profiles
 
     # Browser configuration structure
@@ -35,6 +35,7 @@ module FerrumMCP
       @server_port = ENV.fetch('MCP_SERVER_PORT', '3000').to_i
       @log_level = ENV.fetch('LOG_LEVEL', 'debug').to_sym
       @transport = transport
+      @max_sessions = ENV.fetch('MAX_CONCURRENT_SESSIONS', '10').to_i
 
       # Load multi-browser configurations
       @browsers = load_browsers

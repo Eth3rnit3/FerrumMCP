@@ -157,4 +157,46 @@ RSpec.describe FerrumMCP::Tools::AcceptCookiesTool do
       expect(result2[:error]).to match(/no.*cookie.*consent.*banner/i)
     end
   end
+
+  describe 'XPath sanitization' do
+    let(:browser_manager) do
+      session_manager.with_session(session_manager.create_session) { |bm| return bm }
+    end
+    let(:tool) { described_class.new(browser_manager) }
+
+    it 'escapes single quotes in XPath strings' do
+      # Test the private method via send
+      result = tool.send(:escape_xpath_string, "accept'all")
+      expect(result).to eq("concat('accept', \"'\", 'all')")
+    end
+
+    it 'handles strings without quotes' do
+      result = tool.send(:escape_xpath_string, 'accept all')
+      expect(result).to eq("'accept all'")
+    end
+
+    it 'handles multiple single quotes' do
+      result = tool.send(:escape_xpath_string, "it's a 'test'")
+      # Should use concat to safely escape quotes
+      expect(result).to start_with('concat(')
+      expect(result).to include("'it'", "'s a '", "'test'")
+    end
+
+    it 'converts to lowercase' do
+      result = tool.send(:escape_xpath_string, 'ACCEPT ALL')
+      expect(result).to eq("'accept all'")
+    end
+
+    it 'prevents XPath injection by escaping special characters' do
+      # Try a malicious string that could break XPath if not escaped
+      malicious = "'] | //password | //['test"
+      result = tool.send(:escape_xpath_string, malicious)
+
+      # Should use concat which safely escapes the quotes
+      expect(result).to start_with('concat(')
+      # The malicious characters are now part of quoted strings, making them safe
+      # They're treated as literal text, not XPath operators
+      expect(result).to include("'] | //password | //['")
+    end
+  end
 end
