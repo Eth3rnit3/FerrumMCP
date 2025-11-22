@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/Eth3rnit3/FerrumMCP/security/policy
+    about: Please report security vulnerabilities via email to eth3rnit3@gmail.com
+  - name: GitHub Discussions
+    url: https://github.com/Eth3rnit3/FerrumMCP/discussions
+    about: Ask questions and discuss ideas with the community
