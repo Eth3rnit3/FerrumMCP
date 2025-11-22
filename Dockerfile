@@ -53,7 +53,6 @@ RUN bundle config set --local without 'development test' && \
 # Copy application code (only what's needed)
 COPY --chown=ferrum:ferrum lib ./lib
 COPY --chown=ferrum:ferrum bin ./bin
-COPY --chown=ferrum:ferrum config ./config
 
 # Create logs directory and set proper permissions
 RUN mkdir -p logs tmp && \
