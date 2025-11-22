@@ -17,14 +17,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CONTRIBUTING.md with contribution guidelines
 - GitHub issue and PR templates
 - Gemspec for RubyGems packaging
+- CLI command structure with `ServerRunner` and `CommandHandler` classes
+- Comprehensive help text with usage examples
+- `wait_for_selector` tool for explicit element waiting
+- `wait_for_text` tool for text-based waiting
 
 ### Changed
 - README.md restructured as table of contents
 - Documentation reorganized into dedicated `docs/` folder
+- **CLI architecture refactored** with clear separation of concerns
+  - Created `ServerRunner` class for server lifecycle management
+  - Created `CommandHandler` class for command dispatching
+  - Simplified `bin/ferrum-mcp` to minimal entry point (reduced from ~131 to ~67 lines)
+  - Removed `server.rb` to eliminate duplication
+  - Updated command format: `ferrum-mcp [COMMAND] [OPTIONS]` (e.g., `ferrum-mcp help`, `ferrum-mcp version`, `ferrum-mcp start`)
+- Test infrastructure improved with `SessionManager` integration
+  - All tool tests now use `SessionManager#with_session` pattern
+  - Consistent session management across test suite
+  - Better test isolation and cleanup
+- Updated `server_options_spec.rb` to match new CLI structure
+
+### Fixed
+- BaseTool `find_element` now uses Ferrum's native wait instead of manual polling with sleep
+- Navigation tools properly wait for network idle after page transitions
+- XSS protection in HoverTool using proper JavaScript escaping with `inspect`
+- XPath injection protection in FindByTextTool with proper quote escaping
+- Stale element retry logic in ClickTool and FillFormTool
+- EvaluateJSTool now properly returns JavaScript evaluation results
+- BrowserManager crash detection and graceful error handling
+- PressKey tool no longer duplicates characters when pressing special keys
+- ClickTool supports force clicking hidden elements with `force: true` parameter
+- DragAndDropTool supports both target elements and coordinates
+- GetTextTool supports XPath selectors with `xpath:` prefix
+- QueryShadowDOMTool for interacting with Shadow DOM elements (click, get_text, get_html, get_attribute)
 
 ### Security
 - Documented security model and trust assumptions
 - Added session limit recommendations
+- Implemented XSS and XPath injection protections in multiple tools
 
 ## [0.1.0] - 2024-11-22
 
