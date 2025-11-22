@@ -40,7 +40,7 @@ Gem::Specification.new do |spec|
     SECURITY.md
     LICENSE
     .env.example
-    server.rb
+    bin/ferrum-mcp
   ]
 
   spec.bindir = 'bin'

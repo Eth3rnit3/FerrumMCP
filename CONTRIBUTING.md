@@ -346,7 +346,7 @@ module FerrumMCP
 end
 ```
 
-2. **Register in server**: Add to `TOOL_CLASSES` in `lib/ferrum_mcp/server.rb`
+2. **Register in server**: Add to `TOOL_CLASSES` in `lib/ferrum_mcp/bin/ferrum-mcp`
 
 ```ruby
 TOOL_CLASSES = [

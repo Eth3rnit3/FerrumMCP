@@ -109,9 +109,18 @@ FerrumMCP is a **browser automation server** that implements the **Model Context
 
 ### Option 1: Docker (Recommended)
 
+**Standard Image** (Chromium only):
 ```bash
 docker pull eth3rnit3/ferrum-mcp:latest
-docker run -p 3000:3000 eth3rnit3/ferrum-mcp:latest
+docker run --security-opt seccomp=unconfined -p 3000:3000 eth3rnit3/ferrum-mcp:latest
+```
+
+**BotBrowser Image** (Anti-detection):
+```bash
+docker pull eth3rnit3/ferrum-mcp:botbrowser
+docker run --security-opt seccomp=unconfined -p 3000:3000 \
+  -v ./profiles:/app/profiles:ro \
+  eth3rnit3/ferrum-mcp:botbrowser
 ```
 
 ### Option 2: Gem Installation
@@ -127,7 +136,7 @@ ferrum-mcp start
 git clone https://github.com/Eth3rnit3/FerrumMCP.git
 cd FerrumMCP
 bundle install
-ruby server.rb
+ruby bin/ferrum-mcp
 ```
 
 **➡️ [Full installation guide](docs/GETTING_STARTED.md)**

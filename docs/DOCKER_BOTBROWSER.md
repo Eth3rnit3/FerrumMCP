@@ -147,7 +147,7 @@ docker run -d \
         "BOT_PROFILE_US=/app/profiles/us.enc:US Profile:US Chrome fingerprint",
         "ferrum-mcp:botbrowser",
         "ruby",
-        "server.rb",
+        "bin/ferrum-mcp",
         "--transport",
         "stdio"
       ],

@@ -40,7 +40,7 @@ lsof -i :3000
 kill -9 <PID>
 
 # Or use a different port
-MCP_SERVER_PORT=3001 ruby server.rb
+MCP_SERVER_PORT=3001 ruby bin/ferrum-mcp
 ```
 
 ### Error: `Zeitwerk::NameError: expected file ... to define constant ...`
@@ -105,7 +105,7 @@ BROWSER_CHROME=chrome:/usr/bin/google-chrome:Chrome:Default
 **Solution**:
 ```bash
 # Increase timeout
-BROWSER_TIMEOUT=120 ruby server.rb
+BROWSER_TIMEOUT=120 ruby bin/ferrum-mcp
 ```
 
 Or when creating session:
@@ -130,7 +130,7 @@ docker run --shm-size=2g \
 
 **Headless mode**:
 ```bash
-BROWSER_HEADLESS=true ruby server.rb
+BROWSER_HEADLESS=true ruby bin/ferrum-mcp
 ```
 
 ### Browser window appears but doesn't load pages
@@ -315,7 +315,7 @@ execute_script(
        "ferrum-mcp": {
          "command": "/Users/username/.rbenv/versions/3.3.5/bin/ruby",
          "args": [
-           "/Users/username/code/ferrum-mcp/server.rb",
+           "/Users/username/code/ferrum-mcp/bin/ferrum-mcp",
            "--transport",
            "stdio"
          ]
@@ -351,7 +351,7 @@ which ruby
 **Solution**:
 1. Test server manually:
    ```bash
-   ruby server.rb --transport stdio
+   ruby bin/ferrum-mcp --transport stdio
    # Type: {"method": "list_tools"}
    # Press Enter
    ```
@@ -474,7 +474,7 @@ list_sessions()
 close_session(session_id: "...")
 
 # Enable headless mode
-BROWSER_HEADLESS=true ruby server.rb
+BROWSER_HEADLESS=true ruby bin/ferrum-mcp
 
 # Limit concurrent sessions (manual until v1.1)
 ```
@@ -512,7 +512,7 @@ navigate(url: "...", wait_until: "domcontentloaded", session_id: "...")
 ### Enable debug logging
 
 ```bash
-LOG_LEVEL=debug ruby server.rb
+LOG_LEVEL=debug ruby bin/ferrum-mcp
 ```
 
 ### Check logs
@@ -589,7 +589,7 @@ If you're still stuck:
 
 3. **Enable debug logging**:
    ```bash
-   LOG_LEVEL=debug ruby server.rb
+   LOG_LEVEL=debug ruby bin/ferrum-mcp
    ```
 
 4. **Create a minimal reproduction**:

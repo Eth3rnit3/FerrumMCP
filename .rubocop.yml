@@ -48,7 +48,7 @@ Metrics/AbcSize:
   Max: 30
   Exclude:
     - 'lib/ferrum_mcp/tools/**/*'
-    - 'lib/ferrum_mcp/server.rb'
+    - 'lib/ferrum_mcp/bin/ferrum-mcp'
     - 'lib/ferrum_mcp/browser_manager.rb'
 
 Metrics/CyclomaticComplexity:

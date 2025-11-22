@@ -1,13 +1,15 @@
 # Docker Deployment Guide
 
-This guide covers deploying FerrumMCP using Docker, including integration with Claude Desktop.
+This guide covers deploying FerrumMCP using Docker, including integration with Claude Desktop and Claude Code.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [Docker Image](#docker-image)
+- [Docker Images](#docker-images)
 - [Running the Container](#running-the-container)
+- [BotBrowser Integration](#botbrowser-integration)
 - [Claude Desktop Integration](#claude-desktop-integration)
+- [Claude Code Integration](#claude-code-integration)
 - [Environment Variables](#environment-variables)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
@@ -16,11 +18,20 @@ This guide covers deploying FerrumMCP using Docker, including integration with C
 
 ## Quick Start
 
-### Pull from Docker Hub
+### Standard Image (Chromium Only)
 
 ```bash
 docker pull eth3rnit3/ferrum-mcp:latest
 docker run -d -p 3000:3000 --security-opt seccomp=unconfined eth3rnit3/ferrum-mcp:latest
+```
+
+### BotBrowser Image (Anti-Detection)
+
+```bash
+docker pull eth3rnit3/ferrum-mcp:botbrowser
+docker run -d -p 3000:3000 --security-opt seccomp=unconfined \
+  -v ./profiles:/app/profiles:ro \
+  eth3rnit3/ferrum-mcp:botbrowser
 ```
 
 ### Build Locally
@@ -28,22 +39,50 @@ docker run -d -p 3000:3000 --security-opt seccomp=unconfined eth3rnit3/ferrum-mc
 ```bash
 git clone https://github.com/Eth3rnit3/FerrumMCP.git
 cd FerrumMCP
+
+# Standard image
 docker build -t ferrum-mcp:latest .
-docker run -d -p 3000:3000 --security-opt seccomp=unconfined ferrum-mcp:latest
+
+# BotBrowser image
+docker build -f Dockerfile.with-botbrowser --build-arg INCLUDE_BOTBROWSER=true \
+  -t ferrum-mcp:botbrowser .
 ```
 
 The server will be available at `http://localhost:3000`.
 
 ---
 
-## Docker Image
+## Docker Images
 
-### Image Details
+We provide **two Docker images** on Docker Hub:
 
-- **Base Image**: `ruby:3.2-alpine` (AMD64)
-- **Size**: ~1.96GB
-- **User**: `ferrum` (non-root, UID 1000)
+### 1. Standard Image (`latest`)
+
+- **Tag**: `eth3rnit3/ferrum-mcp:latest`
+- **Base**: `ruby:3.2-alpine`
+- **Size**: ~1.84GB
 - **Browser**: Chromium (headless only)
+- **Use case**: General browser automation
+
+**Image details:**
+- User: `ferrum` (non-root, UID 1000)
+- Platforms: `linux/amd64`, `linux/arm64`
+- Health check included
+- Automatic cleanup of build dependencies
+
+### 2. BotBrowser Image (`botbrowser`)
+
+- **Tag**: `eth3rnit3/ferrum-mcp:botbrowser`
+- **Base**: `ruby:3.2-alpine`
+- **Size**: ~4.14GB
+- **Browsers**: Chromium + BotBrowser (257.8MB)
+- **Use case**: Anti-detection automation, fingerprint management
+
+**Features:**
+- Automatic BotBrowser download from GitHub releases
+- Multi-architecture support (amd64/arm64)
+- Profile encryption support
+- Advanced anti-detection capabilities
 
 ### What's Included
 
@@ -103,7 +142,7 @@ For Claude Desktop or other STDIO-based clients:
 docker run --rm -i \
   --security-opt seccomp=unconfined \
   ferrum-mcp:latest \
-  ruby server.rb --transport stdio
+  ruby bin/ferrum-mcp --transport stdio
 ```
 
 ### With Environment Variables
@@ -151,6 +190,117 @@ docker-compose up -d
 
 ---
 
+## BotBrowser Integration
+
+The BotBrowser image (`eth3rnit3/ferrum-mcp:botbrowser`) includes anti-detection capabilities for bypassing bot detection systems.
+
+### Downloading BotBrowser Profiles
+
+BotBrowser profiles must be obtained separately (licensed). Download from [BotBrowser](https://botbrowser.com).
+
+**Profile types:**
+- **Operating Systems**: macOS, Windows, Linux, Android
+- **Browsers**: Chrome, Firefox, Edge, Safari
+- **Formats**: `.enc` (encrypted) or unencrypted
+
+### Running with Bot Profiles
+
+**1. Create profiles directory:**
+
+```bash
+mkdir -p ./profiles
+# Copy your .enc profile files to ./profiles/
+cp ~/Downloads/*.enc ./profiles/
+```
+
+**2. Run container with profiles mounted:**
+
+```bash
+docker run -d \
+  --name ferrum-mcp-bot \
+  --security-opt seccomp=unconfined \
+  -p 3000:3000 \
+  -v "$(pwd)/profiles:/app/profiles:ro" \
+  -e "BOT_PROFILE_US=/app/profiles/us_chrome.enc:US Chrome:Chrome US fingerprint" \
+  -e "BOT_PROFILE_EU=/app/profiles/eu_firefox.enc:EU Firefox:Firefox EU fingerprint" \
+  eth3rnit3/ferrum-mcp:botbrowser
+```
+
+**Profile environment variable format:**
+```
+BOT_PROFILE_<ID>=path:name:description
+```
+
+**3. Discover available profiles:**
+
+Once the container is running, you can query available profiles via the MCP resource endpoint:
+
+```bash
+curl -X POST http://localhost:3000/mcp/v1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "resources/read",
+    "params": {
+      "uri": "ferrum://bot-profiles"
+    }
+  }'
+```
+
+**4. Create session with BotBrowser profile:**
+
+```bash
+curl -X POST http://localhost:3000/mcp/v1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "create_session",
+      "arguments": {
+        "bot_profile_id": "us",
+        "headless": true
+      }
+    }
+  }'
+```
+
+### Docker Compose with BotBrowser
+
+Create `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  ferrum-mcp-botbrowser:
+    image: eth3rnit3/ferrum-mcp:botbrowser
+    container_name: ferrum-mcp-bot
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./profiles:/app/profiles:ro
+    environment:
+      - LOG_LEVEL=info
+      - BROWSER_TIMEOUT=120
+      # BotBrowser profiles
+      - BOT_PROFILE_US=/app/profiles/us_chrome.enc:US Chrome:Chrome US fingerprint
+      - BOT_PROFILE_EU=/app/profiles/eu_firefox.enc:EU Firefox:Firefox EU fingerprint
+      - BOT_PROFILE_ANDROID=/app/profiles/android.enc:Android:Mobile fingerprint
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+```
+
+---
+
 ## Claude Desktop Integration
 
 ### Prerequisites
@@ -181,7 +331,7 @@ docker-compose up -d
         "seccomp=unconfined",
         "ferrum-mcp:latest",
         "ruby",
-        "server.rb",
+        "bin/ferrum-mcp",
         "--transport",
         "stdio"
       ],
@@ -217,6 +367,190 @@ docker build -t ferrum-mcp:latest .
 # Restart Claude Desktop
 # The new image will be used on next launch
 ```
+
+---
+
+## Claude Code Integration
+
+[Claude Code](https://claude.com/code) supports MCP servers via HTTP transport, making it perfect for Docker deployments.
+
+### Standard Image Setup
+
+**1. Start the container:**
+
+```bash
+docker run -d \
+  --name ferrum-mcp \
+  --security-opt seccomp=unconfined \
+  -p 3000:3000 \
+  eth3rnit3/ferrum-mcp:latest
+```
+
+**2. Configure Claude Code:**
+
+Add to your Claude Code MCP settings (`~/.config/claude-code/mcp-servers.json` or via settings UI):
+
+```json
+{
+  "ferrum-mcp": {
+    "url": "http://localhost:3000/mcp/v1",
+    "transport": "http"
+  }
+}
+```
+
+**3. Verify connection:**
+
+Ask Claude Code to test the connection:
+```
+Can you navigate to https://example.com and get the page title?
+```
+
+### BotBrowser Image Setup
+
+For anti-detection automation with Claude Code:
+
+**1. Prepare profiles directory:**
+
+```bash
+mkdir -p ~/ferrum-profiles
+# Copy your BotBrowser .enc profiles
+cp ~/Downloads/*.enc ~/ferrum-profiles/
+```
+
+**2. Start BotBrowser container:**
+
+```bash
+docker run -d \
+  --name ferrum-mcp-bot \
+  --security-opt seccomp=unconfined \
+  -p 3000:3000 \
+  -v ~/ferrum-profiles:/app/profiles:ro \
+  -e "BOT_PROFILE_US=/app/profiles/us_chrome.enc:US Chrome:US fingerprint" \
+  -e "BOT_PROFILE_EU=/app/profiles/eu_firefox.enc:EU Firefox:EU fingerprint" \
+  -e "BOT_PROFILE_MOBILE=/app/profiles/android.enc:Mobile:Android fingerprint" \
+  eth3rnit3/ferrum-mcp:botbrowser
+```
+
+**3. Configure Claude Code** (same as standard setup):
+
+```json
+{
+  "ferrum-mcp": {
+    "url": "http://localhost:3000/mcp/v1",
+    "transport": "http"
+  }
+}
+```
+
+**4. Use BotBrowser profiles with Claude Code:**
+
+```
+First, discover available BotBrowser profiles by reading the ferrum://bot-profiles resource.
+Then create a session with bot_profile_id "us" and navigate to a protected website.
+```
+
+Claude Code will:
+1. Query the `ferrum://bot-profiles` resource to see available profiles
+2. Create a session with the specified profile
+3. Perform browser automation with anti-detection enabled
+
+### Docker Compose for Claude Code
+
+Create `docker-compose.yml` for persistent setup:
+
+```yaml
+version: '3.8'
+
+services:
+  # Standard browser automation
+  ferrum-mcp:
+    image: eth3rnit3/ferrum-mcp:latest
+    container_name: ferrum-mcp
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - "3000:3000"
+    environment:
+      - LOG_LEVEL=info
+      - BROWSER_TIMEOUT=120
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # BotBrowser (anti-detection)
+  ferrum-mcp-bot:
+    image: eth3rnit3/ferrum-mcp:botbrowser
+    container_name: ferrum-mcp-bot
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - "3001:3000"  # Different port to run alongside standard
+    volumes:
+      - ~/ferrum-profiles:/app/profiles:ro
+    environment:
+      - LOG_LEVEL=info
+      - BROWSER_TIMEOUT=120
+      - BOT_PROFILE_US=/app/profiles/us_chrome.enc:US:Chrome US
+      - BOT_PROFILE_EU=/app/profiles/eu_chrome.enc:EU:Chrome EU
+      - BOT_PROFILE_MOBILE=/app/profiles/android.enc:Mobile:Android
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+```
+
+**Start both:**
+```bash
+docker-compose up -d
+```
+
+**Configure both in Claude Code:**
+```json
+{
+  "ferrum-mcp-standard": {
+    "url": "http://localhost:3000/mcp/v1",
+    "transport": "http"
+  },
+  "ferrum-mcp-botbrowser": {
+    "url": "http://localhost:3001/mcp/v1",
+    "transport": "http"
+  }
+}
+```
+
+### Example Usage with Claude Code
+
+**Discover resources:**
+```
+Read the ferrum://browsers resource to see what browsers are available.
+Then read ferrum://bot-profiles to see BotBrowser profiles.
+```
+
+**Create session with BotBrowser:**
+```
+Create a browser session using the "us" BotBrowser profile with headless mode enabled.
+```
+
+**Automated workflow:**
+```
+Using the BotBrowser session:
+1. Navigate to https://protected-site.com
+2. Accept cookies if a banner appears
+3. Fill the login form with username "test" and password "test123"
+4. Click the login button
+5. Take a screenshot of the result
+```
+
+Claude Code will automatically:
+- Use the BotBrowser anti-detection profile
+- Handle cookie banners intelligently
+- Execute the workflow with proper fingerprint masking
 
 ---
 

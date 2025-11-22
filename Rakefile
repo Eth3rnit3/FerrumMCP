@@ -4,7 +4,7 @@ require 'bundler/setup'
 
 desc 'Start the MCP server'
 task :server do
-  ruby 'server.rb'
+  ruby 'bin/ferrum-mcp'
 end
 
 desc 'Run RuboCop'

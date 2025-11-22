@@ -49,9 +49,9 @@ bundle install
 #### HTTP Transport (Default)
 
 ```bash
-ruby server.rb
+ruby bin/ferrum-mcp
 # or explicitly
-ruby server.rb --transport http
+ruby bin/ferrum-mcp --transport http
 ```
 
 The server will start on `http://0.0.0.0:3000` by default.
@@ -61,7 +61,7 @@ The server will start on `http://0.0.0.0:3000` by default.
 For MCP clients that require stdio protocol (e.g., Claude Desktop):
 
 ```bash
-ruby server.rb --transport stdio
+ruby bin/ferrum-mcp --transport stdio
 ```
 
 #### Help and Options
@@ -69,7 +69,7 @@ ruby server.rb --transport stdio
 View all available options:
 
 ```bash
-ruby server.rb --help
+ruby bin/ferrum-mcp --help
 ```
 
 ## Connect Your AI Assistant
@@ -114,7 +114,7 @@ docker pull eth3rnit3/ferrum-mcp:latest
         "seccomp=unconfined",
         "ferrum-mcp:latest",
         "ruby",
-        "server.rb",
+        "bin/ferrum-mcp",
         "--transport",
         "stdio"
       ],
@@ -143,7 +143,7 @@ If you prefer running FerrumMCP locally without Docker:
     "ferrum-mcp": {
       "command": "/path/to/ruby",
       "args": [
-        "/path/to/ferrum-mcp/server.rb",
+        "/path/to/ferrum-mcp/bin/ferrum-mcp",
         "--transport",
         "stdio"
       ],
@@ -157,7 +157,7 @@ If you prefer running FerrumMCP locally without Docker:
 
 **Important**: Replace the paths with your actual paths:
 - **Ruby path**: Find it with `which ruby` (e.g., `/Users/username/.rbenv/versions/3.3.5/bin/ruby`)
-- **Server path**: Full path to your `server.rb` (e.g., `/Users/username/code/ferrum-mcp/server.rb`)
+- **Server path**: Full path to your `bin/ferrum-mcp` (e.g., `/Users/username/code/ferrum-mcp/bin/ferrum-mcp`)
 
 **Example with rbenv**:
 ```json
@@ -166,7 +166,7 @@ If you prefer running FerrumMCP locally without Docker:
     "ferrum-mcp": {
       "command": "/Users/username/.rbenv/versions/3.3.5/bin/ruby",
       "args": [
-        "/Users/username/code/ferrum-mcp/server.rb",
+        "/Users/username/code/ferrum-mcp/bin/ferrum-mcp",
         "--transport",
         "stdio"
       ],
@@ -186,7 +186,7 @@ Alternative setup using HTTP (requires manual server start):
 
 ```bash
 # Start the server
-ruby server.rb --transport http
+ruby bin/ferrum-mcp --transport http
 
 # In another terminal, add to Claude
 claude mcp add --transport http ferrum-mcp http://0.0.0.0:3000/mcp
@@ -196,7 +196,7 @@ claude mcp add --transport http ferrum-mcp http://0.0.0.0:3000/mcp
 
 For any MCP-compatible client:
 - **HTTP Transport**: Configure pointing to `http://0.0.0.0:3000/mcp`
-- **STDIO Transport**: Run `ruby server.rb --transport stdio` as a subprocess
+- **STDIO Transport**: Run `ruby bin/ferrum-mcp --transport stdio` as a subprocess
 
 ## Usage Examples
 

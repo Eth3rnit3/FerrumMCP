@@ -367,7 +367,7 @@ Group=ferrum
 WorkingDirectory=/opt/ferrum-mcp
 Environment="PATH=/home/ferrum/.rbenv/shims:/home/ferrum/.rbenv/bin:/usr/local/bin:/usr/bin:/bin"
 EnvironmentFile=/opt/ferrum-mcp/.env
-ExecStart=/home/ferrum/.rbenv/shims/ruby /opt/ferrum-mcp/server.rb --transport http
+ExecStart=/home/ferrum/.rbenv/shims/ruby /opt/ferrum-mcp/bin/ferrum-mcp --transport http
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
