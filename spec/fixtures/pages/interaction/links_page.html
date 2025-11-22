@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Links Interaction Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    a { display: block; margin: 10px 0; padding: 10px; background: #f0f0f0; text-decoration: none; color: #333; }
+    a:hover { background: #e0e0e0; }
+    .external-link { background: #e3f2fd; }
+    .download-link { background: #fff3e0; }
+  </style>
+</head>
+<body>
+  <h1>Links Interaction Test Page</h1>
+
+  <a href="#section1" id="anchor-link">Internal Anchor Link</a>
+  <a href="/fixtures/interaction/form_page" id="internal-link">Internal Page Link</a>
+  <a href="https://example.com" id="external-link" class="external-link" target="_blank">External Link</a>
+  <a href="/download/file.pdf" id="download-link" class="download-link" download>Download Link</a>
+  <a href="javascript:void(0);" id="javascript-link">JavaScript Link</a>
+
+  <div id="section1" style="margin-top: 500px; padding: 20px; background: #f9f9f9;">
+    <h2>Section 1</h2>
+    <p>This is the anchor target section.</p>
+  </div>
+
+  <div id="click-result" style="margin-top: 20px; padding: 10px; background: #e8f5e9; display: none;"></div>
+
+  <script>
+    document.getElementById('javascript-link').addEventListener('click', function(e) {
+      e.preventDefault();
+      const result = document.getElementById('click-result');
+      result.style.display = 'block';
+      result.textContent = 'JavaScript link clicked!';
+      result.setAttribute('data-clicked', 'true');
+    });
+  </script>
+</body>
+</html>

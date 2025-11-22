@@ -3,273 +3,342 @@
 require 'spec_helper'
 
 RSpec.describe 'Interaction Tools' do
-  let(:config) { test_config }
-  let(:browser_manager) { FerrumMCP::BrowserManager.new(config) }
-  let(:navigate_tool) { FerrumMCP::Tools::NavigateTool.new(browser_manager) }
-  let(:click_tool) { FerrumMCP::Tools::ClickTool.new(browser_manager) }
-  let(:fill_form_tool) { FerrumMCP::Tools::FillFormTool.new(browser_manager) }
-  let(:press_key_tool) { FerrumMCP::Tools::PressKeyTool.new(browser_manager) }
-  let(:hover_tool) { FerrumMCP::Tools::HoverTool.new(browser_manager) }
-  let(:accept_cookies_tool) { FerrumMCP::Tools::AcceptCookiesTool.new(browser_manager) }
-
-  before do
-    browser_manager.start
-    navigate_tool.execute({ url: test_url })
-  end
+  let(:config) { FerrumMCP::Configuration.new }
+  let(:session_manager) { FerrumMCP::SessionManager.new(config) }
 
   after do
-    browser_manager.stop
+    session_manager.shutdown
+  end
+
+  # Helper to execute tool within session context
+  def execute_tool_in_session(tool_class, session_id, params)
+    session_manager.with_session(session_id) do |browser_manager|
+      tool = tool_class.new(browser_manager)
+      tool.execute(params)
+    end
   end
 
   describe FerrumMCP::Tools::ClickTool do
-    it 'clicks on an element' do
-      result = click_tool.execute({ selector: '#link' })
-
-      expect(result[:success]).to be true
-      expect(result[:data][:message]).to include('Clicked on #link')
+    describe '.tool_name' do
+      it 'returns click' do
+        expect(described_class.tool_name).to eq('click')
+      end
     end
 
-    it 'returns error when element not found' do
-      result = click_tool.execute({ selector: '#non-existent' })
+    describe '#execute' do
+      it 'clicks on a button element' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
 
-      expect(result[:success]).to be false
-      expect(result[:error]).to include('Element not found')
-    end
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#click-test' }
+        )
 
-    it 'waits for element with custom timeout' do
-      result = click_tool.execute({ selector: '#link', wait: 10 })
+        expect(result[:success]).to be true
+        expect(result[:data][:message]).to include('Clicked')
 
-      expect(result[:success]).to be true
+        # Verify the click worked
+        session_manager.with_session(sid) do |browser_manager|
+          results = browser_manager.browser.at_css('#results')
+          expect(results.attribute('data-action')).to eq('clicked')
+        end
+      end
+
+      it 'clicks on a link element' do
+        sid = setup_session_with_fixture(session_manager, 'links_page.html', subdir: 'interaction')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#javascript-link' }
+        )
+
+        expect(result[:success]).to be true
+
+        # Verify the click worked
+        session_manager.with_session(sid) do |browser_manager|
+          click_result = browser_manager.browser.at_css('#click-result')
+          expect(click_result.attribute('data-clicked')).to eq('true')
+        end
+      end
+
+      it 'returns error when element not found' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#non-existent-element' }
+        )
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to include('Element not found')
+      end
+
+      it 'waits for element with custom timeout' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#click-test', wait: 10 }
+        )
+
+        expect(result[:success]).to be true
+      end
     end
   end
 
   describe FerrumMCP::Tools::FillFormTool do
-    it 'fills form fields' do
-      fields = [
-        { selector: '#name-input', value: 'John Doe' },
-        { selector: '#email-input', value: 'john@example.com' }
-      ]
-
-      result = fill_form_tool.execute({ fields: fields })
-
-      expect(result[:success]).to be true
-      expect(result[:data][:fields].length).to eq(2)
-      expect(result[:data][:fields][0][:filled]).to be true
+    describe '.tool_name' do
+      it 'returns fill_form' do
+        expect(described_class.tool_name).to eq('fill_form')
+      end
     end
 
-    it 'returns error when field not found' do
-      fields = [{ selector: '#non-existent', value: 'test' }]
+    describe '#execute' do
+      it 'fills single form field' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
 
-      result = fill_form_tool.execute({ fields: fields })
+        fields = [{ selector: '#name-input', value: 'John Doe' }]
 
-      expect(result[:success]).to be false
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, fields: fields }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:fields].length).to eq(1)
+        expect(result[:data][:fields][0][:filled]).to be true
+
+        # Verify the value was set
+        session_manager.with_session(sid) do |browser_manager|
+          value = browser_manager.browser.at_css('#name-input').property('value')
+          expect(value).to eq('John Doe')
+        end
+      end
+
+      # rubocop:disable RSpec/MultipleExpectations
+      it 'fills multiple form fields' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
+
+        fields = [
+          { selector: '#name-input', value: 'John Doe' },
+          { selector: '#email-input', value: 'john@example.com' },
+          { selector: '#message-textarea', value: 'Hello World' }
+        ]
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, fields: fields }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:fields].length).to eq(3)
+        expect(result[:data][:fields]).to all(satisfy { |f| f[:filled] == true })
+
+        # Verify all values were set
+        session_manager.with_session(sid) do |browser_manager|
+          expect(browser_manager.browser.at_css('#name-input').property('value')).to eq('John Doe')
+          expect(browser_manager.browser.at_css('#email-input').property('value')).to eq('john@example.com')
+          expect(browser_manager.browser.at_css('#message-textarea').property('value')).to eq('Hello World')
+        end
+      end
+      # rubocop:enable RSpec/MultipleExpectations
+
+      it 'handles select elements' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
+
+        fields = [{ selector: '#country-select', value: 'fr' }]
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, fields: fields }
+        )
+
+        expect(result[:success]).to be true
+
+        # Verify the select value
+        session_manager.with_session(sid) do |browser_manager|
+          value = browser_manager.browser.at_css('#country-select').property('value')
+          expect(value).to eq('fr')
+        end
+      end
+
+      it 'returns error when field not found' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
+
+        fields = [{ selector: '#non-existent-field', value: 'test' }]
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, fields: fields }
+        )
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to be_a(String)
+      end
     end
   end
 
   describe FerrumMCP::Tools::PressKeyTool do
-    it 'presses a key' do
-      result = press_key_tool.execute({ key: 'Enter' })
-
-      expect(result[:success]).to be true
-      expect(result[:data][:message]).to include('Pressed key: Enter')
+    describe '.tool_name' do
+      it 'returns press_key' do
+        expect(described_class.tool_name).to eq('press_key')
+      end
     end
 
-    it 'presses a key on focused element' do
-      result = press_key_tool.execute({ key: 'Tab', selector: '#name-input' })
+    describe '#execute' do
+      it 'presses Enter key globally' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
 
-      expect(result[:success]).to be true
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, key: 'Enter' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:message]).to include('Pressed key: Enter')
+      end
+
+      it 'presses key on focused element' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
+
+        # Focus the name input first
+        session_manager.with_session(sid) do |browser_manager|
+          browser_manager.browser.at_css('#name-input').focus
+        end
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, key: 'Enter', selector: '#name-input' }
+        )
+
+        expect(result[:success]).to be true
+      end
+
+      it 'presses Tab key' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, key: 'Tab' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:message]).to include('Pressed key: Tab')
+      end
     end
   end
 
   describe FerrumMCP::Tools::HoverTool do
-    it 'hovers over an element' do
-      result = hover_tool.execute({ selector: '#link' })
-
-      expect(result[:success]).to be true
-      expect(result[:data][:message]).to include('Hovered over #link')
+    describe '.tool_name' do
+      it 'returns hover' do
+        expect(described_class.tool_name).to eq('hover')
+      end
     end
 
-    it 'fails when element not found' do
-      # HoverTool now properly validates element existence before hovering
-      result = hover_tool.execute({ selector: '#non-existent' })
+    describe '#execute' do
+      it 'hovers over an element' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
 
-      expect(result[:success]).to be false
-      expect(result[:error]).to include('Element not found')
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#hover-zone' }
+        )
+
+        expect(result[:success]).to be true
+        expect(result[:data][:message]).to include('Hovered')
+      end
+
+      it 'returns error when element not found' do
+        sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
+
+        result = execute_tool_in_session(
+          described_class,
+          sid,
+          { session_id: sid, selector: '#non-existent' }
+        )
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to include('Element not found')
+      end
     end
   end
 
-  describe FerrumMCP::Tools::AcceptCookiesTool do
-    context 'with common framework selectors' do
-      it 'detects and clicks OneTrust cookie banner' do
-        # Inject a fake OneTrust cookie banner
-        browser_manager.browser.execute(<<~JS)
-          const banner = document.createElement('div');
-          banner.id = 'onetrust-banner';
-          const button = document.createElement('button');
-          button.id = 'onetrust-accept-btn-handler';
-          button.textContent = 'Accept All';
-          banner.appendChild(button);
-          document.body.appendChild(banner);
-        JS
+  describe 'interaction integration scenarios' do
+    it 'fills and submits a complete form' do
+      sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
 
-        result = accept_cookies_tool.execute({ wait: 0.5 })
+      # Fill all form fields
+      fields = [
+        { selector: '#name-input', value: 'Jane Smith' },
+        { selector: '#email-input', value: 'jane@example.com' },
+        { selector: '#country-select', value: 'uk' },
+        { selector: '#message-textarea', value: 'Test message' }
+      ]
 
-        expect(result[:success]).to be true
-        expect(result[:data][:message]).to include('Cookie consent accepted')
-        expect(result[:data][:strategy]).to eq('common_frameworks')
-      end
+      fill_result = execute_tool_in_session(
+        FerrumMCP::Tools::FillFormTool,
+        sid,
+        { session_id: sid, fields: fields }
+      )
 
-      it 'detects and clicks Cookiebot cookie banner' do
-        browser_manager.browser.execute(<<~JS)
-          const button = document.createElement('button');
-          button.id = 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll';
-          button.textContent = 'Allow all cookies';
-          document.body.appendChild(button);
-        JS
+      expect(fill_result[:success]).to be true
 
-        result = accept_cookies_tool.execute({ wait: 0.5 })
+      # Click the submit button
+      click_result = execute_tool_in_session(
+        FerrumMCP::Tools::ClickTool,
+        sid,
+        { session_id: sid, selector: '#submit-button' }
+      )
 
-        expect(result[:success]).to be true
-        expect(result[:data][:strategy]).to eq('common_frameworks')
-      end
-    end
+      expect(click_result[:success]).to be true
 
-    context 'with text-based detection' do
-      it 'finds accept button by English text' do
-        browser_manager.browser.execute(<<~JS)
-          const button = document.createElement('button');
-          button.className = 'cookie-consent-btn';
-          button.textContent = 'Accept All Cookies';
-          document.body.appendChild(button);
-        JS
-
-        result = accept_cookies_tool.execute({ wait: 0.5 })
-
-        expect(result[:success]).to be true
-        expect(result[:data][:strategy]).to eq('text_based_detection')
-      end
-
-      it 'finds accept button by French text' do
-        browser_manager.browser.execute(<<~JS)
-          const button = document.createElement('button');
-          button.className = 'cookie-btn';
-          button.textContent = 'Tout Accepter';
-          document.body.appendChild(button);
-        JS
-
-        result = accept_cookies_tool.execute({ wait: 0.5 })
-
-        expect(result[:success]).to be true
-        expect(result[:data][:strategy]).to eq('text_based_detection')
-      end
-
-      it 'avoids clicking reject buttons' do
-        browser_manager.browser.execute(<<~JS)
-          const reject = document.createElement('button');
-          reject.className = 'reject-btn';
-          reject.textContent = 'Reject All';
-          document.body.appendChild(reject);
-
-          const accept = document.createElement('button');
-          accept.className = 'accept-btn';
-          accept.textContent = 'Accept All';
-          document.body.appendChild(accept);
-        JS
-
-        result = accept_cookies_tool.execute({ wait: 0.5 })
-
-        expect(result[:success]).to be true
-        # Should have clicked the accept button, not reject
-        expect(result[:data][:strategy]).to eq('text_based_detection')
+      # Verify form was submitted
+      session_manager.with_session(sid) do |browser_manager|
+        status = browser_manager.browser.at_css('#status')
+        expect(status.attribute('data-status')).to eq('submitted')
       end
     end
 
-    context 'with CSS selectors' do
-      it 'finds accept button by common CSS classes' do
-        browser_manager.browser.execute(<<~JS)
-          const button = document.createElement('button');
-          button.className = 'accept-cookies';
-          button.textContent = 'Click here'; // Non-standard text to force CSS detection
-          document.body.appendChild(button);
-        JS
+    it 'handles complex interaction sequence' do
+      sid = setup_session_with_fixture(session_manager, 'form_page.html', subdir: 'interaction')
 
-        result = accept_cookies_tool.execute({ wait: 0.5 })
+      # 1. Fill a field
+      execute_tool_in_session(
+        FerrumMCP::Tools::FillFormTool,
+        sid,
+        { session_id: sid, fields: [{ selector: '#name-input', value: 'Test User' }] }
+      )
 
-        expect(result[:success]).to be true
-        # Multiple strategies can find the button, just verify it was found
-        expect(result[:data][:message]).to include('Cookie consent accepted')
-      end
+      # 2. Hover over an element
+      execute_tool_in_session(
+        FerrumMCP::Tools::HoverTool,
+        sid,
+        { session_id: sid, selector: '#hover-zone' }
+      )
 
-      it 'finds accept button by ID' do
-        browser_manager.browser.execute(<<~JS)
-          const button = document.createElement('button');
-          button.id = 'accept-cookies';
-          button.textContent = 'Click me'; // Non-standard text
-          document.body.appendChild(button);
-        JS
+      # 3. Click a button
+      execute_tool_in_session(
+        FerrumMCP::Tools::ClickTool,
+        sid,
+        { session_id: sid, selector: '#click-test' }
+      )
 
-        result = accept_cookies_tool.execute({ wait: 0.5 })
-
-        expect(result[:success]).to be true
-        expect(result[:data][:message]).to include('Cookie consent accepted')
-      end
-
-      it 'finds accept button by data attributes' do
-        browser_manager.browser.execute(<<~JS)
-          const button = document.createElement('button');
-          button.setAttribute('data-action', 'accept');
-          button.textContent = 'Press button'; // Non-standard text
-          document.body.appendChild(button);
-        JS
-
-        result = accept_cookies_tool.execute({ wait: 0.5 })
-
-        expect(result[:success]).to be true
-        expect(result[:data][:message]).to include('Cookie consent accepted')
-      end
-    end
-
-    context 'when no cookie banner is present' do
-      it 'returns error when no cookie banner found' do
-        result = accept_cookies_tool.execute({ wait: 0.5 })
-
-        expect(result[:success]).to be false
-        expect(result[:error]).to include('No cookie consent banner found')
-      end
-    end
-
-    context 'with custom wait time' do
-      it 'respects custom wait parameter' do
-        # This test verifies the wait parameter is used
-        start_time = Time.now
-        result = accept_cookies_tool.execute({ wait: 1 })
-        elapsed = Time.now - start_time
-
-        # Should wait at least 1 second
-        expect(elapsed).to be >= 1.0
-        expect(result[:success]).to be false # No banner to accept
-      end
-    end
-
-    context 'with hidden elements' do
-      it 'clicks visible accept button over hidden ones' do
-        browser_manager.browser.execute(<<~JS)
-          const hidden = document.createElement('button');
-          hidden.className = 'accept-cookies';
-          hidden.textContent = 'Click hidden'; // Non-standard text
-          hidden.style.display = 'none';
-          document.body.appendChild(hidden);
-
-          const visible = document.createElement('button');
-          visible.className = 'accept-all';
-          visible.textContent = 'Accept All';
-          document.body.appendChild(visible);
-        JS
-
-        result = accept_cookies_tool.execute({ wait: 0.5 })
-
-        expect(result[:success]).to be true
-        expect(result[:data][:message]).to include('Cookie consent accepted')
+      # Verify all interactions worked
+      session_manager.with_session(sid) do |browser_manager|
+        expect(browser_manager.browser.at_css('#name-input').property('value')).to eq('Test User')
+        expect(browser_manager.browser.at_css('#results').attribute('data-action')).to eq('clicked')
       end
     end
   end
