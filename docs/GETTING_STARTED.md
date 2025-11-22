@@ -76,12 +76,66 @@ ruby server.rb --help
 
 ### Claude Desktop
 
-#### Using STDIO Transport (Recommended)
+#### Option 1: Using Docker (Recommended)
 
-Add this configuration to your Claude Desktop config file:
+The easiest and most reliable way to run FerrumMCP with Claude Desktop is via Docker. This eliminates dependencies and provides a consistent environment.
+
+**Prerequisites:**
+- Docker installed and running
+- FerrumMCP Docker image built or pulled
+
+**Configuration file location:**
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+**Build the image:**
+```bash
+cd /path/to/ferrum-mcp
+docker build -t ferrum-mcp:latest .
+```
+
+**Or pull from Docker Hub:**
+```bash
+docker pull eth3rnit3/ferrum-mcp:latest
+```
+
+**Claude Desktop configuration:**
+```json
+{
+  "mcpServers": {
+    "ferrum-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--security-opt",
+        "seccomp=unconfined",
+        "ferrum-mcp:latest",
+        "ruby",
+        "server.rb",
+        "--transport",
+        "stdio"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+**Important notes:**
+- `--rm`: Automatically removes the container when it stops
+- `-i`: Interactive mode (required for stdio communication)
+- `--security-opt seccomp=unconfined`: Required for Chromium to run in Docker
+- **Headless mode is mandatory** in Docker (automatically enforced)
+- Sessions with `headless: false` will be rejected with an error
+
+After updating the config, **restart Claude Desktop**.
+
+#### Option 2: Using Local Ruby Installation
+
+If you prefer running FerrumMCP locally without Docker:
 
 ```json
 {

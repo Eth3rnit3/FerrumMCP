@@ -15,6 +15,7 @@
 | Documentation | Description |
 |---------------|-------------|
 | [**Getting Started**](docs/GETTING_STARTED.md) | Installation, setup, and first steps |
+| [**Docker Deployment**](docs/DOCKER.md) | Complete Docker guide with Claude Desktop integration |
 | [**API Reference**](docs/API_REFERENCE.md) | Complete documentation of all 27+ tools |
 | [**Configuration**](docs/CONFIGURATION.md) | Environment variables and advanced configuration |
 | [**Troubleshooting**](docs/TROUBLESHOOTING.md) | Common issues and solutions |

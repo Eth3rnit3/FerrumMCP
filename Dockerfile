@@ -1,6 +1,6 @@
 # Use Ruby 3.2 with Alpine for smaller image size
-# Force AMD64 platform for M1/M2/M3 Mac compatibility with Chrome
-FROM --platform=linux/amd64 ruby:3.2-alpine
+# Supports both AMD64 and ARM64 platforms
+FROM ruby:3.2-alpine
 
 # Install runtime dependencies and build dependencies
 RUN apk add --no-cache \
