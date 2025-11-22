@@ -15,7 +15,12 @@ RUN apk add --no-cache \
     build-base \
     wget \
     xvfb \
-    xvfb-run
+    xvfb-run \
+    vips-dev
+
+# Create non-root user
+RUN addgroup -g 1000 ferrum && \
+    adduser -D -u 1000 -G ferrum ferrum
 
 # Set Chrome path for Ferrum
 ENV BROWSER_PATH=/usr/bin/chromium-browser \
@@ -35,6 +40,13 @@ RUN bundle install --without development test
 
 # Copy application code
 COPY . .
+
+# Create logs directory and set proper permissions
+RUN mkdir -p logs tmp && \
+    chown -R ferrum:ferrum /app
+
+# Switch to non-root user
+USER ferrum
 
 # Expose the server port
 EXPOSE 3000
