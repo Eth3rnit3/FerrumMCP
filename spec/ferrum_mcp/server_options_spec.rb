@@ -4,31 +4,30 @@ require 'spec_helper'
 require 'open3'
 
 RSpec.describe 'Server CLI Options' do
-  let(:server_path) { File.expand_path('../../server.rb', __dir__) }
+  let(:server_path) { File.expand_path('../../bin/ferrum-mcp', __dir__) }
 
   describe '--help option' do
     # rubocop:disable RSpec/MultipleExpectations
     it 'displays help message with available options' do
-      stdout, _, status = Open3.capture3('ruby', server_path, '--help')
+      stdout, _, status = Open3.capture3('ruby', server_path, 'help')
 
       expect(status.success?).to be true
-      expect(stdout).to include('Usage:')
-      expect(stdout).to include('--transport TRANSPORT')
-      expect(stdout).to include('http  - HTTP server (default)')
-      expect(stdout).to include('stdio - Standard input/output')
+      expect(stdout).to include('USAGE:')
+      expect(stdout).to include('--transport TYPE')
+      expect(stdout).to include('Transport type: http or stdio')
       expect(stdout).to include('--help')
       expect(stdout).to include('--version')
-      expect(stdout).to include('Environment variables:')
+      expect(stdout).to include('ENVIRONMENT VARIABLES:')
     end
     # rubocop:enable RSpec/MultipleExpectations
   end
 
   describe '--version option' do
     it 'displays version information' do
-      stdout, _, status = Open3.capture3('ruby', server_path, '--version')
+      stdout, _, status = Open3.capture3('ruby', server_path, 'version')
 
       expect(status.success?).to be true
-      expect(stdout).to include('Ferrum MCP Server')
+      expect(stdout).to include('FerrumMCP')
       expect(stdout).to include(FerrumMCP::VERSION)
     end
   end
@@ -36,7 +35,7 @@ RSpec.describe 'Server CLI Options' do
   describe '--transport option' do
     it 'accepts http transport' do
       # Start server in background and kill it quickly
-      pid = spawn('ruby', server_path, '--transport', 'http',
+      pid = spawn('ruby', server_path, 'start', '--transport', 'http',
                   out: File::NULL, err: File::NULL)
       sleep 1
 
@@ -57,7 +56,7 @@ RSpec.describe 'Server CLI Options' do
     it 'accepts stdio transport' do
       # For stdio, start it and immediately close stdin
       # This should cause it to exit gracefully
-      pid = spawn('ruby', server_path, '--transport', 'stdio',
+      pid = spawn('ruby', server_path, 'start', '--transport', 'stdio',
                   in: :close, out: File::NULL, err: File::NULL)
 
       # Wait for process to exit (with timeout to prevent hanging)
@@ -100,7 +99,7 @@ RSpec.describe 'Server CLI Options' do
 
     it 'rejects invalid transport' do
       _, stderr, status = Open3.capture3(
-        'ruby', server_path, '--transport', 'invalid'
+        'ruby', server_path, 'start', '--transport', 'invalid'
       )
 
       expect(status.success?).to be false
@@ -112,7 +111,7 @@ RSpec.describe 'Server CLI Options' do
     it 'validates browser path when provided' do
       stdout, _, status = Open3.capture3(
         { 'BROWSER_PATH' => '/non/existent/browser' },
-        'ruby', server_path
+        'ruby', server_path, 'start'
       )
 
       expect(status.success?).to be false
@@ -124,7 +123,7 @@ RSpec.describe 'Server CLI Options' do
       # Quick test that server starts without errors
       pid = spawn(
         { 'BROWSER_HEADLESS' => 'true', 'LOG_LEVEL' => 'error' },
-        'ruby', server_path, '--transport', 'http',
+        'ruby', server_path, 'start', '--transport', 'http',
         out: File::NULL, err: File::NULL
       )
       sleep 2

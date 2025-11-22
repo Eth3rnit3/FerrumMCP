@@ -2,9 +2,9 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require 'fileutils'
+require_relative '../lib/ferrum_mcp/cli/command_handler'
 
-# Parse command line arguments
+# Default options
 options = {
   transport: 'http',
   host: ENV.fetch('MCP_SERVER_HOST', '0.0.0.0'),
@@ -14,6 +14,7 @@ options = {
 
 command = ARGV[0]
 
+# Parse options for 'start' command
 if command == 'start' || command.nil?
   ARGV.shift if command == 'start'
 
@@ -57,74 +58,7 @@ if command == 'start' || command.nil?
       exit
     end
   end.parse!
-
-  # Set environment variables from options
-  ENV['MCP_SERVER_HOST'] = options[:host]
-  ENV['MCP_SERVER_PORT'] = options[:port].to_s
-  ENV['LOG_LEVEL'] = options[:log_level]
-
-  # Require and start server
-  require_relative '../server'
-
-  # server.rb handles the actual startup based on --transport flag
-  # which is still in ARGV
-
-elsif command == 'version' || command == '-v' || command == '--version'
-  require_relative '../lib/ferrum_mcp/version'
-  puts "FerrumMCP #{FerrumMCP::VERSION}"
-
-elsif command == 'help' || command == '-h' || command == '--help'
-  puts <<~HELP
-    FerrumMCP - Browser Automation Server for Model Context Protocol
-
-    USAGE:
-        ferrum-mcp [COMMAND] [OPTIONS]
-
-    COMMANDS:
-        start       Start the FerrumMCP server (default)
-        version     Show version information
-        help        Show this help message
-
-    OPTIONS:
-        -t, --transport TYPE        Transport type: http or stdio (default: http)
-        -H, --host HOST             Server host (default: 0.0.0.0)
-        -p, --port PORT             Server port (default: 3000)
-        -l, --log-level LEVEL       Log level: debug, info, warn, error (default: info)
-        -h, --help                  Show this help message
-        -v, --version               Show version
-
-    EXAMPLES:
-        # Start HTTP server on default port
-        ferrum-mcp start
-
-        # Start HTTP server on custom port
-        ferrum-mcp start --port 8080
-
-        # Start STDIO server (for Claude Desktop)
-        ferrum-mcp start --transport stdio
-
-        # Start with debug logging
-        ferrum-mcp start --log-level debug
-
-    ENVIRONMENT VARIABLES:
-        MCP_SERVER_HOST             Server host (default: 0.0.0.0)
-        MCP_SERVER_PORT             Server port (default: 3000)
-        BROWSER_HEADLESS            Run browser in headless mode (default: true)
-        BROWSER_TIMEOUT             Browser timeout in seconds (default: 60)
-        LOG_LEVEL                   Log level (default: info)
-
-        See .env.example for all configuration options.
-
-    DOCUMENTATION:
-        Getting Started: https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/GETTING_STARTED.md
-        API Reference:   https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/API_REFERENCE.md
-        Configuration:   https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/CONFIGURATION.md
-
-    For more information, visit: https://github.com/Eth3rnit3/FerrumMCP
-  HELP
-
-else
-  warn "Unknown command: #{command}"
-  warn "Run 'ferrum-mcp help' for usage information"
-  exit 1
 end
+
+# Delegate to command handler
+FerrumMCP::CLI::CommandHandler.handle(command, options)
