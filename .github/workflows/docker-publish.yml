@@ -53,8 +53,8 @@ jobs:
             type=ref,event=branch
             # Tag with PR number for pull requests
             type=ref,event=pr
-            # Tag with git sha
-            type=sha,prefix={{branch}}-
+            # Tag with git sha (short form)
+            type=sha
 
       - name: Build and push Standard Docker image
         uses: docker/build-push-action@v5
@@ -108,8 +108,8 @@ jobs:
             type=ref,event=branch,suffix=-botbrowser
             # Tag with PR number-botbrowser for pull requests
             type=ref,event=pr,suffix=-botbrowser
-            # Tag with git sha-botbrowser
-            type=sha,prefix={{branch}}-,suffix=-botbrowser
+            # Tag with git sha-botbrowser (short form)
+            type=sha,suffix=-botbrowser
 
       - name: Build and push BotBrowser Docker image
         uses: docker/build-push-action@v5
