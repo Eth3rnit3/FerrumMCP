@@ -433,6 +433,58 @@ ls /opt/botbrowser/chrome
 BROWSER_BOTBROWSER=botbrowser:/opt/botbrowser/chrome:BotBrowser:Anti-detection
 ```
 
+### Error: Popup "You are currently using a demo profile" or "Session with given id not found" after navigation
+
+**Symptoms**:
+- BotBrowser shows a popup about demo/invalid profile on startup
+- "Session with given id not found" error after navigation
+- CDP session loss between tool calls
+- Tools work individually but fail when chained
+
+**Cause**: Invalid, expired, or demo BotBrowser profile
+
+**How BotBrowser profiles work**:
+- BotBrowser uses encrypted `.enc` profile files for anti-detection fingerprints
+- Each profile contains browser fingerprint data (user agent, canvas, WebGL, etc.)
+- **Demo profiles**: Limited functionality, unstable CDP, cause session loss
+- **Trial/Premium profiles**: Full functionality, stable CDP session
+
+Demo or invalid profiles cause unstable Chrome DevTools Protocol (CDP) behavior, making it impossible to execute multiple operations in sequence.
+
+**Solution**: Use valid trial or premium BotBrowser profiles
+
+**Configuration**:
+
+```bash
+# In .env file
+BOT_PROFILE_ID=/path/to/valid/profile.enc:Profile Name:Description
+
+# For Docker, mount profile directory
+-v /path/to/profiles:/profiles:ro
+-e "BOT_PROFILE_ID=/profiles/your_profile.enc:Name:Description"
+```
+
+**How to verify profile is working**:
+```ruby
+# Create session with BotBrowser profile
+create_session(browser_id: "botbrowser", bot_profile_id: "your_profile_id")
+
+# Test sequence of operations (this fails with invalid profiles)
+navigate(url: "https://example.com", session_id: "...")
+get_text(selector: "h1", session_id: "...")  # ← Fails here if profile is invalid
+```
+
+**If successful**:
+- ✓ No popup appears on browser startup
+- ✓ Navigation completes
+- ✓ Subsequent operations work (get_text, screenshot, etc.)
+- ✓ Session persists across multiple tool calls
+
+**Getting BotBrowser profiles**:
+- Trial profiles: Included with BotBrowser download packages
+- Premium profiles: Contact BotBrowser support (botbrowser@bk.ru or @botbrowser_support on Telegram)
+- Profile version must match BotBrowser version
+
 ### Error: `Failed to load profile`
 
 **Cause**: Invalid or encrypted profile
@@ -622,4 +674,4 @@ Before opening an issue, verify:
 
 ---
 
-**Last Updated**: 2024-11-22
+**Last Updated**: 2025-01-23
