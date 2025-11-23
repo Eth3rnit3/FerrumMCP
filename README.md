@@ -20,8 +20,7 @@
 | [**Configuration**](docs/CONFIGURATION.md) | Environment variables and advanced configuration |
 | [**Troubleshooting**](docs/TROUBLESHOOTING.md) | Common issues and solutions |
 | [**Deployment**](docs/DEPLOYMENT.md) | Production deployment guide |
-| [**Migration**](docs/MIGRATION.md) | Upgrade guide between versions |
-| [**BotBrowser Integration**](docs/BOTBROWSER_INTEGRATION.md) | Anti-detection browser setup |
+| [**BotBrowser Integration**](docs/DOCKER_BOTBROWSER.md) | Anti-detection browser setup |
 
 ---
 
@@ -46,7 +45,7 @@ FerrumMCP is a **browser automation server** that implements the **Model Context
 - 🤖 **AI-Native Design**: Purpose-built for AI assistants like Claude
 - 🔄 **Session-Based**: Multiple concurrent browser sessions with isolated configurations
 - 🌐 **Multi-Browser**: Support for Chrome, Edge, Brave, and BotBrowser
-- 🧩 **Smart Automation**: Cookie banner detection and CAPTCHA solving
+- 🧩 **Smart Automation**: Cookie banner detection and CAPTCHA solving (⚠️ experimental)
 - 📦 **Easy Deployment**: Docker, systemd, or Kubernetes ready
 - 🔌 **Dual Transport**: HTTP and STDIO for maximum compatibility
 
@@ -71,7 +70,7 @@ FerrumMCP is a **browser automation server** that implements the **Model Context
 - Form filling with typing delays
 - Keyboard input simulation
 - **Smart cookie banner acceptance** (8 strategies, multi-language)
-- **AI-powered CAPTCHA solving** (Whisper integration)
+- **AI-powered CAPTCHA solving** (Whisper integration - ⚠️ experimental, under development)
 
 ✅ **Extraction**
 - Text and HTML content extraction
@@ -119,10 +118,11 @@ docker run --security-opt seccomp=unconfined -p 3000:3000 eth3rnit3/ferrum-mcp:l
 ```bash
 docker pull eth3rnit3/ferrum-mcp:botbrowser
 docker run --security-opt seccomp=unconfined -p 3000:3000 \
-  -v ./profiles:/app/profiles:ro \
+  -v /path/to/bot_profiles:/profiles:ro \
+  -e "BROWSER_BOTBROWSER=botbrowser:/opt/botbrowser/chrome:BotBrowser:Anti-detection browser" \
+  -e "BOT_PROFILE_MACOS_1=/profiles/profile_1.enc:Profile 1:Trial profile 1" \
   eth3rnit3/ferrum-mcp:botbrowser
 ```
-
 ### Option 2: Gem Installation
 
 ```bash
@@ -159,7 +159,7 @@ ruby bin/ferrum-mcp
 |-------|------|
 | **Environment Variables** | [Configuration Guide](docs/CONFIGURATION.md) |
 | **Multi-Browser Setup** | [Multi-Browser Config](docs/CONFIGURATION.md#multi-browser-configuration) |
-| **BotBrowser Integration** | [BotBrowser Guide](docs/BOTBROWSER_INTEGRATION.md) |
+| **BotBrowser Integration** | [BotBrowser Guide](docs/DOCKER_BOTBROWSER.md) |
 | **Resource Discovery** | [Resource Config](docs/CONFIGURATION.md#resource-discovery) |
 
 ### API Documentation
@@ -206,7 +206,7 @@ FerrumMCP provides **27+ browser automation tools** organized into 6 categories:
 - `hover` - Mouse hover
 - `drag_and_drop` - Drag elements
 - `accept_cookies` - **Smart cookie banner detection** (8 strategies)
-- `solve_captcha` - **AI-powered CAPTCHA solving** (Whisper)
+- `solve_captcha` - **AI-powered CAPTCHA solving** (⚠️ experimental, under development)
 
 ### 4. Extraction (6 tools)
 - `get_text` - Extract text content
