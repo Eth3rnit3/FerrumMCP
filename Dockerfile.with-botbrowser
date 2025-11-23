@@ -1,141 +1,105 @@
-# Dockerfile with optional BotBrowser support
+# Dockerfile with BotBrowser support (Debian-based for glibc compatibility)
 #
-# This Dockerfile supports two modes:
-# 1. Standard: Uses system Chromium (default, lightweight)
-# 2. BotBrowser: Includes BotBrowser for anti-detection (build with --build-arg INCLUDE_BOTBROWSER=true)
+# This Dockerfile uses Debian instead of Alpine for full BotBrowser compatibility.
+# BotBrowser binaries are compiled for glibc and require many glibc-specific symbols.
 #
-# Build examples:
-#   Standard:    docker build -t ferrum-mcp:latest .
-#   BotBrowser:  docker build -f Dockerfile.with-botbrowser --build-arg INCLUDE_BOTBROWSER=true -t ferrum-mcp:botbrowser .
+# Build example:
+#   docker build -f Dockerfile.with-botbrowser -t ferrum-mcp:botbrowser .
 
-# Use Ruby 3.2 with Alpine for smaller image size
-# Supports both AMD64 and ARM64 platforms
-FROM ruby:3.2-alpine as base
+# Use Ruby 3.2 with Debian Slim for glibc compatibility
+FROM ruby:3.2-slim
 
-# Build argument to control BotBrowser inclusion
-ARG INCLUDE_BOTBROWSER=false
+# Build arguments
 ARG TARGETARCH
+ARG BOTBROWSER_REPO=botswin/BotBrowser
 
-# Install runtime dependencies and build dependencies
-RUN apk add --no-cache \
-    # Runtime: Browser and core dependencies
-    chromium \
-    chromium-chromedriver \
-    nss \
-    freetype \
-    harfbuzz \
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build dependencies (will be removed later)
+    build-essential \
+    pkg-config \
+    libvips-dev \
+    # Common dependencies
     ca-certificates \
-    ttf-freefont \
     wget \
     curl \
     xvfb \
-    xvfb-run \
-    # Runtime: libvips for ruby-vips gem
-    vips \
-    # Additional dependencies potentially needed for BotBrowser
-    $([ "$INCLUDE_BOTBROWSER" = "true" ] && echo " \
-        libx11 \
-        libxcomposite \
-        libxdamage \
-        libxext \
-        libxfixes \
-        libxrandr \
-        mesa-gbm \
-        at-spi2-core \
-        cups-libs \
-        libdrm \
-        libxkbcommon \
-        nspr \
-        nss \
-    " || echo "") \
-    && \
-    # Build dependencies (will be removed after bundle install)
-    apk add --no-cache --virtual .build-deps \
-    build-base \
-    vips-dev
+    # Runtime: libvips for ruby-vips gem (keep runtime library)
+    libvips42 \
+    # Runtime: Python and ffmpeg for whisper-cli (CAPTCHA solving)
+    python3 \
+    python3-pip \
+    ffmpeg \
+    # Browser dependencies for BotBrowser
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libxfixes3 \
+    libxext6 \
+    libx11-6 \
+    libasound2 \
+    libatspi2.0-0 \
+    libnspr4 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN addgroup -g 1000 ferrum && \
-    adduser -D -u 1000 -G ferrum ferrum
+RUN groupadd -g 1000 ferrum && \
+    useradd -u 1000 -g ferrum -m ferrum
 
 #
-# BotBrowser installation (conditional)
+# BotBrowser installation
 #
-# Note: BotBrowser is open-source but requires profiles (licensed separately)
-# Options to include BotBrowser:
-#   1. Download from GitHub releases (requires URL)
-#   2. Copy from build context (place binary in ./botbrowser directory)
-#   3. Mount as volume at runtime
-#
-
-# Download and install BotBrowser from GitHub releases using API
-# Note: BotBrowser is open-source, profiles are licensed separately
-ARG BOTBROWSER_REPO=botswin/BotBrowser
-
-RUN if [ "$INCLUDE_BOTBROWSER" = "true" ]; then \
-        # Determine architecture-specific binary name
-        if [ "$TARGETARCH" = "amd64" ]; then \
-            ARCH_NAME="x86_64"; \
-        elif [ "$TARGETARCH" = "arm64" ]; then \
-            ARCH_NAME="arm64"; \
-        else \
-            echo "Unsupported architecture: $TARGETARCH" && exit 1; \
-        fi && \
-        # Install jq and dpkg for JSON parsing and .deb extraction
-        apk add --no-cache jq dpkg && \
-        # Get latest release info from GitHub API
-        echo "Fetching latest BotBrowser release from GitHub API..." && \
-        RELEASE_DATA=$(wget -qO- "https://api.github.com/repos/${BOTBROWSER_REPO}/releases/latest") && \
-        # Extract download URL for the correct architecture
-        DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r ".assets[] | select(.name | contains(\"${ARCH_NAME}.deb\")) | .browser_download_url" | head -1) && \
-        if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then \
-            echo "Error: Could not find BotBrowser .deb for architecture ${ARCH_NAME}" && \
-            echo "Available assets:" && \
-            echo "$RELEASE_DATA" | jq -r '.assets[].name' && \
-            exit 1; \
-        fi && \
-        echo "Downloading BotBrowser from: $DOWNLOAD_URL" && \
-        wget -O /tmp/botbrowser.deb "$DOWNLOAD_URL" && \
-        # Extract the .deb package
-        echo "Extracting BotBrowser package..." && \
-        dpkg-deb -x /tmp/botbrowser.deb /tmp/botbrowser-extract && \
-        ls -la /tmp/botbrowser-extract/ && \
-        # Find and copy BotBrowser files to /opt/botbrowser
-        BOTBROWSER_PATHS=$(find /tmp/botbrowser-extract -type f \( -name "chrome" -o -name "botbrowser" \) 2>/dev/null | head -1) && \
-        if [ -n "$BOTBROWSER_PATHS" ]; then \
-            BOTBROWSER_DIR=$(dirname "$BOTBROWSER_PATHS") && \
-            echo "Found BotBrowser in: $BOTBROWSER_DIR" && \
-            mkdir -p /opt/botbrowser && \
-            cp -r "$BOTBROWSER_DIR"/* /opt/botbrowser/; \
-        else \
-            echo "Error: Could not find BotBrowser executable in package" && \
-            echo "Package contents:" && \
-            find /tmp/botbrowser-extract -type f | head -20 && \
-            exit 1; \
-        fi && \
-        # Cleanup
-        rm -rf /tmp/botbrowser.deb /tmp/botbrowser-extract && \
-        apk del jq dpkg && \
-        # Make executables executable
-        chmod +x /opt/botbrowser/chrome 2>/dev/null || true && \
-        chmod +x /opt/botbrowser/botbrowser 2>/dev/null || true && \
-        chown -R ferrum:ferrum /opt/botbrowser && \
-        echo "BotBrowser installation complete"; \
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/v142-20251117/botbrowser_20251119_142.0.7444.163_x86_64.deb"; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/v142-20251117/botbrowser_20251119_142.0.7444.163_arm64.deb"; \
     else \
-        mkdir -p /opt/botbrowser; \
-    fi
+        echo "Unsupported architecture: $TARGETARCH" && exit 1; \
+    fi && \
+    echo "Downloading BotBrowser from: $DOWNLOAD_URL" && \
+    wget -O /tmp/botbrowser.deb "$DOWNLOAD_URL" && \
+    # Install missing dependencies first
+    echo "Installing BotBrowser dependencies..." && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends fonts-liberation libgtk-3-0 xdg-utils && \
+    # Install the .deb package
+    echo "Installing BotBrowser package..." && \
+    dpkg -i /tmp/botbrowser.deb && \
+    # Find BotBrowser installation
+    BOTBROWSER_PATH=$(find /opt -type f \( -name "chrome" -o -name "botbrowser" \) 2>/dev/null | head -1) && \
+    if [ -n "$BOTBROWSER_PATH" ]; then \
+        BOTBROWSER_DIR=$(dirname "$BOTBROWSER_PATH") && \
+        echo "Found BotBrowser in: $BOTBROWSER_DIR" && \
+        # Ensure it's executable
+        chmod +x "$BOTBROWSER_DIR"/chrome 2>/dev/null || true && \
+        chmod +x "$BOTBROWSER_DIR"/chrome-sandbox 2>/dev/null || true && \
+        chmod +x "$BOTBROWSER_DIR"/chrome_crashpad_handler 2>/dev/null || true && \
+        chown -R ferrum:ferrum "$BOTBROWSER_DIR" && \
+        ln -sf "$BOTBROWSER_DIR" /opt/botbrowser; \
+    else \
+        echo "Error: Could not find BotBrowser executable" && \
+        exit 1; \
+    fi && \
+    # Cleanup
+    rm -rf /tmp/botbrowser.deb && \
+    rm -rf /var/lib/apt/lists/* && \
+    echo "BotBrowser installation complete"
 
 # Set environment variables
-ENV BROWSER_PATH=/usr/bin/chromium-browser \
-    BROWSER_HEADLESS=true \
+ENV BROWSER_HEADLESS=true \
     DOCKER=true \
     PORT=3000 \
     HOST=0.0.0.0 \
     LOG_LEVEL=info \
-    BROWSER_TIMEOUT=120
-
-# Set BotBrowser path if included
-ENV BOTBROWSER_PATH=${INCLUDE_BOTBROWSER:+/opt/botbrowser/chrome}
+    BROWSER_TIMEOUT=120 \
+    BOTBROWSER_PATH=/opt/botbrowser/chrome
 
 # Create app directory
 WORKDIR /app
@@ -144,8 +108,12 @@ WORKDIR /app
 COPY Gemfile Gemfile.lock ./
 RUN bundle config set --local without 'development test' && \
     bundle install --jobs=4 --retry=3 && \
+    # Install openai-whisper for CAPTCHA solving
+    pip3 install --no-cache-dir --break-system-packages openai-whisper && \
     # Remove build dependencies to reduce image size
-    apk del .build-deps && \
+    apt-get purge -y build-essential pkg-config libvips-dev && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/* && \
     # Clean bundle cache
     rm -rf /usr/local/bundle/cache/*.gem && \
     find /usr/local/bundle/gems/ -name "*.c" -delete && \
@@ -168,11 +136,10 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD curl -f http://localhost:3000/health || exit 1
 
 # Security options for Chrome/BotBrowser
 # Run with: docker run --security-opt seccomp=unconfined
-# or add --cap-add=SYS_ADMIN if needed
 
 # Run the server
 CMD ["bin/ferrum-mcp", "start"]

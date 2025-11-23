@@ -89,8 +89,8 @@ FerrumMCP is a **browser automation server** that implements the **Model Context
 
 🦾 **BotBrowser Integration**
 - Anti-detection browser automation
-- Fingerprint management
-- Profile encryption support
+- Fingerprint management with encrypted profiles
+- **Note**: Requires valid trial/premium profiles (demo profiles cause session instability)
 
 🔒 **Security** (v1.0+)
 - Session limits
