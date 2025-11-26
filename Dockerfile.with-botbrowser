@@ -57,9 +57,9 @@ RUN groupadd -g 1000 ferrum && \
 # BotBrowser installation
 #
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
-        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/v142-20251117/botbrowser_20251119_142.0.7444.163_x86_64.deb"; \
+        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/143.0.7499.40/botbrowser_20251125_143.0.7499.40_x86_64.deb"; \
     elif [ "$TARGETARCH" = "arm64" ]; then \
-        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/v142-20251117/botbrowser_20251119_142.0.7444.163_arm64.deb"; \
+        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/143.0.7499.40/botbrowser_20251125_143.0.7499.40_arm64.deb"; \
     else \
         echo "Unsupported architecture: $TARGETARCH" && exit 1; \
     fi && \
