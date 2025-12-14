@@ -1,11 +1,13 @@
 # FerrumMCP 🌐
 
 [![CI](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/ci.yml)
-[![Gem Version](https://badge.fury.io/rb/ferrum-mcp.svg)](https://rubygems.org/gems/ferrum-mcp)
+[![Release](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/release.yml/badge.svg)](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/release.yml)
+[![Gem Version](https://img.shields.io/gem/v/ferrum-mcp?color=red&logo=rubygems)](https://rubygems.org/gems/ferrum-mcp)
+[![Gem Downloads](https://img.shields.io/gem/dt/ferrum-mcp?logo=rubygems)](https://rubygems.org/gems/ferrum-mcp)
 [![Docker](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/docker-publish.yml)
+[![Docker Hub](https://img.shields.io/docker/pulls/eth3rnit3/ferrum-mcp.svg)](https://hub.docker.com/r/eth3rnit3/ferrum-mcp)
 [![Ruby](https://img.shields.io/badge/ruby-3.2+-red.svg)](https://www.ruby-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Docker Hub](https://img.shields.io/docker/pulls/eth3rnit3/ferrum-mcp.svg)](https://hub.docker.com/r/eth3rnit3/ferrum-mcp)
 
 > A browser automation server for the Model Context Protocol (MCP), enabling AI assistants to interact with web pages through a standardized interface.
 
