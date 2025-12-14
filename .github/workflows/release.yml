@@ -2,15 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Dry run (skip publish)'
-        required: false
-        default: false
-        type: boolean
+    branches:
+      - gemify  # TODO: Change to trigger on release tags: tags: ['v*']
 
 permissions:
   contents: read
