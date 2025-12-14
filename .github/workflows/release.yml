@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - gemify  # TODO: Change to trigger on release tags: tags: ['v*']
+  release:
+    types: [published]
 
 permissions:
   contents: read
