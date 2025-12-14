@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'bundler/setup'
+require 'bundler/gem_tasks'
 
 desc 'Start the MCP server'
 task :server do

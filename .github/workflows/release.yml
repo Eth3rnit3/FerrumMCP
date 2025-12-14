@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (skip publish)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build Gem
+    runs-on: ubuntu-latest
+    outputs:
+      gem_name: ${{ steps.build.outputs.gem_name }}
+      version: ${{ steps.build.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Build gem
+        id: build
+        run: |
+          gem build ferrum-mcp.gemspec
+          GEM_NAME=$(ls *.gem)
+          VERSION=$(echo $GEM_NAME | sed 's/ferrum-mcp-\(.*\)\.gem/\1/')
+          echo "gem_name=$GEM_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Built: $GEM_NAME (version: $VERSION)"
+
+      - name: Upload gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gem
+          path: "*.gem"
+          retention-days: 1
+
+  publish-github:
+    name: Publish to GitHub Packages
+    needs: build
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gem
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Configure GitHub Packages
+        run: |
+          mkdir -p ~/.gem
+          cat << EOF > ~/.gem/credentials
+          ---
+          :github: Bearer ${{ secrets.GITHUB_TOKEN }}
+          EOF
+          chmod 0600 ~/.gem/credentials
+
+      - name: Publish to GitHub Packages
+        run: |
+          gem push --key github --host https://rubygems.pkg.github.com/Eth3rnit3 ${{ needs.build.outputs.gem_name }}
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f ~/.gem/credentials

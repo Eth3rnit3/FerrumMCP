@@ -1,6 +1,7 @@
 # FerrumMCP 🌐
 
 [![CI](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/ci.yml)
+[![Gem Version](https://badge.fury.io/rb/ferrum-mcp.svg)](https://rubygems.org/gems/ferrum-mcp)
 [![Docker](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Eth3rnit3/FerrumMCP/actions/workflows/docker-publish.yml)
 [![Ruby](https://img.shields.io/badge/ruby-3.2+-red.svg)](https://www.ruby-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -261,7 +262,7 @@ FerrumMCP provides **27+ browser automation tools** organized into 6 categories:
 | **Repository** | https://github.com/Eth3rnit3/FerrumMCP |
 | **Documentation** | https://github.com/Eth3rnit3/FerrumMCP/tree/main/docs |
 | **Releases** | https://github.com/Eth3rnit3/FerrumMCP/releases |
-| **RubyGems** | Coming soon! |
+| **RubyGems** | https://rubygems.org/gems/ferrum-mcp |
 
 ---
 
