@@ -43,10 +43,41 @@ jobs:
           path: "*.gem"
           retention-days: 1
 
+  publish-rubygems:
+    name: Publish to RubyGems
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gem
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Configure RubyGems credentials
+        run: |
+          mkdir -p ~/.gem
+          cat << EOF > ~/.gem/credentials
+          ---
+          :rubygems_api_key: ${{ secrets.RUBYGEMS_API_KEY }}
+          EOF
+          chmod 0600 ~/.gem/credentials
+
+      - name: Publish to RubyGems
+        run: |
+          gem push ${{ needs.build.outputs.gem_name }}
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f ~/.gem/credentials
+
   publish-github:
     name: Publish to GitHub Packages
     needs: build
-    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     steps:
       - name: Download gem artifact
