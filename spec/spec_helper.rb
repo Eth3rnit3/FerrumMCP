@@ -33,11 +33,11 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 
-  # Clean up browser/profile environment variables before each spec
+  # Clean up browser/profile/API key environment variables before each spec
   # to ensure consistent test environment
   config.before do
     preserved_keys = %w[BROWSER_HEADLESS BROWSER_TIMEOUT LOG_LEVEL COVERAGE CI]
-    ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_)/).each do |key|
+    ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_|API_KEY)/).each do |key|
       ENV.delete(key) unless preserved_keys.include?(key)
     end
   end
