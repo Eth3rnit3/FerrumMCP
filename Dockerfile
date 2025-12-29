@@ -2,9 +2,8 @@
 # Supports both AMD64 and ARM64 platforms
 FROM ruby:3.2-alpine
 
-# Install runtime dependencies and build dependencies
+# Install runtime dependencies first (smaller layer, cached)
 RUN apk add --no-cache \
-    # Runtime: Browser and core dependencies
     chromium \
     chromium-chromedriver \
     nss \
@@ -13,13 +12,13 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     wget \
+    curl \
     xvfb \
     xvfb-run \
-    # Runtime: libvips for ruby-vips gem
-    vips \
-    && \
-    # Build dependencies (will be removed after bundle install)
-    apk add --no-cache --virtual .build-deps \
+    vips
+
+# Install build dependencies separately (for better caching and retry)
+RUN apk add --no-cache --virtual .build-deps \
     build-base \
     vips-dev
 
@@ -66,7 +65,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD curl -f http://localhost:3000/health || exit 1
 
 # Security options for Chrome
 # Run with: docker run --security-opt seccomp=unconfined
