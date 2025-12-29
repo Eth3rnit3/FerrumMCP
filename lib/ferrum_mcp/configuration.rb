@@ -4,7 +4,8 @@ module FerrumMCP
   # Configuration class for Ferrum MCP Server
   class Configuration
     attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :transport, :max_sessions,
-                  :rate_limit_enabled, :rate_limit_max_requests, :rate_limit_window
+                  :rate_limit_enabled, :rate_limit_max_requests, :rate_limit_window,
+                  :api_key_enabled, :api_keys
     attr_reader :browsers, :user_profiles, :bot_profiles
 
     # Browser configuration structure
@@ -42,6 +43,10 @@ module FerrumMCP
       @rate_limit_enabled = ENV.fetch('RATE_LIMIT_ENABLED', 'true') == 'true'
       @rate_limit_max_requests = ENV.fetch('RATE_LIMIT_MAX_REQUESTS', '100').to_i
       @rate_limit_window = ENV.fetch('RATE_LIMIT_WINDOW', '60').to_i
+
+      # API key authentication configuration
+      @api_key_enabled = ENV.fetch('API_KEY_ENABLED', 'false') == 'true'
+      @api_keys = load_api_keys
 
       # Load multi-browser configurations
       @browsers = load_browsers
@@ -86,7 +91,28 @@ module FerrumMCP
     # Environment variable keys to skip when loading browsers
     RESERVED_BROWSER_ENV_KEYS = %w[BROWSER_PATH BROWSER_HEADLESS BROWSER_TIMEOUT].freeze
 
+    # Check if API key authentication is properly configured
+    def api_key_configured?
+      api_key_enabled && api_keys.any?
+    end
+
     private
+
+    # Load API keys from environment variables
+    # Supports single key (API_KEY) or multiple keys (API_KEYS=key1,key2,key3)
+    def load_api_keys
+      keys = []
+
+      # Load single API key
+      single_key = ENV.fetch('API_KEY', nil)
+      keys << single_key if single_key && !single_key.empty?
+
+      # Load multiple API keys (comma-separated)
+      multiple_keys = ENV.fetch('API_KEYS', nil)
+      keys.concat(multiple_keys.split(',').map(&:strip).reject(&:empty?)) if multiple_keys && !multiple_keys.empty?
+
+      keys.uniq
+    end
 
     # Load browser configurations from environment variables
     # Format: BROWSER_<ID>=type:path:name:description

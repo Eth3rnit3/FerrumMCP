@@ -175,6 +175,87 @@ RSpec.describe FerrumMCP::Configuration do
     end
   end
 
+  describe 'API key configuration' do
+    describe '#api_key_enabled' do
+      it 'defaults to false' do
+        config = described_class.new
+        expect(config.api_key_enabled).to be false
+      end
+
+      it 'can be enabled via environment variable' do
+        ENV['API_KEY_ENABLED'] = 'true'
+        config = described_class.new
+        expect(config.api_key_enabled).to be true
+      end
+    end
+
+    describe '#api_keys' do
+      it 'returns empty array when no keys configured' do
+        config = described_class.new
+        expect(config.api_keys).to be_empty
+      end
+
+      it 'loads single API key from API_KEY' do
+        ENV['API_KEY'] = 'my-secret-key'
+        config = described_class.new
+        expect(config.api_keys).to eq(['my-secret-key'])
+      end
+
+      it 'loads multiple API keys from API_KEYS' do
+        ENV['API_KEYS'] = 'key1,key2,key3'
+        config = described_class.new
+        expect(config.api_keys).to eq(%w[key1 key2 key3])
+      end
+
+      it 'combines API_KEY and API_KEYS' do
+        ENV['API_KEY'] = 'single-key'
+        ENV['API_KEYS'] = 'key1,key2'
+        config = described_class.new
+        expect(config.api_keys).to contain_exactly('single-key', 'key1', 'key2')
+      end
+
+      it 'removes duplicate keys' do
+        ENV['API_KEY'] = 'same-key'
+        ENV['API_KEYS'] = 'same-key,other-key'
+        config = described_class.new
+        expect(config.api_keys).to eq(%w[same-key other-key])
+      end
+
+      it 'handles whitespace in comma-separated keys' do
+        ENV['API_KEYS'] = 'key1 , key2 , key3'
+        config = described_class.new
+        expect(config.api_keys).to eq(%w[key1 key2 key3])
+      end
+
+      it 'ignores empty keys' do
+        ENV['API_KEYS'] = 'key1,,key2,'
+        config = described_class.new
+        expect(config.api_keys).to eq(%w[key1 key2])
+      end
+    end
+
+    describe '#api_key_configured?' do
+      it 'returns false when disabled' do
+        ENV['API_KEY'] = 'test-key'
+        config = described_class.new
+        expect(config.api_key_configured?).to be false
+      end
+
+      it 'returns false when enabled but no keys' do
+        ENV['API_KEY_ENABLED'] = 'true'
+        config = described_class.new
+        expect(config.api_key_configured?).to be false
+      end
+
+      it 'returns true when enabled with keys' do
+        ENV['API_KEY_ENABLED'] = 'true'
+        ENV['API_KEY'] = 'test-key'
+        config = described_class.new
+        expect(config.api_key_configured?).to be true
+      end
+    end
+  end
+
   describe '#logger' do
     it 'creates a logger' do
       config = described_class.new

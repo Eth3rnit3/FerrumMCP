@@ -119,6 +119,9 @@ rake list_tools
 
 # Run tests
 rake test
+
+# Generate a secure API key
+rake generate_api_key
 ```
 
 ## Session Management
@@ -293,6 +296,14 @@ end
 - `BROWSER_HEADLESS`: Run headless (default: false)
 - `BROWSER_TIMEOUT`: Browser timeout in seconds (default: 60)
 - `LOG_LEVEL`: Logging level - debug/info/warn/error (default: debug)
+
+### API Key Authentication (HTTP Transport only)
+- `API_KEY_ENABLED`: Enable Bearer token authentication (default: false)
+- `API_KEY`: Single API key for authentication
+- `API_KEYS`: Comma-separated list of valid API keys (for multiple clients or key rotation)
+
+When enabled, the `/mcp` endpoint requires an `Authorization: Bearer <api_key>` header.
+The `/health` and `/` endpoints remain accessible without authentication for monitoring purposes.
 
 ### Multi-Browser Configuration (Recommended)
 - `BROWSER_<ID>`: Browser configuration in format `type:path:name:description`

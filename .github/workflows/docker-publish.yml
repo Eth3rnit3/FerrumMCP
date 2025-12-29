@@ -14,8 +14,9 @@ env:
   DOCKER_IMAGE: eth3rnit3/ferrum-mcp
 
 jobs:
-  build-and-push-standard:
-    name: Build and Push Standard Image
+  # Build AMD64 and ARM64 images separately to avoid QEMU timeout issues
+  build-standard-amd64:
+    name: Build Standard Image (AMD64)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,44 +36,104 @@ jobs:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Standard Image
-        id: meta-standard
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_IMAGE }}
-          tags: |
-            # Tag with version on version tags (v1.0.0 -> 1.0.0)
-            type=semver,pattern={{version}}
-            # Tag with major.minor on version tags (v1.0.0 -> 1.0)
-            type=semver,pattern={{major}}.{{minor}}
-            # Tag with major on version tags (v1.0.0 -> 1)
-            type=semver,pattern={{major}}
-            # Tag with 'latest' on main/master branch
-            type=raw,value=latest,enable={{is_default_branch}}
-            # Tag with branch name
-            type=ref,event=branch
-            # Tag with PR number for pull requests
-            type=ref,event=pr
-            # Tag with git sha (short form)
-            type=sha
-
-      - name: Build and push Standard Docker image
+      - name: Build and push AMD64 Standard image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta-standard.outputs.tags }}
-          labels: ${{ steps.meta-standard.outputs.labels }}
-          cache-from: type=gha,scope=standard
-          cache-to: type=gha,mode=max,scope=standard
+          tags: ${{ env.DOCKER_IMAGE }}:amd64-${{ github.sha }}
+          cache-from: type=gha,scope=standard-amd64
+          cache-to: type=gha,mode=max,scope=standard-amd64
 
-      - name: Standard image digest
-        run: echo ${{ steps.meta-standard.outputs.digest }}
+  build-standard-arm64:
+    name: Build Standard Image (ARM64)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
-  build-and-push-botbrowser:
-    name: Build and Push BotBrowser Image
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push ARM64 Standard image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.DOCKER_IMAGE }}:arm64-${{ github.sha }}
+          cache-from: type=gha,scope=standard-arm64
+          cache-to: type=gha,mode=max,scope=standard-arm64
+
+  # Create multi-arch manifest after both builds complete
+  create-standard-manifest:
+    name: Create Standard Multi-arch Manifest
+    runs-on: ubuntu-latest
+    needs: [build-standard-amd64, build-standard-arm64]
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Extract metadata for tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=sha
+
+      - name: Create and push multi-arch manifest
+        run: |
+          # Get all tags from metadata
+          TAGS="${{ steps.meta.outputs.tags }}"
+
+          # For each tag, create a manifest
+          for TAG in $TAGS; do
+            echo "Creating manifest for $TAG"
+            docker buildx imagetools create -t "$TAG" \
+              "${{ env.DOCKER_IMAGE }}:amd64-${{ github.sha }}" \
+              "${{ env.DOCKER_IMAGE }}:arm64-${{ github.sha }}"
+          done
+
+      - name: Cleanup temporary tags
+        run: |
+          echo "Temporary architecture-specific tags will be cleaned up by Docker Hub retention policy"
+
+  # BotBrowser builds - separate jobs for each architecture
+  build-botbrowser-amd64:
+    name: Build BotBrowser Image (AMD64)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -92,38 +153,92 @@ jobs:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for BotBrowser Image
-        id: meta-botbrowser
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_IMAGE }}
-          tags: |
-            # Tag with version-botbrowser on version tags (v1.0.0 -> 1.0.0-botbrowser)
-            type=semver,pattern={{version}}-botbrowser
-            # Tag with major.minor-botbrowser on version tags (v1.0.0 -> 1.0-botbrowser)
-            type=semver,pattern={{major}}.{{minor}}-botbrowser
-            # Tag with 'botbrowser' on main/master branch
-            type=raw,value=botbrowser,enable={{is_default_branch}}
-            # Tag with branch name-botbrowser
-            type=ref,event=branch,suffix=-botbrowser
-            # Tag with PR number-botbrowser for pull requests
-            type=ref,event=pr,suffix=-botbrowser
-            # Tag with git sha-botbrowser (short form)
-            type=sha,suffix=-botbrowser
-
-      - name: Build and push BotBrowser Docker image
+      - name: Build and push AMD64 BotBrowser image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.with-botbrowser
-          build-args: |
-            INCLUDE_BOTBROWSER=true
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.DOCKER_IMAGE }}:botbrowser-amd64-${{ github.sha }}
+          cache-from: type=gha,scope=botbrowser-amd64
+          cache-to: type=gha,mode=max,scope=botbrowser-amd64
+
+  build-botbrowser-arm64:
+    name: Build BotBrowser Image (ARM64)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push ARM64 BotBrowser image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.with-botbrowser
           platforms: linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta-botbrowser.outputs.tags }}
-          labels: ${{ steps.meta-botbrowser.outputs.labels }}
-          cache-from: type=gha,scope=botbrowser
-          cache-to: type=gha,mode=max,scope=botbrowser
+          tags: ${{ env.DOCKER_IMAGE }}:botbrowser-arm64-${{ github.sha }}
+          cache-from: type=gha,scope=botbrowser-arm64
+          cache-to: type=gha,mode=max,scope=botbrowser-arm64
 
-      - name: BotBrowser image digest
-        run: echo ${{ steps.meta-botbrowser.outputs.digest }}
+  # Create multi-arch manifest for BotBrowser
+  create-botbrowser-manifest:
+    name: Create BotBrowser Multi-arch Manifest
+    runs-on: ubuntu-latest
+    needs: [build-botbrowser-amd64, build-botbrowser-arm64]
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Extract metadata for BotBrowser tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}-botbrowser
+            type=semver,pattern={{major}}.{{minor}}-botbrowser
+            type=raw,value=botbrowser,enable={{is_default_branch}}
+            type=ref,event=branch,suffix=-botbrowser
+            type=sha,suffix=-botbrowser
+
+      - name: Create and push BotBrowser multi-arch manifest
+        run: |
+          # Get all tags from metadata
+          TAGS="${{ steps.meta.outputs.tags }}"
+
+          # For each tag, create a manifest
+          for TAG in $TAGS; do
+            echo "Creating manifest for $TAG"
+            docker buildx imagetools create -t "$TAG" \
+              "${{ env.DOCKER_IMAGE }}:botbrowser-amd64-${{ github.sha }}" \
+              "${{ env.DOCKER_IMAGE }}:botbrowser-arm64-${{ github.sha }}"
+          done

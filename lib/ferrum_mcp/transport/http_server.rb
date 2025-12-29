@@ -32,6 +32,14 @@ module FerrumMCP
                 window: config.rate_limit_window
           end
 
+          # Add API key authentication middleware if enabled
+          if config.api_key_enabled && config.api_keys.any?
+            use FerrumMCP::Transport::ApiKeyAuthenticator,
+                api_keys: config.api_keys,
+                logger: logger,
+                skip_paths: ['/health', '/']
+          end
+
           # Health check endpoint
           map '/health' do
             run lambda { |_env|

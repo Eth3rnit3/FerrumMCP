@@ -11,26 +11,28 @@ FROM ruby:3.2-slim
 
 # Build arguments
 ARG TARGETARCH
-ARG BOTBROWSER_REPO=botswin/BotBrowser
 
-# Install runtime dependencies
+# Install base dependencies first (better layer caching)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Build dependencies (will be removed later)
-    build-essential \
-    pkg-config \
-    libvips-dev \
-    # Common dependencies
     ca-certificates \
     wget \
     curl \
     xvfb \
-    # Runtime: libvips for ruby-vips gem (keep runtime library)
+    && rm -rf /var/lib/apt/lists/*
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    libvips-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install runtime libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libvips42 \
-    # Runtime: Python and ffmpeg for whisper-cli (CAPTCHA solving)
     python3 \
     python3-pip \
     ffmpeg \
-    # Browser dependencies for BotBrowser
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
@@ -47,37 +49,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libasound2 \
     libatspi2.0-0 \
     libnspr4 \
+    fonts-liberation \
+    libgtk-3-0 \
+    xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN groupadd -g 1000 ferrum && \
     useradd -u 1000 -g ferrum -m ferrum
 
-#
-# BotBrowser installation
-#
+# Download BotBrowser (separate step for better caching and retry)
+# Using botswin/BotBrowser releases (latest: 143.0.7499.170)
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
-        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/143.0.7499.40/botbrowser_20251125_143.0.7499.40_x86_64.deb"; \
+        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/143.0.7499.170/botbrowser_20251225_143.0.7499.170_x86_64.deb"; \
     elif [ "$TARGETARCH" = "arm64" ]; then \
-        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/143.0.7499.40/botbrowser_20251125_143.0.7499.40_arm64.deb"; \
+        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/143.0.7499.170/botbrowser_20251225_143.0.7499.170_arm64.deb"; \
     else \
         echo "Unsupported architecture: $TARGETARCH" && exit 1; \
     fi && \
     echo "Downloading BotBrowser from: $DOWNLOAD_URL" && \
-    wget -O /tmp/botbrowser.deb "$DOWNLOAD_URL" && \
-    # Install missing dependencies first
-    echo "Installing BotBrowser dependencies..." && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends fonts-liberation libgtk-3-0 xdg-utils && \
-    # Install the .deb package
-    echo "Installing BotBrowser package..." && \
-    dpkg -i /tmp/botbrowser.deb && \
-    # Find BotBrowser installation
-    BOTBROWSER_PATH=$(find /opt -type f \( -name "chrome" -o -name "botbrowser" \) 2>/dev/null | head -1) && \
+    wget --timeout=120 --tries=3 -O /tmp/botbrowser.deb "$DOWNLOAD_URL"
+
+# Install BotBrowser (separate step)
+RUN dpkg -i /tmp/botbrowser.deb || apt-get update && apt-get install -f -y && \
+    BOTBROWSER_PATH=$(find /opt -type f -name "chrome" 2>/dev/null | head -1) && \
     if [ -n "$BOTBROWSER_PATH" ]; then \
         BOTBROWSER_DIR=$(dirname "$BOTBROWSER_PATH") && \
         echo "Found BotBrowser in: $BOTBROWSER_DIR" && \
-        # Ensure it's executable
         chmod +x "$BOTBROWSER_DIR"/chrome 2>/dev/null || true && \
         chmod +x "$BOTBROWSER_DIR"/chrome-sandbox 2>/dev/null || true && \
         chmod +x "$BOTBROWSER_DIR"/chrome_crashpad_handler 2>/dev/null || true && \
@@ -85,9 +83,9 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
         ln -sf "$BOTBROWSER_DIR" /opt/botbrowser; \
     else \
         echo "Error: Could not find BotBrowser executable" && \
+        find /opt -type f 2>/dev/null && \
         exit 1; \
     fi && \
-    # Cleanup
     rm -rf /tmp/botbrowser.deb && \
     rm -rf /var/lib/apt/lists/* && \
     echo "BotBrowser installation complete"

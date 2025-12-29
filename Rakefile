@@ -106,4 +106,23 @@ task :structure do
   sh 'tree -I "bin|.git" -L 3 || find . -type d -not -path "*/.*" -not -path "*/bin/*" | sed "s/[^/]*\\//|  /g"'
 end
 
+desc 'Generate a secure API key'
+task :generate_api_key do
+  require 'securerandom'
+
+  api_key = SecureRandom.hex(32)
+  puts "\nGenerated API Key:\n"
+  puts '=' * 64
+  puts api_key
+  puts '=' * 64
+  puts "\nTo use this key, add the following to your .env file:"
+  puts "\n  API_KEY_ENABLED=true"
+  puts "  API_KEY=#{api_key}"
+  puts "\nOr for multiple keys:"
+  puts "\n  API_KEYS=#{api_key},<other-key>"
+  puts "\nClients must include this header in requests:"
+  puts "\n  Authorization: Bearer #{api_key}"
+  puts ''
+end
+
 task default: :check_env
