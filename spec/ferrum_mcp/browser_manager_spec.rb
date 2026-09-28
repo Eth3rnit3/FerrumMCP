@@ -31,11 +31,28 @@ RSpec.describe FerrumMCP::BrowserManager do
       expect(launch_kwargs[:browser_options].keys).not_to include('disable-web-security', 'enable-automation')
     end
 
-    it 'keeps the rest of the Ferrum defaults' do
+    # reCAPTCHA scores Chrome launched with Ferrum's flags lower than a stock
+    # Chrome (images instead of a direct pass, same IP, no CDP attached).
+    it 'launches a Chrome that looks like a stock one' do
       manager_for(headless: false, browser_options: {}).start
 
-      expect(launch_kwargs[:browser_options]).to include('no-first-run' => nil, 'mute-audio' => nil)
-      expect(launch_kwargs[:browser_options]).not_to have_key('headless')
+      expect(launch_kwargs[:browser_options].keys).not_to include(
+        'hide-scrollbars', 'mute-audio', 'disable-popup-blocking', 'disable-extensions',
+        'disable-component-extensions-with-background-pages', 'disable-default-apps',
+        'disable-background-networking', 'disable-sync', 'metrics-recording-only',
+        'safebrowsing-disable-auto-update', 'disable-client-side-phishing-detection', 'disable-translate',
+        'disable-breakpad', 'disable-hang-monitor', 'disable-prompt-on-repost', 'disable-ipc-flooding-protection',
+        'force-color-profile', 'enable-features', 'disable-session-crashed-bubble', 'headless'
+      )
+    end
+
+    it 'keeps what driving the browser needs' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options]).to include(
+        'no-first-run' => nil, 'no-startup-window' => nil, 'use-mock-keychain' => nil,
+        'disable-renderer-backgrounding' => nil, 'disable-blink-features' => 'AutomationControlled'
+      )
     end
 
     context 'when headless' do

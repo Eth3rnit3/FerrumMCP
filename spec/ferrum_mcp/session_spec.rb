@@ -68,6 +68,22 @@ RSpec.describe FerrumMCP::Session do
       expect(flags).not_to have_key('disable-gpu')
     end
 
+    it 'leaves the sandbox on outside containers' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('DOCKER').and_return(nil)
+      allow(ENV).to receive(:[]).with('CI').and_return(nil)
+      allow(Process).to receive(:uid).and_return(501)
+
+      expect(flags.keys).not_to include('no-sandbox', 'disable-dev-shm-usage')
+    end
+
+    it 'disables the sandbox where Chrome requires it (Docker, root)' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('DOCKER').and_return('true')
+
+      expect(flags).to include('no-sandbox' => nil, 'disable-dev-shm-usage' => nil)
+    end
+
     it 'lets a session override the defaults' do
       custom = described_class.new(config: config,
                                    options: { browser_options: { '--isolate-origins' => 'https://a.test' } })
