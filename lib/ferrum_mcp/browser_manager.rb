@@ -5,13 +5,19 @@ require 'open3'
 module FerrumMCP
   # Manages Ferrum browser lifecycle with BotBrowser integration
   class BrowserManager
-    # Ferrum defaults that give automation away:
-    # - disable-web-security switches site isolation off entirely, putting
-    #   cross-origin frames (Cloudflare) in the page process, where input
-    #   dispatched over CDP is rejected
-    # - enable-automation shows the infobar and marks the browser as automated
-    # Ferrum can only add flags, so its defaults are passed explicitly.
-    DROPPED_FERRUM_DEFAULTS = %w[disable-web-security enable-automation].freeze
+    # Ferrum launches Chrome with ~35 test-harness flags (no extensions, no
+    # background networking, hidden scrollbars, muted audio, ...). A stock
+    # Chrome has none of them and reCAPTCHA trusts Ferrum's Chrome less (images
+    # instead of a direct pass, same IP, no CDP attached). Only the defaults
+    # needed to drive the browser, invisible to pages, are kept. Notably
+    # dropped: disable-web-security, which turns site isolation off (Cloudflare
+    # rejects CDP clicks into in-process frames), and enable-automation.
+    KEPT_FERRUM_DEFAULTS = %w[
+      headless no-first-run no-startup-window keep-alive-for-test remote-allow-origins
+      password-store use-mock-keychain
+      disable-background-timer-throttling disable-backgrounding-occluded-windows disable-renderer-backgrounding
+      disable-site-isolation-trials disable-blink-features
+    ].freeze
 
     # Headless Chrome announces itself as "HeadlessChrome/x" (rejected outright
     # by Cloudflare) and reports an 800x600 screen smaller than its window.
@@ -155,10 +161,11 @@ module FerrumMCP
       options
     end
 
-    # What Ferrum would pass itself (see Ferrum::Browser::Options::Chrome#merge_default)
+    # Ferrum's own defaults, trimmed (see Ferrum::Browser::Options::Chrome#merge_default)
     def ferrum_default_options
-      defaults = Ferrum::Browser::Options::Chrome::DEFAULT_OPTIONS.except(*DROPPED_FERRUM_DEFAULTS)
-      defaults = defaults.except('headless', 'disable-gpu') unless config.headless
+      defaults = Ferrum::Browser::Options::Chrome::DEFAULT_OPTIONS.slice(*KEPT_FERRUM_DEFAULTS)
+      defaults = defaults.merge('no-default-browser-check' => nil)
+      defaults = defaults.except('headless') unless config.headless
       defaults = defaults.merge('disable-gpu' => nil) if Ferrum::Utils::Platform.windows? # Chromium bug 737678
       defaults = defaults.merge('use-angle' => 'metal') if Ferrum::Utils::Platform.mac_arm?
       defaults
