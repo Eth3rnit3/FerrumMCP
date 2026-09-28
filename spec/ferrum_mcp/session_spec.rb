@@ -62,7 +62,8 @@ RSpec.describe FerrumMCP::Session do
     end
 
     it 'lets a session override the defaults' do
-      custom = described_class.new(config: config, options: { browser_options: { '--isolate-origins' => 'https://a.test' } })
+      custom = described_class.new(config: config,
+                                   options: { browser_options: { '--isolate-origins' => 'https://a.test' } })
 
       expect(custom.session_config.merged_browser_options['isolate-origins']).to eq('https://a.test')
     end
