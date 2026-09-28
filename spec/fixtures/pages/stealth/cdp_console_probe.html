@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><title>CDP console probe</title></head>
+<body>
+  <p id="result">pending</p>
+  <iframe id="child" name="child" srcdoc="<p id='inner'>inside</p><script>window.childGlobal = 'child';</script>"></iframe>
+  <script>
+    // Same checks as brotector: a DevTools client with the Runtime domain
+    // enabled serializes console arguments, which reads the error's stack and
+    // its name where a plain browser reads neither. The getter is set on the
+    // error itself, not on Error.prototype, to leave the automation's errors alone.
+    window.pageGlobal = 'main-world';
+    window.stackLookups = 0;
+    window.nameLookups = 0;
+    const withStack = new Error('probe');
+    Object.defineProperty(withStack, 'stack', {
+      configurable: false,
+      enumerable: false,
+      get() { window.stackLookups += 1; return ''; }
+    });
+    console.debug(withStack);
+    const withName = new Error('');
+    Object.defineProperty(withName, 'name', {
+      configurable: false,
+      enumerable: false,
+      get() { window.nameLookups += 1; return 'Error'; }
+    });
+    console.debug(withName);
+    window.cdpDetected = window.stackLookups > 0 || window.nameLookups > 0;
+    document.getElementById('result').textContent = window.cdpDetected ? 'detected' : 'clean';
+  </script>
+</body>
+</html>
