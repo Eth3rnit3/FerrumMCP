@@ -61,6 +61,13 @@ RSpec.describe FerrumMCP::Session do
       expect(flags['disable-features'].split(',')).to include('site-per-process')
     end
 
+    # --disable-gpu removes WebGL entirely (getContext('webgl') returns null),
+    # an obvious automation signal; Chrome falls back to SwiftShader by itself
+    # when no GPU is available.
+    it 'keeps the GPU, and therefore WebGL, enabled' do
+      expect(flags).not_to have_key('disable-gpu')
+    end
+
     it 'lets a session override the defaults' do
       custom = described_class.new(config: config,
                                    options: { browser_options: { '--isolate-origins' => 'https://a.test' } })
