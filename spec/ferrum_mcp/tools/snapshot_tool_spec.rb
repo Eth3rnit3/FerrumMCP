@@ -17,6 +17,7 @@ RSpec.describe FerrumMCP::Tools::SnapshotTool do
     expect(described_class.input_schema[:required]).to eq(['session_id'])
   end
 
+  # rubocop:disable RSpec/MultipleExpectations
   it 'lists interactive elements with stable refs, roles and names' do
     sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
 
@@ -24,7 +25,7 @@ RSpec.describe FerrumMCP::Tools::SnapshotTool do
 
     expect(result[:success]).to be true
     text = result[:data][:snapshot]
-    expect(text).to match(/\[e\d+\] link "Documentation" href=\/docs/)
+    expect(text).to match(%r{\[e\d+\] link "Documentation" href=/docs})
     expect(text).to match(/\[e\d+\] button "Create account"/)
     expect(text).to match(/\[e\d+\] textbox "Email address".*placeholder="you@example.com"/)
     expect(text).to match(/\[e\d+\] checkbox "newsletter" checked/)
@@ -36,6 +37,7 @@ RSpec.describe FerrumMCP::Tools::SnapshotTool do
     expect(result[:data][:url]).to include('agent_page')
     expect(result[:data][:count]).to be > 5
   end
+  # rubocop:enable RSpec/MultipleExpectations
 
   it 'returns structured elements in json format' do
     sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
