@@ -446,14 +446,16 @@ Contributors are recognized in:
 
 (For maintainers only)
 
-1. Update version in `lib/ferrum_mcp/version.rb`
-2. Update CHANGELOG.md with release date
-3. Commit: `chore: Release v1.0.0`
-4. Tag: `git tag -a v1.0.0 -m "Release v1.0.0"`
-5. Push: `git push && git push --tags`
-6. GitHub Actions builds and publishes Docker image
-7. Create GitHub Release from tag
-8. (Future) Publish gem to RubyGems.org
+1. Bump `lib/ferrum_mcp/version.rb` and move the `[Unreleased]` CHANGELOG entries under a dated `[X.Y.Z]` section
+2. Merge to `main` through a pull request (CI builds and smoke-tests the gem code and both Docker images)
+3. Create a GitHub Release with tag `vX.Y.Z` on `main`. This triggers:
+   - `release.yml`: checks the tag matches `FerrumMCP::VERSION`, builds the gem, publishes it to RubyGems
+     (trusted publishing over OIDC, no API key or MFA prompt) and to GitHub Packages
+   - `docker-publish.yml`: publishes the `X.Y.Z`, `X.Y`, `X` and `-botbrowser` Docker tags
+4. If the RubyGems job fails, re-run it: it skips versions that are already published
+
+RubyGems trusted publishing is configured on rubygems.org for this repository and the `release.yml` workflow.
+Renaming that workflow file requires updating the trusted publisher.
 
 ## License
 

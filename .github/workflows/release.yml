@@ -56,6 +56,13 @@ jobs:
     name: Publish to RubyGems
     needs: build
     runs-on: ubuntu-latest
+    # Trusted publishing: rubygems.org exchanges this job's OIDC token for a
+    # short-lived API key. No RUBYGEMS_API_KEY secret, no MFA prompt.
+    # The trusted publisher on rubygems.org must point at this repository and
+    # at the workflow file release.yml.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Download gem artifact
         uses: actions/download-artifact@v4
@@ -67,22 +74,26 @@ jobs:
         with:
           ruby-version: '3.3'
 
-      - name: Configure RubyGems credentials
+      - name: Skip if this version is already on RubyGems
+        id: exists
         run: |
-          mkdir -p ~/.gem
-          cat << EOF > ~/.gem/credentials
-          ---
-          :rubygems_api_key: ${{ secrets.RUBYGEMS_API_KEY }}
-          EOF
-          chmod 0600 ~/.gem/credentials
+          VERSION="${{ needs.build.outputs.version }}"
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://rubygems.org/api/v2/rubygems/ferrum-mcp/versions/$VERSION.json")
+          if [ "$STATUS" = "200" ]; then
+            echo "ferrum-mcp $VERSION is already published, skipping push"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure RubyGems credentials (OIDC trusted publishing)
+        if: steps.exists.outputs.published != 'true'
+        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
 
       - name: Publish to RubyGems
-        run: |
-          gem push ${{ needs.build.outputs.gem_name }}
-
-      - name: Cleanup credentials
-        if: always()
-        run: rm -f ~/.gem/credentials
+        if: steps.exists.outputs.published != 'true'
+        run: gem push "${{ needs.build.outputs.gem_name }}"
 
   publish-github:
     name: Publish to GitHub Packages
