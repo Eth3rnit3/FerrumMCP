@@ -266,6 +266,7 @@ RSpec.describe FerrumMCP::SessionManager do
       expect(results.size).to eq(5)
     end
   end
+
   describe 'concurrency and browser health (Ferrum stubbed)' do
     let(:fake_browser) { instance_double(Ferrum::Browser, quit: nil) }
 

@@ -35,7 +35,7 @@ RSpec.describe FerrumMCP::BrowserManager do
     end
 
     it 'accepts symbol keys for browser_options' do
-      manager_for(headless: true, browser_options: { 'lang': 'fr-FR' }).start
+      manager_for(headless: true, browser_options: { lang: 'fr-FR' }).start
 
       expect(launch_kwargs[:browser_options]).to include('lang' => 'fr-FR')
     end

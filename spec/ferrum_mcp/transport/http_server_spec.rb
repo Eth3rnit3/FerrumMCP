@@ -134,6 +134,7 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
       end
     end
   end
+
   describe 'proxy trust' do
     it 'defaults TRUST_PROXY to false' do
       expect(config.trust_proxy).to be(false)

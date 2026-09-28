@@ -136,10 +136,10 @@ RSpec.describe FerrumMCP::Transport::StdioServer do
 
       original_stdin = $stdin
       begin
-        $stdin = input # rubocop:disable RSpec/ExpectOutput
+        $stdin = input
         stdio_server.start
       ensure
-        $stdin = original_stdin # rubocop:disable RSpec/ExpectOutput
+        $stdin = original_stdin
       end
 
       expect(stdio_server.mcp_transport).to have_received(:open)

@@ -312,6 +312,7 @@ RSpec.describe FerrumMCP::Configuration do
       end
     end
   end
+
   describe 'logging' do
     around do |example|
       saved_level = ENV.fetch('LOG_LEVEL', nil)
