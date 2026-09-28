@@ -26,7 +26,8 @@
       get() { window.nameLookups += 1; return 'Error'; }
     });
     console.debug(withName);
-    window.cdpDetected = window.stackLookups > 0 || window.nameLookups > 0;
+    // V8 reads the name once to format the message, with or without a client.
+    window.cdpDetected = window.stackLookups > 0 || window.nameLookups >= 2;
     document.getElementById('result').textContent = window.cdpDetected ? 'detected' : 'clean';
   </script>
 </body>

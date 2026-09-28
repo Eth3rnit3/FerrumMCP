@@ -30,6 +30,7 @@ server falls back to the system temp directory. Use `LOG_FILE=stderr` in contain
 |----------|-------------|---------|
 | `BROWSER_HEADLESS` | Run browser in headless mode | `false` |
 | `BROWSER_TIMEOUT` | Browser timeout in seconds | `60` |
+| `FERRUM_RUNTIME_ENABLE` | `true` enables the CDP Runtime domain as stock Ferrum does. By default it stays off, because pages can detect it through console serialization; JavaScript still runs in the page's main world. | `false` |
 
 ### Session Management
 
