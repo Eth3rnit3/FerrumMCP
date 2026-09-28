@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
 
 RSpec.describe FerrumMCP::Configuration do
   describe '#initialize' do
@@ -309,6 +310,49 @@ RSpec.describe FerrumMCP::Configuration do
         $stderr = original_stderr
         # rubocop:enable RSpec/ExpectOutput
       end
+    end
+  end
+  describe 'logging' do
+    around do |example|
+      saved_level = ENV.fetch('LOG_LEVEL', nil)
+      example.run
+    ensure
+      ENV['LOG_LEVEL'] = saved_level
+      ENV.delete('LOG_FILE')
+    end
+
+    it 'defaults log level to info (same default as the CLI)' do
+      ENV.delete('LOG_LEVEL')
+
+      expect(described_class.new.log_level).to eq(:info)
+    end
+
+    it 'writes to the file given by LOG_FILE' do
+      dir = Dir.mktmpdir('ferrum-log')
+      path = File.join(dir, 'nested', 'custom.log')
+      ENV['LOG_FILE'] = path
+
+      described_class.new.logger.error('hello from spec')
+
+      expect(File.read(path)).to include('hello from spec')
+    ensure
+      FileUtils.rm_rf(dir) if dir
+    end
+
+    it 'writes to stderr when LOG_FILE is "stderr"' do
+      ENV['LOG_FILE'] = 'stderr'
+
+      logger = described_class.new.logger
+
+      expect(logger.instance_variable_get(:@logdev).dev).to eq($stderr)
+    end
+
+    it 'does not write inside the gem directory by default' do
+      gem_root = File.expand_path('../..', __dir__)
+      logger = described_class.new.logger
+      dev = logger.instance_variable_get(:@logdev).dev
+
+      expect(dev.path).not_to start_with(File.join(gem_root, 'logs')) if dev.respond_to?(:path)
     end
   end
 end
