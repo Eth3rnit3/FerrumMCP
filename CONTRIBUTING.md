@@ -451,8 +451,13 @@ Contributors are recognized in:
 3. Create a GitHub Release with tag `vX.Y.Z` on `main`. This triggers:
    - `release.yml`: checks the tag matches `FerrumMCP::VERSION`, builds the gem, publishes it to RubyGems
      (trusted publishing over OIDC, no API key or MFA prompt) and to GitHub Packages
-   - `docker-publish.yml`: publishes the `X.Y.Z`, `X.Y`, `X` and `-botbrowser` Docker tags
+   - `docker-publish.yml`: publishes the `X.Y.Z`, `X.Y`, `X` and `-botbrowser` Docker tags, reusing the
+     per-architecture images already built on `main` for that commit instead of rebuilding them
 4. If the RubyGems job fails, re-run it: it skips versions that are already published
+
+Docker builds are skipped when a change cannot affect the images (docs, specs, other workflows): pull request
+CI builds them only when `Dockerfile*`, `Gemfile*`, `lib/`, `bin/` or the Docker-related workflows change, and
+`main` publishes new images only in that case too.
 
 RubyGems trusted publishing is configured on rubygems.org for this repository and the `release.yml` workflow.
 Renaming that workflow file requires updating the trusted publisher.
