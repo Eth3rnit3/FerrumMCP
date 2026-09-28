@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>Fake audio challenge</title></head>
+<body>
+  <!-- A host form that must never be touched by the solver -->
+  <form id="login" onsubmit="window.hostSubmitted = true; return false;">
+    <input type="text" id="username" name="username">
+    <button type="submit" id="login-btn">Log in</button>
+  </form>
+
+  <!-- Something that looks like an audio challenge but is not a known CAPTCHA widget -->
+  <div class="challenge">
+    <button id="audio-button" type="button">Get an audio challenge</button>
+    <audio id="audio-source" src="/captcha/silence.wav"></audio>
+  </div>
+  <script>window.hostSubmitted = false;</script>
+</body>
+</html>

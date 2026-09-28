@@ -83,6 +83,16 @@ def start_test_server
 
   mount_fixtures(server, fixtures_dir, '/fixtures') if Dir.exist?(fixtures_dir)
 
+  # One second of 16 kHz mono silence, used by the CAPTCHA fixtures
+  server.mount_proc '/captcha/silence.wav' do |_req, res|
+    samples = "\0\0" * 16_000
+    header = ['RIFF', 36 + samples.bytesize, 'WAVE', 'fmt ', 16, 1, 1, 16_000, 32_000, 2, 16,
+              'data', samples.bytesize].pack('A4VA4A4VvvVVvvA4V')
+    res.status = 200
+    res['Content-Type'] = 'audio/wav'
+    res.body = header + samples
+  end
+
   # Keep the default test page for backward compatibility
   server.mount_proc '/test' do |_req, res|
     res.status = 200
