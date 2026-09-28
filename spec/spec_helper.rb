@@ -52,8 +52,12 @@ RSpec.configure do |config|
   end
 end
 
+def test_server_port
+  ENV.fetch('TEST_SERVER_PORT', '9999').to_i
+end
+
 def start_test_server
-  port = 9999
+  port = test_server_port
 
   server = WEBrick::HTTPServer.new(
     Port: port,
@@ -135,7 +139,7 @@ def mount_fixtures(server, dir, url_prefix)
 end
 
 def test_url(path = '/test')
-  "http://localhost:9999#{path}"
+  "http://localhost:#{test_server_port}#{path}"
 end
 
 def test_base_config
