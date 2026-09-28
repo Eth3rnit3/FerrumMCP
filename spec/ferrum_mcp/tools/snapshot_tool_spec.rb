@@ -71,6 +71,25 @@ RSpec.describe FerrumMCP::Tools::SnapshotTool do
     expect(status[:data][:text]).to eq('custom-clicked')
   end
 
+  it 'distinguishes unlabeled radio buttons of the same group by their value' do
+    sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+    text = run_tool(described_class, sid)[:data][:snapshot]
+
+    expect(text).to match(/\[e\d+\] radio "size" value="small"$/)
+    expect(text).to match(/\[e\d+\] radio "size" value="large" checked$/)
+    expect(text).to match(/\[e\d+\] radio "Red color" value="red"$/)
+  end
+
+  it 'exposes the radio value in json format' do
+    sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+    elements = run_tool(described_class, sid, format: 'json')[:data][:elements]
+
+    radios = elements.select { |e| e[:role] == 'radio' && e[:name] == 'size' }
+    expect(radios.map { |e| e[:value] }).to eq(%w[small large])
+  end
+
   it 'includes hidden elements on request and limits the output' do
     sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
 

@@ -19,6 +19,35 @@ RSpec.describe 'Extraction Tools' do
   end
 
   describe FerrumMCP::Tools::GetTextTool do
+    describe 'whitespace handling' do
+      it 'collapses surrounding and inner whitespace by default' do
+        sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+        result = execute_tool_in_session(described_class, sid, { session_id: sid, selector: '#padded-text' })
+
+        expect(result[:data][:text]).to eq('Hello padded world')
+      end
+
+      it 'normalizes every entry when multiple is true' do
+        sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+        result = execute_tool_in_session(described_class, sid,
+                                         { session_id: sid, selector: '#padded-text, #status', multiple: true })
+
+        expect(result[:data][:texts]).to eq(['Hello padded world', 'idle'])
+      end
+
+      it 'returns the raw text when raw is true' do
+        sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+        result = execute_tool_in_session(described_class, sid,
+                                         { session_id: sid, selector: '#padded-text', raw: true })
+
+        expect(result[:data][:text]).to start_with("\n")
+        expect(result[:data][:text]).to include('Hello   padded')
+      end
+    end
+
     describe '.tool_name' do
       it 'returns get_text' do
         expect(described_class.tool_name).to eq('get_text')
