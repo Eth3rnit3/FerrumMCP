@@ -51,4 +51,39 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
       expect(solver).not_to have_received(:submit_answer)
     end
   end
+
+  describe 'downloading the challenge audio' do
+    let(:frame) { instance_double(Ferrum::Frame) }
+    let(:transcriber) { instance_double(FerrumMCP::WhisperService) }
+    let(:solver) do
+      described_class.new(instance_double(Ferrum::Page), logger: Logger.new(File::NULL), transcriber: transcriber)
+    end
+    let(:heard) { FerrumMCP::WhisperService::Transcription.new(text: 'hello world', language: 'en') }
+
+    before do
+      allow(solver).to receive(:challenge_frame).and_return(frame)
+      allow(solver).to receive(:sleep)
+      allow(transcriber).to receive(:analyze_bytes).and_return(heard)
+    end
+
+    # Fetched right after the challenge appears, the audio came back cut at
+    # 8 KB: whisper heard nothing and the only real challenge was discarded.
+    it 'downloads again when the audio is truncated' do
+      truncated = Base64.strict_encode64('a' * 8192)
+      full = Base64.strict_encode64('a' * 30_000)
+      allow(frame).to receive(:evaluate_async).and_return(truncated, full)
+
+      solver.send(:transcribe, 'https://www.google.com/recaptcha/api2/payload?p=x')
+
+      expect(transcriber).to have_received(:analyze_bytes).with('a' * 30_000)
+    end
+
+    it 'uses the largest download when it stays small' do
+      allow(frame).to receive(:evaluate_async).and_return(*[4000, 9000, 6000].map { |n| Base64.strict_encode64('a' * n) })
+
+      solver.send(:transcribe, 'https://www.google.com/recaptcha/api2/payload?p=x')
+
+      expect(transcriber).to have_received(:analyze_bytes).with('a' * 9000)
+    end
+  end
 end
