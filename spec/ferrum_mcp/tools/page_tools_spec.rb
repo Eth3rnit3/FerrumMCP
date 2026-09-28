@@ -140,6 +140,7 @@ RSpec.describe 'Page Tools (scroll, select, upload, viewport, tabs)' do
   end
 
   describe 'tabs' do
+    # rubocop:disable RSpec/MultipleExpectations
     it 'opens, lists, switches and closes tabs' do
       sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
 
@@ -161,6 +162,7 @@ RSpec.describe 'Page Tools (scroll, select, upload, viewport, tabs)' do
       expect(closed[:success]).to be true
       expect(run_tool(FerrumMCP::Tools::ListTabsTool, sid)[:data][:count]).to eq(1)
     end
+    # rubocop:enable RSpec/MultipleExpectations
 
     it 'switches to a tab by index and falls back to another tab when the current one is closed' do
       sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')

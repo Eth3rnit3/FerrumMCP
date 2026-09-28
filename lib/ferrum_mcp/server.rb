@@ -24,13 +24,27 @@ module FerrumMCP
       Tools::DragAndDropTool,
       Tools::AcceptCookiesTool,
       Tools::SolveCaptchaTool,
+      Tools::ScrollTool,
+      Tools::SelectOptionTool,
+      Tools::UploadFileTool,
       # Extraction
+      Tools::SnapshotTool,
       Tools::GetTextTool,
       Tools::GetHTMLTool,
       Tools::ScreenshotTool,
       Tools::GetTitleTool,
       Tools::GetURLTool,
       Tools::FindByTextTool,
+      # Waiting
+      Tools::WaitForSelectorTool,
+      Tools::WaitForTextTool,
+      Tools::WaitForNetworkIdleTool,
+      # Tabs & viewport
+      Tools::ListTabsTool,
+      Tools::NewTabTool,
+      Tools::SwitchTabTool,
+      Tools::CloseTabTool,
+      Tools::SetViewportTool,
       # Advanced
       Tools::ExecuteScriptTool,
       Tools::EvaluateJSTool,
