@@ -6,27 +6,9 @@ module FerrumMCP
     # Works intelligently without requiring specific selectors
     # rubocop:disable Metrics/ClassLength
     class SolveCaptchaTool < BaseTool
-      def self.tool_name
-        'solve_captcha'
-      end
-
-      def self.description
-        'Automatically detect and solve audio CAPTCHA challenges using Whisper speech recognition. ' \
-          'Intelligently finds reCAPTCHA, hCaptcha, and other audio challenges without manual configuration.'
-      end
-
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[session_id]
-        }
-      end
+      tool_name 'solve_captcha'
+      description 'Automatically detect and solve audio CAPTCHA challenges using Whisper speech recognition. ' \
+                  'Intelligently finds reCAPTCHA, hCaptcha, and other audio challenges without manual configuration.'
 
       # Known CAPTCHA checkbox selectors (to trigger challenge)
       CAPTCHA_CHECKBOX_SELECTORS = [
@@ -107,7 +89,7 @@ module FerrumMCP
         'button[value*="verify" i]'
       ].freeze
 
-      def execute(_params)
+      def perform(_params)
         ensure_browser_active
 
         logger.info 'Starting intelligent CAPTCHA detection and solving...'
@@ -147,7 +129,7 @@ module FerrumMCP
 
         # Step 3: Download audio using Whisper service
         logger.info 'Downloading audio challenge...'
-        audio_file = whisper.download_audio(browser, audio_url)
+        audio_file = whisper.download_audio(page, audio_url)
 
         begin
           # Step 4: Transcribe with Whisper service
@@ -194,7 +176,7 @@ module FerrumMCP
       def detect_and_click_checkbox
         # Try known checkbox selectors
         CAPTCHA_CHECKBOX_SELECTORS.each do |selector|
-          element = browser.at_css(selector)
+          element = page.at_css(selector)
           next unless element
           next unless element_visible?(element)
 
@@ -207,7 +189,7 @@ module FerrumMCP
         end
 
         # Try in iframes
-        frames = browser.frames
+        frames = page.frames
         if frames.length > 1
           frames[1..].each_with_index do |frame, index|
             CAPTCHA_CHECKBOX_SELECTORS.each do |selector|
@@ -233,7 +215,7 @@ module FerrumMCP
       def detect_and_click_audio_button
         # Strategy 1: Try known selectors
         AUDIO_BUTTON_SELECTORS.each do |selector|
-          element = browser.at_css(selector)
+          element = page.at_css(selector)
           next unless element
           next unless element_visible?(element)
 
@@ -270,7 +252,7 @@ module FerrumMCP
 
       # Try to find audio button in iframes
       def try_audio_button_in_iframes
-        frames = browser.frames
+        frames = page.frames
         return { found: false } if frames.length <= 1
 
         frames[1..].each_with_index do |frame, index|
@@ -298,7 +280,7 @@ module FerrumMCP
 
         # Try known selectors
         AUDIO_SOURCE_SELECTORS.each do |selector|
-          element = browser.at_css(selector)
+          element = page.at_css(selector)
           if element
             logger.debug "Found element with selector: #{selector}"
           else
@@ -327,7 +309,7 @@ module FerrumMCP
 
         # Try finding in iframes
         logger.debug 'Trying to find audio source in iframes...'
-        frames = browser.frames
+        frames = page.frames
         logger.debug "Found #{frames.length} frames"
 
         if frames.length > 1
@@ -358,7 +340,7 @@ module FerrumMCP
       # Detect and fill input field
       def detect_and_fill_input(text)
         INPUT_FIELD_SELECTORS.each do |selector|
-          element = browser.at_css(selector)
+          element = page.at_css(selector)
           next unless element
           next unless element_visible?(element)
 
@@ -376,7 +358,7 @@ module FerrumMCP
         end
 
         # Try in iframes
-        frames = browser.frames
+        frames = page.frames
         if frames.length > 1
           frames[1..].each_with_index do |frame, index|
             INPUT_FIELD_SELECTORS.each do |selector|
@@ -403,7 +385,7 @@ module FerrumMCP
       # Detect and click verify button
       def detect_and_click_verify
         VERIFY_BUTTON_SELECTORS.each do |selector|
-          element = browser.at_css(selector)
+          element = page.at_css(selector)
           next unless element
           next unless element_visible?(element)
 
@@ -431,7 +413,7 @@ module FerrumMCP
         end
 
         # Try in iframes
-        frames = browser.frames
+        frames = page.frames
         if frames.length > 1
           frames[1..].each_with_index do |frame, index|
             VERIFY_BUTTON_SELECTORS.each do |selector|
@@ -459,7 +441,7 @@ module FerrumMCP
         xpath = "//#{tag}[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', " \
                 "'abcdefghijklmnopqrstuvwxyz'), #{escaped})]"
 
-        browser.xpath(xpath)
+        page.xpath(xpath)
       rescue StandardError => e
         logger.debug "XPath search for '#{text}' failed: #{e.message}"
         []
@@ -500,7 +482,7 @@ module FerrumMCP
         logger.debug "Native click failed: #{e.message}, trying JavaScript..."
 
         begin
-          browser.execute(<<~JAVASCRIPT, element)
+          page.execute(<<~JAVASCRIPT, element)
             arguments[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
             setTimeout(() => arguments[0].click(), 100);
           JAVASCRIPT

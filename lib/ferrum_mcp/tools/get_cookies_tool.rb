@@ -2,68 +2,39 @@
 
 module FerrumMCP
   module Tools
-    # Tool to get cookies
+    # Get cookies
     class GetCookiesTool < BaseTool
-      def self.tool_name
-        'get_cookies'
-      end
+      tool_name 'get_cookies'
+      description 'Get all cookies or the cookies whose domain contains the given string'
 
-      def self.description
-        'Get all cookies or cookies for a specific domain'
-      end
+      param :domain, type: :string, description: 'Optional: filter cookies by domain (substring match)'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            domain: {
-              type: 'string',
-              description: 'Optional: Filter cookies by domain'
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: ['session_id']
-        }
-      end
-
-      def execute(params)
+      def perform(params)
         ensure_browser_active
-        domain = param(params, :domain)
-
+        domain = params[:domain]
         logger.info "Getting cookies#{" for #{domain}" if domain}"
-        all_cookies = browser.cookies.all
 
-        # Convert cookies to structured format
-        cookies_array = []
+        cookies = page.cookies.all.map { |name, cookie| cookie_to_hash(name, cookie) }
+        cookies.select! { |c| c[:domain].to_s.include?(domain) } if domain
 
-        all_cookies.each do |name, cookie|
-          # Get structured cookie data if available
-          cookie_data = if cookie.respond_to?(:to_h)
-                          cookie.to_h
-                        elsif cookie.is_a?(Hash)
-                          cookie
-                        else
-                          # Fallback to basic format
-                          { name: name, value: cookie.to_s }
-                        end
-
-          # Ensure name is set
-          cookie_data[:name] ||= name
-
-          # Filter by domain if specified
-          cookies_array << cookie_data if domain.nil? || cookie_data[:domain]&.include?(domain)
-        end
-
-        success_response(
-          cookies: cookies_array,
-          count: cookies_array.length
-        )
+        success_response(cookies: cookies, count: cookies.length)
       rescue StandardError => e
         logger.error "Get cookies failed: #{e.message}"
         error_response("Failed to get cookies: #{e.message}")
+      end
+
+      private
+
+      def cookie_to_hash(name, cookie)
+        return { name: name, value: cookie.to_s } unless cookie.respond_to?(:attributes)
+
+        attrs = cookie.attributes
+        {
+          name: cookie.name || name, value: cookie.value, domain: cookie.domain, path: cookie.path,
+          expires: cookie.expires&.iso8601, size: cookie.size, secure: cookie.secure?,
+          httponly: cookie.httponly?, session: cookie.session?, samesite: cookie.samesite,
+          priority: attrs['priority']
+        }.compact
       end
     end
   end

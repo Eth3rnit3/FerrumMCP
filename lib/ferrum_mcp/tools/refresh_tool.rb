@@ -2,41 +2,18 @@
 
 module FerrumMCP
   module Tools
-    # Tool to refresh the current page
+    # Refresh the current page
     class RefreshTool < BaseTool
-      def self.tool_name
-        'refresh'
-      end
+      tool_name 'refresh'
+      description 'Refresh the current page'
 
-      def self.description
-        'Refresh the current page'
-      end
-
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: ['session_id']
-        }
-      end
-
-      def execute(_params)
+      def perform(_params)
         ensure_browser_active
         logger.info 'Refreshing page'
-        browser.refresh
+        page.refresh
+        page.network.wait_for_idle(timeout: 30)
 
-        # Wait for network to be idle to ensure page is reloaded
-        browser.network.wait_for_idle(timeout: 30)
-
-        success_response(
-          url: browser.url,
-          title: browser.title
-        )
+        success_response(url: page.url, title: page.title)
       rescue Ferrum::TimeoutError => e
         logger.error "Refresh timeout: #{e.message}"
         error_response("Refresh timed out: #{e.message}")

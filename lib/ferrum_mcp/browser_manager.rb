@@ -9,6 +9,32 @@ module FerrumMCP
       @config = config
       @logger = config.logger
       @browser = nil
+      @page = nil
+    end
+
+    # Current tab. Tools operate on this page so that tab switching works.
+    def page
+      raise BrowserError, 'Browser is not active' unless @browser
+
+      @page = nil if @page && !page_open?(@page)
+      @page ||= @browser.page
+    end
+
+    # All open tabs of the default browser context
+    def pages
+      raise BrowserError, 'Browser is not active' unless @browser
+
+      @browser.pages
+    end
+
+    def select_page(page)
+      @page = page
+    end
+
+    def create_page
+      raise BrowserError, 'Browser is not active' unless @browser
+
+      @browser.create_page
     end
 
     def start
@@ -50,6 +76,7 @@ module FerrumMCP
       logger.error "Error stopping browser: #{e.message}"
     ensure
       @browser = nil
+      @page = nil
     end
 
     def restart
@@ -79,6 +106,12 @@ module FerrumMCP
     end
 
     private
+
+    def page_open?(page)
+      @browser.pages.any? { |p| p.target_id == page.target_id }
+    rescue StandardError
+      false
+    end
 
     # Browser flags come from the session configuration (defaults merged with
     # session-specific options, keys without leading dashes).

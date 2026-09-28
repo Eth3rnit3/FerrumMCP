@@ -2,34 +2,14 @@
 
 module FerrumMCP
   module Tools
-    # Tool to get current URL
+    # Get current URL
     class GetURLTool < BaseTool
-      def self.tool_name
-        'get_url'
-      end
+      tool_name 'get_url'
+      description 'Get the current page URL'
 
-      def self.description
-        'Get the current URL of the page'
-      end
-
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: ['session_id']
-        }
-      end
-
-      def execute(_params)
+      def perform(_params)
         ensure_browser_active
-
-        logger.info 'Getting current URL'
-        success_response(url: browser.url)
+        success_response(url: page.url)
       rescue StandardError => e
         logger.error "Get URL failed: #{e.message}"
         error_response("Failed to get URL: #{e.message}")

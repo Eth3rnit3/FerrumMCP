@@ -199,6 +199,14 @@ module FerrumMCP
       @base_config.logger
     end
 
+    def url_policy
+      @base_config.url_policy
+    end
+
+    def upload_allowed_dirs
+      @base_config.upload_allowed_dirs
+    end
+
     # Browser flags handed to Ferrum: defaults merged with session-specific
     # options. Ferrum prefixes every key with "--" itself, so keys are stored
     # without dashes ("window-size", not "--window-size").

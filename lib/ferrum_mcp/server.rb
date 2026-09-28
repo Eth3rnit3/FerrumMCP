@@ -46,26 +46,11 @@ module FerrumMCP
       @logger = config.logger
       @session_manager = SessionManager.new(config)
       @resource_manager = ResourceManager.new(config)
-      @tool_instances = {}
       @mcp_server = create_mcp_server
 
       setup_tools
       setup_resources
       setup_error_handling
-    end
-
-    # Deprecated: For backward compatibility
-    # Sessions must be created explicitly using create_session tool
-    def start_browser
-      raise NotImplementedError, 'start_browser is deprecated. Use create_session tool to create a session.'
-    end
-
-    # Deprecated: For backward compatibility
-    def stop_browser
-      logger.warn 'stop_browser is deprecated, use session_manager.close_all_sessions'
-      session_manager.close_all_sessions
-      @tool_instances = {}
-      logger.info 'All sessions stopped'
     end
 
     # Shutdown server and cleanup all sessions
@@ -140,74 +125,45 @@ module FerrumMCP
     end
 
     def execute_tool(tool_class, params)
+      params = params.except(:server_context)
       logger.debug "Executing tool: #{tool_class.tool_name} with params: #{params.inspect}"
 
-      # Session management tools don't need a browser session
-      if session_management_tool?(tool_class)
-        logger.debug "Executing session management tool: #{tool_class.tool_name}"
-        tool = tool_class.new(session_manager)
-        result = tool.execute(params)
-      else
-        # Extract session_id from params (required)
-        session_id = params[:session_id] || params['session_id']
+      result = if tool_class.requires_session?
+                 execute_browser_tool(tool_class, params)
+               else
+                 tool_class.new(session_manager).execute(params)
+               end
 
-        unless session_id
-          logger.error "session_id is required for #{tool_class.tool_name}"
-          return error_tool_response('session_id is required. Create a session first using create_session tool.')
-        end
-
-        logger.debug "Using session_id: #{session_id}"
-
-        # Execute tool within session context
-        result = session_manager.with_session(session_id) do |browser_manager|
-          logger.debug "Creating tool instance for #{tool_class.tool_name}"
-          tool = tool_class.new(browser_manager)
-          logger.debug "Calling execute on #{tool_class.tool_name}"
-          tool.execute(params)
-        end
-      end
-
-      logger.debug "Tool #{tool_class.tool_name} result: #{result.inspect}"
-
-      # MCP expects a Tool::Response object
-      # Convert our tool result to MCP format
-      if result[:success]
-        logger.debug "Tool succeeded, creating MCP::Tool::Response with data: #{result[:data].inspect}"
-
-        # Check if this is an image response
-        if result[:type] == 'image'
-          logger.debug "Creating image response with mime_type: #{result[:mime_type]}"
-          # Return MCP Tool::Response with image content
-          MCP::Tool::Response.new([{
-                                    type: 'image',
-                                    data: result[:data],
-                                    mimeType: result[:mime_type]
-                                  }])
-        else
-          # Return a proper MCP Tool::Response with the data as text content
-          MCP::Tool::Response.new([{ type: 'text', text: result[:data].to_json }])
-        end
-      else
-        logger.error "Tool failed with error: #{result[:error]}"
-        # Return an error response
-        MCP::Tool::Response.new([{ type: 'text', text: result[:error] }], error: true)
-      end
+      to_mcp_response(tool_class, result)
     rescue StandardError => e
       logger.error "Tool execution error (#{tool_class.tool_name}): #{e.class} - #{e.message}"
-      logger.error 'Backtrace:'
       logger.error e.backtrace.first(10).join("\n")
-      # Return an error response for unexpected exceptions
-      MCP::Tool::Response.new([{ type: 'text', text: "#{e.class}: #{e.message}" }], error: true)
+      error_tool_response("#{e.class}: #{e.message}")
     end
 
-    # Check if tool is a session management tool
-    def session_management_tool?(tool_class)
-      [
-        Tools::CreateSessionTool,
-        Tools::ListSessionsTool,
-        Tools::CloseSessionTool,
-        Tools::GetSessionInfoTool
-      ].include?(tool_class)
+    def execute_browser_tool(tool_class, params)
+      session_id = params[:session_id] || params['session_id']
+      if session_id.nil? || session_id.to_s.empty?
+        logger.error "session_id is required for #{tool_class.tool_name}"
+        return { success: false, error: 'session_id is required. Create a session first using create_session tool.' }
+      end
+
+      session_manager.with_session(session_id) do |browser_manager|
+        tool_class.new(browser_manager).execute(params)
+      end
+    end
+
+    def to_mcp_response(tool_class, result)
+      unless result[:success]
+        logger.error "Tool #{tool_class.tool_name} failed: #{result[:error]}"
+        return error_tool_response(result[:error])
+      end
+
+      if result[:type] == 'image'
+        MCP::Tool::Response.new([{ type: 'image', data: result[:data], mimeType: result[:mime_type] }])
+      else
+        MCP::Tool::Response.new([{ type: 'text', text: result[:data].to_json }])
+      end
     end
 
     def setup_error_handling

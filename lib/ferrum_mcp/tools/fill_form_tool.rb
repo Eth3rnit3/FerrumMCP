@@ -2,76 +2,61 @@
 
 module FerrumMCP
   module Tools
-    # Tool to fill form fields
+    # Fill form fields
     class FillFormTool < BaseTool
-      def self.tool_name
-        'fill_form'
-      end
+      tool_name 'fill_form'
+      description 'Fill one or more form fields with values (typing like a user)'
 
-      def self.description
-        'Fill one or more form fields with values'
-      end
+      param :fields, type: :array, required: true,
+                     description: 'Array of fields to fill',
+                     schema: {
+                       items: {
+                         type: 'object',
+                         properties: {
+                           selector: { type: 'string', description: 'CSS selector, XPath or snapshot ref' },
+                           value: { type: 'string', description: 'Value to type' },
+                           clear: { type: 'boolean', description: 'Clear the field first (default: false)' }
+                         },
+                         required: %w[selector value]
+                       }
+                     }
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            fields: {
-              type: 'array',
-              description: 'Array of fields to fill',
-              items: {
-                type: 'object',
-                properties: {
-                  selector: { type: 'string', description: 'CSS selector' },
-                  value: { type: 'string', description: 'Value to fill' }
-                },
-                required: %w[selector value]
-              }
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[fields session_id]
-        }
-      end
-
-      def execute(params)
-        fields = param(params, :fields)
+      def perform(params)
+        fields = Array(params[:fields])
         results = []
 
         fields.each_with_index do |field, index|
-          selector = field['selector'] || field[:selector]
-          value = field['value'] || field[:value]
-
+          selector = field[:selector]
           logger.info "Filling field: #{selector}"
 
-          # Use retry logic for stale elements
           with_retry do
             element = find_element(selector)
-
-            # Scroll into view to ensure element is visible
-            element.scroll_into_view if element.respond_to?(:scroll_into_view)
-
-            # Focus with small delay to allow focus event to register
+            element.scroll_into_view
             element.focus
-            sleep 0.05
-
-            # Type the value
-            element.type(value)
+            sleep 0.05 # let the focus event register before typing
+            clear_field(element) if field[:clear]
+            element.type(field[:value].to_s)
           end
 
           results << { selector: selector, filled: true }
-
-          # Small delay between fields to allow validation/autocomplete/onChange handlers
-          sleep 0.1 unless index == fields.length - 1
+          sleep 0.1 unless index == fields.length - 1 # let onChange/validation handlers run
         end
 
         success_response(fields: results)
       rescue StandardError => e
         logger.error "Fill form failed: #{e.message}"
         error_response("Failed to fill form: #{e.message}")
+      end
+
+      private
+
+      def clear_field(element)
+        page.execute(<<~JS, element)
+          const el = arguments[0];
+          const setter = Object.getOwnPropertyDescriptor(el.__proto__, 'value')?.set;
+          setter ? setter.call(el, '') : (el.value = '');
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        JS
       end
     end
   end

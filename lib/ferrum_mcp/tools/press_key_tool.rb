@@ -2,53 +2,33 @@
 
 module FerrumMCP
   module Tools
-    # Tool to press keyboard keys
+    # Press keyboard keys
     class PressKeyTool < BaseTool
-      def self.tool_name
-        'press_key'
-      end
+      tool_name 'press_key'
+      description 'Press a keyboard key (e.g. Enter, Tab, Escape, ArrowDown) or type a character'
 
-      def self.description
-        'Press keyboard keys (e.g., Enter, Tab, Escape)'
-      end
+      param :key, type: :string, required: true, description: 'Key to press (Enter, Tab, Escape, ArrowDown, etc.)'
+      param :selector, type: :string, description: 'Optional: selector of the element to focus before pressing the key'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            key: {
-              type: 'string',
-              description: 'Key to press (Enter, Tab, Escape, ArrowDown, etc.)'
-            },
-            selector: {
-              type: 'string',
-              description: 'Optional: CSS selector to focus before pressing key'
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[key session_id]
-        }
-      end
+      KEY_ALIASES = {
+        'enter' => :Enter, 'return' => :Enter, 'tab' => :Tab, 'escape' => :Escape, 'esc' => :Escape,
+        'backspace' => :Backspace, 'delete' => :Delete, 'del' => :Delete,
+        'arrowdown' => :Down, 'down' => :Down, 'arrowup' => :Up, 'up' => :Up,
+        'arrowleft' => :Left, 'left' => :Left, 'arrowright' => :Right, 'right' => :Right,
+        'space' => ' ', 'pageup' => :PageUp, 'pagedown' => :PageDown, 'home' => :Home, 'end' => :End
+      }.freeze
 
-      def execute(params)
-        key = param(params, :key)
-        selector = param(params, :selector)
+      def perform(params)
+        key = params[:key].to_s
+        selector = params[:selector]
 
         if selector
           logger.info "Focusing element: #{selector}"
-          element = find_element(selector)
-          element.focus
+          find_element(selector).focus
         end
 
         logger.info "Pressing key: #{key}"
-        normalized_key = normalize_key(key)
-
-        # Use keyboard.type for key presses
-        # This handles both special keys and regular characters correctly
-        browser.keyboard.type(normalized_key)
+        page.keyboard.type(normalize_key(key))
 
         success_response(message: "Pressed key: #{key}")
       rescue StandardError => e
@@ -59,32 +39,7 @@ module FerrumMCP
       private
 
       def normalize_key(key)
-        # Convert common key names to Ferrum format
-        case key.to_s.downcase
-        when 'enter', 'return'
-          :Enter
-        when 'tab'
-          :Tab
-        when 'escape', 'esc'
-          :Escape
-        when 'backspace'
-          :Backspace
-        when 'delete', 'del'
-          :Delete
-        when 'arrowdown', 'down'
-          :Down
-        when 'arrowup', 'up'
-          :Up
-        when 'arrowleft', 'left'
-          :Left
-        when 'arrowright', 'right'
-          :Right
-        when 'space'
-          ' '
-        else
-          # If already a symbol, return as-is, otherwise try to convert
-          key.is_a?(Symbol) ? key : key.to_sym
-        end
+        KEY_ALIASES.fetch(key.downcase) { key.length == 1 ? key : key.to_sym }
       end
     end
   end

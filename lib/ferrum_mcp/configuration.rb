@@ -9,7 +9,7 @@ module FerrumMCP
     attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :log_file, :transport,
                   :max_sessions, :rate_limit_enabled, :rate_limit_max_requests, :rate_limit_window,
                   :api_key_enabled, :api_keys, :trust_proxy
-    attr_reader :browsers, :user_profiles, :bot_profiles
+    attr_reader :browsers, :user_profiles, :bot_profiles, :url_policy, :upload_allowed_dirs
 
     # Browser configuration structure
     BrowserConfig = Struct.new(:id, :name, :path, :type, :description, keyword_init: true) do
@@ -46,6 +46,12 @@ module FerrumMCP
       # Only honour X-Forwarded-For when the server sits behind a trusted proxy
       @trust_proxy = ENV.fetch('TRUST_PROXY', 'false') == 'true'
 
+      # Optional navigation restrictions (ALLOWED_HOSTS / BLOCKED_HOSTS)
+      @url_policy = UrlPolicy.from_env
+
+      # Directories the upload_file tool may read from (UPLOAD_ALLOWED_DIRS)
+      @upload_allowed_dirs = load_upload_allowed_dirs
+
       # Rate limiting configuration
       @rate_limit_enabled = ENV.fetch('RATE_LIMIT_ENABLED', 'true') == 'true'
       @rate_limit_max_requests = ENV.fetch('RATE_LIMIT_MAX_REQUESTS', '100').to_i
@@ -55,10 +61,7 @@ module FerrumMCP
       @api_key_enabled = ENV.fetch('API_KEY_ENABLED', 'false') == 'true'
       @api_keys = load_api_keys
 
-      # Load multi-browser configurations
-      @browsers = load_browsers
-      @user_profiles = load_user_profiles
-      @bot_profiles = load_bot_profiles
+      load_browser_configurations
     end
 
     def valid?
@@ -104,6 +107,19 @@ module FerrumMCP
     end
 
     private
+
+    def load_browser_configurations
+      @browsers = load_browsers
+      @user_profiles = load_user_profiles
+      @bot_profiles = load_bot_profiles
+    end
+
+    # Defaults to the current directory and the system temp dir
+    def load_upload_allowed_dirs
+      configured = ENV.fetch('UPLOAD_ALLOWED_DIRS', '').split(',').map(&:strip).reject(&:empty?)
+      dirs = configured.empty? ? [Dir.pwd, Dir.tmpdir] : configured
+      dirs.map { |d| File.expand_path(d) }
+    end
 
     # Load API keys from environment variables
     # Supports single key (API_KEY) or multiple keys (API_KEYS=key1,key2,key3)

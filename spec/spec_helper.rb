@@ -37,7 +37,7 @@ RSpec.configure do |config|
   # to ensure consistent test environment
   config.before do
     preserved_keys = %w[BROWSER_HEADLESS BROWSER_TIMEOUT LOG_LEVEL COVERAGE CI]
-    ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_|API_KEY|LOG_FILE|TRUST_PROXY)/).each do |key|
+    ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_|API_KEY|LOG_FILE|TRUST_PROXY|ALLOWED_HOSTS|BLOCKED_HOSTS|UPLOAD_ALLOWED_DIRS)/).each do |key|
       ENV.delete(key) unless preserved_keys.include?(key)
     end
   end

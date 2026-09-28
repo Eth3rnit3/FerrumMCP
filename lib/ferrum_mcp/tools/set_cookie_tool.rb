@@ -2,70 +2,29 @@
 
 module FerrumMCP
   module Tools
-    # Tool to set a cookie
+    # Set a cookie
     class SetCookieTool < BaseTool
-      def self.tool_name
-        'set_cookie'
-      end
+      tool_name 'set_cookie'
+      description 'Set a cookie in the browser'
 
-      def self.description
-        'Set a cookie in the browser'
-      end
+      param :name, type: :string, required: true, description: 'Cookie name'
+      param :value, type: :string, required: true, description: 'Cookie value'
+      param :domain, type: :string, required: true, description: 'Cookie domain'
+      param :path, type: :string, default: '/', description: 'Cookie path (default: /)'
+      param :secure, type: :boolean, default: false, description: 'Secure flag (default: false)'
+      param :httponly, type: :boolean, default: false, description: 'HttpOnly flag (default: false)'
+      param :expires, type: :integer, description: 'Optional: expiry as a Unix timestamp (seconds)'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            name: {
-              type: 'string',
-              description: 'Cookie name'
-            },
-            value: {
-              type: 'string',
-              description: 'Cookie value'
-            },
-            domain: {
-              type: 'string',
-              description: 'Cookie domain'
-            },
-            path: {
-              type: 'string',
-              description: 'Cookie path (default: /)',
-              default: '/'
-            },
-            secure: {
-              type: 'boolean',
-              description: 'Secure flag (default: false)',
-              default: false
-            },
-            httponly: {
-              type: 'boolean',
-              description: 'HttpOnly flag (default: false)',
-              default: false
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[name value domain session_id]
-        }
-      end
-
-      def execute(params)
+      def perform(params)
         ensure_browser_active
-
         cookie = {
-          name: params['name'] || params[:name],
-          value: params['value'] || params[:value],
-          domain: params['domain'] || params[:domain],
-          path: params['path'] || params[:path] || '/',
-          secure: params['secure'] || params[:secure] || false,
-          httpOnly: params['httponly'] || params[:httponly] || false
+          name: params[:name], value: params[:value].to_s, domain: params[:domain], path: params[:path],
+          secure: params[:secure], httponly: params[:httponly]
         }
+        cookie[:expires] = params[:expires] if params[:expires]
 
         logger.info "Setting cookie: #{cookie[:name]}"
-        browser.cookies.set(**cookie)
+        page.cookies.set(**cookie)
 
         success_response(message: "Cookie set: #{cookie[:name]}")
       rescue StandardError => e

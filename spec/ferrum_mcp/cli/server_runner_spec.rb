@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe FerrumMCP::CLI::ServerRunner do
   let(:transport) { instance_double(FerrumMCP::Transport::HTTPServer, start: nil, stop: nil) }
-  let(:server) { instance_double(FerrumMCP::Server, shutdown: nil, stop_browser: nil) }
+  let(:server) { instance_double(FerrumMCP::Server, shutdown: nil) }
   let(:runner) { described_class.new(transport: 'http') }
 
   before do

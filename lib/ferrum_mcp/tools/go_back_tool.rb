@@ -2,41 +2,18 @@
 
 module FerrumMCP
   module Tools
-    # Tool to go back in browser history
+    # Go back to the previous page in browser history
     class GoBackTool < BaseTool
-      def self.tool_name
-        'go_back'
-      end
+      tool_name 'go_back'
+      description 'Go back to the previous page in browser history'
 
-      def self.description
-        'Go back to the previous page in browser history'
-      end
-
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: ['session_id']
-        }
-      end
-
-      def execute(_params)
+      def perform(_params)
         ensure_browser_active
         logger.info 'Going back'
-        browser.back
+        page.back
+        page.network.wait_for_idle(timeout: 30)
 
-        # Wait for network to be idle to ensure page is loaded
-        browser.network.wait_for_idle(timeout: 30)
-
-        success_response(
-          url: browser.url,
-          title: browser.title
-        )
+        success_response(url: page.url, title: page.title)
       rescue Ferrum::TimeoutError => e
         logger.error "Go back timeout: #{e.message}"
         error_response("Go back timed out: #{e.message}")

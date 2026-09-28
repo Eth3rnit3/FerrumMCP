@@ -2,41 +2,17 @@
 
 module FerrumMCP
   module Tools
-    # Tool to execute JavaScript code
+    # Execute JavaScript for side effects
     class ExecuteScriptTool < BaseTool
-      def self.tool_name
-        'execute_script'
-      end
+      tool_name 'execute_script'
+      description 'Execute JavaScript code in the page for its side effects (use evaluate_js to get a value back)'
 
-      def self.description
-        'Execute JavaScript code in the browser context'
-      end
+      param :script, type: :string, required: true, description: 'JavaScript code to execute'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            script: {
-              type: 'string',
-              description: 'JavaScript code to execute'
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[script session_id]
-        }
-      end
-
-      def execute(params)
+      def perform(params)
         ensure_browser_active
-        script = param(params, :script)
-
         logger.info 'Executing JavaScript'
-        # Use execute for side effects (doesn't return value)
-        # For getting return values, users should use EvaluateJSTool
-        browser.execute(script)
+        page.execute(params[:script].to_s)
 
         success_response(message: 'Script executed successfully')
       rescue StandardError => e

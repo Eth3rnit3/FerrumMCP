@@ -2,51 +2,22 @@
 
 module FerrumMCP
   module Tools
-    # Tool to get element attributes
+    # Get element attributes
     class GetAttributeTool < BaseTool
-      def self.tool_name
-        'get_attribute'
-      end
+      tool_name 'get_attribute'
+      description 'Get an attribute value from an element (CSS selector, XPath or snapshot ref)'
 
-      def self.description
-        'Get attribute value(s) from an element'
-      end
+      param :selector, type: :string, required: true, description: 'Selector of the element'
+      param :attribute, type: :string, required: true, description: 'Attribute name to read'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            selector: {
-              type: 'string',
-              description: 'CSS selector of the element'
-            },
-            attribute: {
-              type: 'string',
-              description: 'Attribute name to get'
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[selector attribute session_id]
-        }
-      end
-
-      def execute(params)
+      def perform(params)
         ensure_browser_active
-        selector = params['selector'] || params[:selector]
-        attribute = params['attribute'] || params[:attribute]
-
+        selector = params[:selector]
+        attribute = params[:attribute]
         logger.info "Getting attribute '#{attribute}' from: #{selector}"
-        element = find_element(selector)
-        value = element.attribute(attribute)
 
-        success_response(
-          selector: selector,
-          attribute: attribute,
-          value: value
-        )
+        value = find_element(selector).attribute(attribute)
+        success_response(selector: selector, attribute: attribute, value: value)
       rescue StandardError => e
         logger.error "Get attribute failed: #{e.message}"
         error_response("Failed to get attribute: #{e.message}")
