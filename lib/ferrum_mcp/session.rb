@@ -265,12 +265,21 @@ module FerrumMCP
 
     def default_browser_options
       options = {
-        'no-sandbox' => nil,
-        'disable-dev-shm-usage' => nil,
         'disable-blink-features' => 'AutomationControlled',
-        'disable-gpu' => nil
+        # Ferrum keeps every frame in the page's process so it can reach them,
+        # but Cloudflare rejects CDP input dispatched into an in-process
+        # cross-origin frame. Isolate its origin only; other CAPTCHA frames
+        # (reCAPTCHA, hCaptcha) stay reachable.
+        'disable-features' => 'site-per-process,TranslateUI',
+        'isolate-origins' => 'https://challenges.cloudflare.com'
       }
 
+      # Chrome refuses to start sandboxed as root, and /dev/shm is tiny in
+      # containers. A stock desktop Chrome keeps both.
+      if ENV['DOCKER'] == 'true' || ENV['CI'] || Process.uid.zero?
+        options['no-sandbox'] = nil
+        options['disable-dev-shm-usage'] = nil
+      end
       options['disable-setuid-sandbox'] = nil if ENV['CI']
       options['user-data-dir'] = user_profile.path if user_profile
 

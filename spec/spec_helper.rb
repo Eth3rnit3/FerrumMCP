@@ -83,6 +83,18 @@ def start_test_server
 
   mount_fixtures(server, fixtures_dir, '/fixtures') if Dir.exist?(fixtures_dir)
 
+  # One second of 16 kHz mono silence, used by the CAPTCHA fixtures
+  server.mount_proc '/captcha/silence.wav' do |_req, res|
+    samples = "\0\0" * 16_000
+    header = ['RIFF', 36 + samples.bytesize, 'WAVE', 'fmt ', 16, 1, 1, 16_000, 32_000, 2, 16,
+              'data', samples.bytesize].pack('A4VA4A4VvvVVvvA4V')
+    res.status = 200
+    res['Content-Type'] = 'audio/wav'
+    res.body = header + samples
+  end
+
+  mount_service_worker_fixtures(server)
+
   # Keep the default test page for backward compatibility
   server.mount_proc '/test' do |_req, res|
     res.status = 200
@@ -128,6 +140,27 @@ def start_test_server
   sleep 1
 
   server
+end
+
+# A page that registers a service worker (served from the same origin)
+def mount_service_worker_fixtures(server)
+  server.mount_proc '/sw/page' do |_req, res|
+    res['Content-Type'] = 'text/html'
+    res.body = <<~HTML
+      <!DOCTYPE html><html><body><script>
+        window.swState = 'pending';
+        navigator.serviceWorker.register('/sw/worker.js')
+          .then(() => navigator.serviceWorker.ready)
+          .then(() => { window.swState = 'active'; })
+          .catch((e) => { window.swState = 'error: ' + e.message; });
+      </script></body></html>
+    HTML
+  end
+  server.mount_proc '/sw/worker.js' do |_req, res|
+    res['Content-Type'] = 'application/javascript'
+    res.body = "self.addEventListener('install', () => self.skipWaiting());\n" \
+               "self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));\n"
+  end
 end
 
 # Recursively mount all HTML fixtures from a directory

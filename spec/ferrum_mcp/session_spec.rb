@@ -45,6 +45,53 @@ RSpec.describe FerrumMCP::Session do
     end
   end
 
+  describe '#merged_browser_options' do
+    let(:options) { {} }
+    let(:flags) { session.session_config.merged_browser_options }
+
+    # Cloudflare flags CDP input dispatched into a cross-origin iframe that
+    # shares the page's renderer process, which is what Ferrum's default
+    # --disable-features=site-per-process produces.
+    it 'runs Cloudflare challenge frames out of process' do
+      expect(flags['isolate-origins']).to eq('https://challenges.cloudflare.com')
+      expect(flags['disable-features'].split(',')).not_to include('IsolateOrigins')
+    end
+
+    it 'keeps other cross-origin frames in process so solvers can reach them' do
+      expect(flags['disable-features'].split(',')).to include('site-per-process')
+    end
+
+    # --disable-gpu removes WebGL entirely (getContext('webgl') returns null),
+    # an obvious automation signal; Chrome falls back to SwiftShader by itself
+    # when no GPU is available.
+    it 'keeps the GPU, and therefore WebGL, enabled' do
+      expect(flags).not_to have_key('disable-gpu')
+    end
+
+    it 'leaves the sandbox on outside containers' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('DOCKER').and_return(nil)
+      allow(ENV).to receive(:[]).with('CI').and_return(nil)
+      allow(Process).to receive(:uid).and_return(501)
+
+      expect(flags.keys).not_to include('no-sandbox', 'disable-dev-shm-usage')
+    end
+
+    it 'disables the sandbox where Chrome requires it (Docker, root)' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('DOCKER').and_return('true')
+
+      expect(flags).to include('no-sandbox' => nil, 'disable-dev-shm-usage' => nil)
+    end
+
+    it 'lets a session override the defaults' do
+      custom = described_class.new(config: config,
+                                   options: { browser_options: { '--isolate-origins' => 'https://a.test' } })
+
+      expect(custom.session_config.merged_browser_options['isolate-origins']).to eq('https://a.test')
+    end
+  end
+
   describe '#with_browser' do
     it 'yields the browser manager' do
       expect { |b| session.with_browser(&b) }.to yield_with_args(session.browser_manager)

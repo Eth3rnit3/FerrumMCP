@@ -21,6 +21,93 @@ RSpec.describe FerrumMCP::BrowserManager do
   end
 
   describe '#start' do
+    # --disable-web-security turns site isolation off entirely, which puts
+    # Cloudflare's frame back in the page process where CDP clicks are
+    # rejected; --enable-automation flags the browser as automated.
+    it 'launches Chrome without the Ferrum defaults that give automation away' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:ignore_default_browser_options]).to be true
+      expect(launch_kwargs[:browser_options].keys).not_to include('disable-web-security', 'enable-automation')
+    end
+
+    # reCAPTCHA scores Chrome launched with Ferrum's flags lower than a stock
+    # Chrome (images instead of a direct pass, same IP, no CDP attached).
+    it 'launches a Chrome that looks like a stock one' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options].keys).not_to include(
+        'hide-scrollbars', 'mute-audio', 'disable-popup-blocking', 'disable-extensions',
+        'disable-component-extensions-with-background-pages', 'disable-default-apps',
+        'disable-background-networking', 'disable-sync', 'metrics-recording-only',
+        'safebrowsing-disable-auto-update', 'disable-client-side-phishing-detection', 'disable-translate',
+        'disable-breakpad', 'disable-hang-monitor', 'disable-prompt-on-repost', 'disable-ipc-flooding-protection',
+        'force-color-profile', 'enable-features', 'disable-session-crashed-bubble', 'headless'
+      )
+    end
+
+    # With --no-startup-window Ferrum opens its tab with Target.createTarget;
+    # reCAPTCHA distrusted that tab (images + decoy audio for a human, same IP
+    # and profile), while driving Chrome's own startup tab passed directly.
+    it 'lets Chrome open its own startup tab' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options]).not_to have_key('no-startup-window')
+    end
+
+    it 'keeps what driving the browser needs' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options]).to include(
+        'no-first-run' => nil, 'use-mock-keychain' => nil,
+        'disable-renderer-backgrounding' => nil, 'disable-blink-features' => 'AutomationControlled'
+      )
+    end
+
+    context 'when headless' do
+      before { allow(described_class).to receive(:chrome_major_version).and_return(154) }
+
+      # Cloudflare rejects the "HeadlessChrome/x" user agent outright
+      it 'presents the regular Chrome user agent of the installed version' do
+        manager_for(headless: true, browser_options: {}).start
+
+        user_agent = launch_kwargs[:browser_options]['user-agent']
+        expect(user_agent).to include('Chrome/154.0.0.0').and start_with('Mozilla/5.0 (')
+        expect(user_agent).not_to include('Headless')
+      end
+
+      it 'reports a screen larger than the 800x600 headless default' do
+        manager_for(headless: true, browser_options: {}).start
+
+        expect(launch_kwargs[:browser_options]['screen-info']).to eq('{1920x1080}')
+      end
+
+      it 'keeps a user agent chosen by the session' do
+        manager_for(headless: true, browser_options: { 'user-agent' => 'Custom/1.0' }).start
+
+        expect(launch_kwargs[:browser_options]['user-agent']).to eq('Custom/1.0')
+      end
+
+      it 'leaves the user agent alone when the Chrome version is unknown' do
+        allow(described_class).to receive(:chrome_major_version).and_return(nil)
+        manager_for(headless: true, browser_options: {}).start
+
+        expect(launch_kwargs[:browser_options]).not_to have_key('user-agent')
+      end
+    end
+
+    it 'does not disguise a visible browser' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options].keys).not_to include('user-agent', 'screen-info')
+    end
+
+    it 'still runs headless when asked to' do
+      manager_for(headless: true, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options]).to have_key('headless')
+    end
+
     it 'passes session browser_options through to Ferrum' do
       manager_for(headless: true, browser_options: { 'window-size' => '800,600' }).start
 

@@ -170,7 +170,7 @@ module FerrumMCP
     def to_mcp_response(tool_class, result)
       unless result[:success]
         logger.error "Tool #{tool_class.tool_name} failed: #{result[:error]}"
-        return error_tool_response(result[:error])
+        return error_tool_response(result[:error], image: result[:image])
       end
 
       if result[:type] == 'image'
@@ -214,8 +214,11 @@ module FerrumMCP
     end
 
     # Helper to create error response for tool execution
-    def error_tool_response(message)
-      MCP::Tool::Response.new([{ type: 'text', text: message }], error: true)
+    # An optional base64 PNG shows the agent what went wrong (e.g. a CAPTCHA challenge)
+    def error_tool_response(message, image: nil)
+      content = [{ type: 'text', text: message }]
+      content << { type: 'image', data: image, mimeType: 'image/png' } if image
+      MCP::Tool::Response.new(content, error: true)
     end
   end
 end
