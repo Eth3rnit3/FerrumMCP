@@ -12,7 +12,7 @@ FerrumMCP is a browser automation server implementing the Model Context Protocol
 
 **Server Layer** (`lib/ferrum_mcp/bin/ferrum-mcp`)
 - `FerrumMCP::Server`: Main MCP server implementation
-- Manages 41 browser automation tools organized into 7 categories (Session Management, Navigation, Interaction, Extraction, Waiting, Tabs & Viewport, Advanced)
+- Manages 40 browser automation tools organized into 7 categories (Session Management, Navigation, Interaction, Extraction, Waiting, Tabs & Viewport, Advanced)
 - Tools are defined in `TOOL_CLASSES` constant and registered with the MCP server at initialization
 - **Session-based architecture**: All browser operations require an explicit session
 

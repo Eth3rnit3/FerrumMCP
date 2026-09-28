@@ -58,7 +58,7 @@ Comprehensive documentation for all FerrumMCP browser automation tools.
 
 ## Overview
 
-FerrumMCP provides 41 browser automation tools through the Model Context Protocol (MCP). All tools return responses in a standardized JSON format with a `success` boolean and either `data` or `error` fields.
+FerrumMCP provides 40 browser automation tools through the Model Context Protocol (MCP). All tools return responses in a standardized JSON format with a `success` boolean and either `data` or `error` fields.
 
 ## Important Notes
 

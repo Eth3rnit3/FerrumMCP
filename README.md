@@ -19,7 +19,7 @@
 |---------------|-------------|
 | [**Getting Started**](docs/GETTING_STARTED.md) | Installation, setup, and first steps |
 | [**Docker Deployment**](docs/DOCKER.md) | Complete Docker guide with Claude Desktop integration |
-| [**API Reference**](docs/API_REFERENCE.md) | Complete documentation of all 41 tools |
+| [**API Reference**](docs/API_REFERENCE.md) | Complete documentation of all 40 tools |
 | [**Configuration**](docs/CONFIGURATION.md) | Environment variables and advanced configuration |
 | [**Troubleshooting**](docs/TROUBLESHOOTING.md) | Common issues and solutions |
 | [**Deployment**](docs/DEPLOYMENT.md) | Production deployment guide |
@@ -194,7 +194,7 @@ ruby bin/ferrum-mcp
 
 ## Tools & Capabilities
 
-FerrumMCP provides **41 browser automation tools** organized into 8 categories:
+FerrumMCP provides **40 browser automation tools** organized into 8 categories:
 
 ### 1. Session Management (4 tools)
 - `create_session` - Create browser sessions with custom config
