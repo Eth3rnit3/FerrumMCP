@@ -11,9 +11,11 @@ module FerrumMCP
     # instead of a direct pass, same IP, no CDP attached). Only the defaults
     # needed to drive the browser, invisible to pages, are kept. Notably
     # dropped: disable-web-security, which turns site isolation off (Cloudflare
-    # rejects CDP clicks into in-process frames), and enable-automation.
+    # rejects CDP clicks into in-process frames), enable-automation, and
+    # no-startup-window: Ferrum then creates its tab with Target.createTarget,
+    # a tab reCAPTCHA distrusts; without it Ferrum drives Chrome's own tab.
     KEPT_FERRUM_DEFAULTS = %w[
-      headless no-first-run no-startup-window keep-alive-for-test remote-allow-origins
+      headless no-first-run keep-alive-for-test remote-allow-origins
       password-store use-mock-keychain
       disable-background-timer-throttling disable-backgrounding-occluded-windows disable-renderer-backgrounding
       disable-site-isolation-trials disable-blink-features
