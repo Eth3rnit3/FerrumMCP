@@ -29,4 +29,26 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
       expect(described_class.garbled?(transcription('ouvrez la porte', language: 'fr'), 'auto')).to be false
     end
   end
+
+  describe 'audio rounds against a distrusting reCAPTCHA' do
+    let(:decoy) { FerrumMCP::WhisperService::Transcription.new(text: 'see you next time', language: 'es') }
+    let(:solver) { described_class.new(instance_double(Ferrum::Page), logger: Logger.new(File::NULL), max_attempts: 5) }
+
+    before do
+      allow(solver).to receive_messages(current_challenge: 'audio', checked?: false, audio_source: 'https://x/payload')
+      allow(solver).to receive(:transcribe).and_return(decoy)
+      allow(solver).to receive(:reload_challenge)
+      allow(solver).to receive(:submit_answer)
+    end
+
+    # Reloading the decoy over and over gets the IP blocked by Google
+    it 'gives up after two garbled audios in a row without answering them' do
+      result = solver.send(:solve_audio_rounds)
+
+      expect(result.status).to eq(:distrusted)
+      expect(result.attempts).to eq(2)
+      expect(solver).to have_received(:reload_challenge).once
+      expect(solver).not_to have_received(:submit_answer)
+    end
+  end
 end
