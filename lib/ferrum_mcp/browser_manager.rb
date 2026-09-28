@@ -45,10 +45,11 @@ module FerrumMCP
 
       logger.info 'Stopping browser...'
       @browser.quit
-      @browser = nil
       logger.info 'Browser stopped'
     rescue StandardError => e
       logger.error "Error stopping browser: #{e.message}"
+    ensure
+      @browser = nil
     end
 
     def restart
@@ -58,6 +59,23 @@ module FerrumMCP
 
     def active?
       !@browser.nil?
+    end
+
+    # True when a browser is started and its Chrome process still exists.
+    # Cheap (no CDP round-trip): a signal-0 check on the process id.
+    def healthy?
+      return false unless @browser
+
+      pid = @browser.process&.pid
+      return true unless pid
+
+      Process.kill(0, pid)
+      true
+    rescue Errno::ESRCH
+      logger.warn "Browser process #{pid} is gone"
+      false
+    rescue Errno::EPERM
+      true
     end
 
     private
