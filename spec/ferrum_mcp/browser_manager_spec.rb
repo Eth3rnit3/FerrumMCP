@@ -21,6 +21,29 @@ RSpec.describe FerrumMCP::BrowserManager do
   end
 
   describe '#start' do
+    # --disable-web-security turns site isolation off entirely, which puts
+    # Cloudflare's frame back in the page process where CDP clicks are
+    # rejected; --enable-automation flags the browser as automated.
+    it 'launches Chrome without the Ferrum defaults that give automation away' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:ignore_default_browser_options]).to be true
+      expect(launch_kwargs[:browser_options].keys).not_to include('disable-web-security', 'enable-automation')
+    end
+
+    it 'keeps the rest of the Ferrum defaults' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options]).to include('no-first-run' => nil, 'mute-audio' => nil)
+      expect(launch_kwargs[:browser_options]).not_to have_key('headless')
+    end
+
+    it 'still runs headless when asked to' do
+      manager_for(headless: true, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options]).to have_key('headless')
+    end
+
     it 'passes session browser_options through to Ferrum' do
       manager_for(headless: true, browser_options: { 'window-size' => '800,600' }).start
 
