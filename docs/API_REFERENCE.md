@@ -784,54 +784,48 @@ Automatically detect and accept cookie consent banners.
 
 ### solve_captcha
 
-Automatically detect and solve audio CAPTCHA challenges using Whisper speech recognition.
+Detect the CAPTCHA on the current page and solve it. Detection relies on the widgets' own frames, so the tool never clicks or types into the site's forms. Success is only reported once the provider confirms it.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | session_id | string | Yes | Session ID to use |
+| type | string | No | `auto` (default), `recaptcha`, `hcaptcha` or `turnstile` |
+| max_attempts | integer | No | Maximum challenges to answer (default: 5) |
+| language | string | No | Expected audio language for Whisper, e.g. `en` or `auto` (default: `WHISPER_LANGUAGE` or `en`) |
 
-**Example Request:**
-
-```json
-{
-  "name": "solve_captcha",
-  "arguments": {
-    "session_id": "uuid-1234"
-  }
-}
-```
-
-**Example Response:**
+**Example Response (solved):**
 
 ```json
 {
-  "message": "CAPTCHA solved successfully",
-  "transcription": "the quick brown fox",
-  "audio_button": "#recaptcha-audio-button",
-  "input_field": "#audio-response",
-  "verify_button": "#recaptcha-verify-button"
+  "solved": true,
+  "type": "turnstile",
+  "status": "solved",
+  "attempts": 1,
+  "message": "Turnstile solved",
+  "token": "0.Abc…",
+  "token_length": 812
 }
 ```
 
-**Process:**
-1. Detects and clicks CAPTCHA checkbox (if present)
-2. Finds and clicks audio challenge button
-3. Downloads audio challenge
-4. Transcribes audio using Whisper
-5. Fills input field with transcription
-6. Clicks verify button
+**When it cannot solve**, the tool returns an error with an explicit status:
+
+| Status | Meaning |
+|--------|---------|
+| `blocked` | The provider refuses to serve challenges ("Try again later") |
+| `distrusted` | reCAPTCHA only serves its decoy audio to this session; the tool stops early to protect the IP |
+| `challenge_required` | A visual challenge appeared (hCaptcha); a screenshot is attached |
+| `failed` | Attempts exhausted or the widget never reached a solved state |
 
 **Supported CAPTCHAs:**
-- Google reCAPTCHA
-- hCaptcha
+- **Cloudflare Turnstile** and the "Just a moment…" interstitial: human-like click on the widget, headful and headless
+- **reCAPTCHA v2** (checkbox, invisible, enterprise): audio challenge transcribed locally with whisper.cpp; decoy audio is detected and never answered
+- **hCaptcha**: checkbox only (hCaptcha no longer offers an audio challenge)
 
 **Notes:**
-- Requires Whisper service to be available
-- Works with both main page and iframes
-- Uses human-like typing delays
-- Automatically cleans up temporary audio files
+- reCAPTCHA requires `whisper-cli` and `ffmpeg`; see [Whisper configuration](CONFIGURATION.md#whisper-configuration-captcha-solving)
+- Anonymous sessions on shared or datacenter IPs usually get `distrusted` from reCAPTCHA; a long-lived browser profile and a residential IP help
 
 ---
 

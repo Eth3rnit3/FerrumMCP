@@ -199,12 +199,20 @@ SESSION_CLEANUP_INTERVAL=300  # Cleanup check every 5 minutes (seconds)
 
 ## Whisper Configuration (CAPTCHA Solving)
 
+Only reCAPTCHA's audio challenge needs Whisper; Turnstile and hCaptcha don't.
+Requires `whisper-cli` (whisper.cpp) and, recommended, `ffmpeg`.
+
 ```bash
-WHISPER_MODEL=base              # Model: tiny, base, small, medium
-WHISPER_MODELS_PATH=~/.whisper.cpp/models/  # Model storage location
+WHISPER_PATH=whisper-cli        # whisper.cpp binary
+WHISPER_MODEL=base.en           # Transcription model (tiny, base, small, medium, their .en variants,
+                                # large-v3-turbo) or a path to a .bin file
+WHISPER_LID_MODEL=small         # Multilingual model used to spot reCAPTCHA's decoy audio
+WHISPER_LANGUAGE=en             # Expected audio language ("auto" disables the language check)
+FFMPEG_PATH=ffmpeg              # Converts audio to 16 kHz mono WAV
+CAPTCHA_AUDIO_DIR=              # Optional: keep every challenge audio and its transcription
 ```
 
-Models are automatically downloaded on first use.
+Models are stored in `~/.whisper.cpp/models/` and downloaded on first use.
 
 ## Example Complete Configuration
 
@@ -231,7 +239,7 @@ BOT_PROFILE_US=/profiles/us.enc:US Chrome:US fingerprint
 BOT_PROFILE_EU=/profiles/eu.enc:EU Firefox:EU fingerprint
 
 # Whisper (CAPTCHA)
-WHISPER_MODEL=base
+WHISPER_MODEL=base.en
 ```
 
 ## Configuration Validation
