@@ -134,4 +134,27 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
       end
     end
   end
+  describe 'proxy trust' do
+    it 'defaults TRUST_PROXY to false' do
+      expect(config.trust_proxy).to be(false)
+    end
+
+    it 'reads TRUST_PROXY from the environment' do
+      ENV['TRUST_PROXY'] = 'true'
+      expect(FerrumMCP::Configuration.new.trust_proxy).to be(true)
+    ensure
+      ENV.delete('TRUST_PROXY')
+    end
+
+    it 'passes trust_proxy to the rate limiter' do
+      allow(FerrumMCP::Transport::RateLimiter).to receive(:new).and_call_original
+      config.rate_limit_enabled = true
+      config.trust_proxy = true
+
+      app
+
+      expect(FerrumMCP::Transport::RateLimiter).to have_received(:new)
+        .with(anything, hash_including(trust_proxy: true))
+    end
+  end
 end
