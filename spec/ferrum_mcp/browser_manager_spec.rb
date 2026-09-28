@@ -65,15 +65,27 @@ RSpec.describe FerrumMCP::BrowserManager do
     end
 
     context 'when headless' do
-      before { allow(described_class).to receive(:chrome_major_version).and_return(154) }
+      before { allow(described_class).to receive(:chrome_version).and_return('154.0.8037.57') }
 
-      # Cloudflare rejects the "HeadlessChrome/x" user agent outright
+      # Cloudflare rejects the "HeadlessChrome/x" user agent outright. The
+      # flag also reaches the targets Ferrum never attaches to (Turnstile).
       it 'presents the regular Chrome user agent of the installed version' do
         manager_for(headless: true, browser_options: {}).start
 
         user_agent = launch_kwargs[:browser_options]['user-agent']
         expect(user_agent).to include('Chrome/154.0.0.0').and start_with('Mozilla/5.0 (')
         expect(user_agent).not_to include('Headless')
+        expect(launch_kwargs[:user_agent_override][:userAgent]).to eq(user_agent)
+      end
+
+      # The --user-agent flag empties the high-entropy client hints
+      it 'restores the client hints through a CDP override' do
+        manager_for(headless: true, browser_options: {}).start
+
+        expect(launch_kwargs[:user_agent_override][:userAgentMetadata]).to include(
+          platform: a_string_matching(/\A(macOS|Windows|Linux)\z/), architecture: a_string_matching(/\A(arm|x86)\z/),
+          bitness: '64', mobile: false, fullVersion: '154.0.8037.57'
+        )
       end
 
       it 'reports a screen larger than the 800x600 headless default' do
@@ -86,13 +98,15 @@ RSpec.describe FerrumMCP::BrowserManager do
         manager_for(headless: true, browser_options: { 'user-agent' => 'Custom/1.0' }).start
 
         expect(launch_kwargs[:browser_options]['user-agent']).to eq('Custom/1.0')
+        expect(launch_kwargs).not_to have_key(:user_agent_override)
       end
 
       it 'leaves the user agent alone when the Chrome version is unknown' do
-        allow(described_class).to receive(:chrome_major_version).and_return(nil)
+        allow(described_class).to receive(:chrome_version).and_return(nil)
         manager_for(headless: true, browser_options: {}).start
 
         expect(launch_kwargs[:browser_options]).not_to have_key('user-agent')
+        expect(launch_kwargs).not_to have_key(:user_agent_override)
       end
     end
 
@@ -100,6 +114,23 @@ RSpec.describe FerrumMCP::BrowserManager do
       manager_for(headless: false, browser_options: {}).start
 
       expect(launch_kwargs[:browser_options].keys).not_to include('user-agent', 'screen-info')
+      expect(launch_kwargs).not_to have_key(:user_agent_override)
+    end
+
+    describe '.os_version' do
+      it 'formats the OS version as major.minor.bugfix' do
+        allow(Ferrum::Utils::Platform).to receive(:name).and_return(:linux)
+        allow(Etc).to receive(:uname).and_return(release: '6.8.0-45-generic')
+
+        expect(described_class.os_version).to eq('6.8.0')
+      end
+
+      it 'pads a short version' do
+        allow(Ferrum::Utils::Platform).to receive(:name).and_return(:mac)
+        allow(Open3).to receive(:capture2).with('sw_vers', '-productVersion').and_return(["27.0\n", nil])
+
+        expect(described_class.os_version).to eq('27.0.0')
+      end
     end
 
     it 'still runs headless when asked to' do

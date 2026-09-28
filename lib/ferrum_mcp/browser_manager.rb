@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'etc'
 require 'open3'
 
 module FerrumMCP
@@ -23,24 +24,43 @@ module FerrumMCP
 
     # Headless Chrome announces itself as "HeadlessChrome/x" (rejected outright
     # by Cloudflare) and reports an 800x600 screen smaller than its window.
-    # Flags, unlike CDP overrides, also apply to out-of-process frames.
+    # Both are flags: flags also reach targets Ferrum never attaches to (the
+    # out-of-process Turnstile iframe). But the --user-agent flag empties the
+    # high-entropy client hints, which no stock Chrome does (brotector flags
+    # it): the targets Ferrum attaches to also get a CDP override that restores
+    # them (FerrumPatches::MaskedUserAgentTargets). Chrome fills in the brands
+    # itself; the platform fields and full version are given.
     HEADLESS_SCREEN = '{1920x1080}'
     UA_PLATFORMS = {
       mac: 'Macintosh; Intel Mac OS X 10_15_7',
       windows: 'Windows NT 10.0; Win64; x64',
       linux: 'X11; Linux x86_64'
     }.freeze
+    UA_METADATA_PLATFORMS = { mac: 'macOS', windows: 'Windows', linux: 'Linux' }.freeze
 
-    # Major version of the Chrome binary, nil when it cannot be determined
-    def self.chrome_major_version(path)
+    # Full version of the Chrome binary ("154.0.8037.57"), nil when unknown
+    def self.chrome_version(path)
       @chrome_versions ||= {}
       return @chrome_versions[path] if @chrome_versions.key?(path)
 
       binary = path || Ferrum::Browser::Options::Chrome.instance.detect_path
       output, = Open3.capture2(binary.to_s, '--version')
-      @chrome_versions[path] = output[/(\d+)\.\d+\.\d+/, 1]&.to_i
+      @chrome_versions[path] = output[/\d+\.\d+\.\d+(\.\d+)?/]
     rescue StandardError
       @chrome_versions[path] = nil
+    end
+
+    # OS version as Chrome reports it in the client hints ("major.minor.bugfix").
+    # Windows reports an API contract version Ruby cannot read: left empty.
+    def self.os_version
+      raw = case Ferrum::Utils::Platform.name
+            when :mac then Open3.capture2('sw_vers', '-productVersion').first
+            when :linux then Etc.uname[:release]
+            end
+      numbers = raw.to_s.scan(/\d+/).first(3)
+      numbers.empty? ? '' : (numbers + %w[0 0]).first(3).join('.')
+    rescue StandardError
+      ''
     end
 
     attr_reader :browser, :config, :logger
@@ -94,6 +114,8 @@ module FerrumMCP
         pending_connection_errors: false,
         ignore_default_browser_options: true
       }
+      override = user_agent_override
+      browser_options_hash[:user_agent_override] = override if override
 
       # Only set browser_path if explicitly configured
       browser_options_hash[:browser_path] = config.browser_path if config.browser_path
@@ -175,17 +197,45 @@ module FerrumMCP
     end
 
     # BotBrowser profiles manage their own user agent and screen.
+    def disguise_headless?
+      config.headless && !config.using_botbrowser?
+    end
+
     def headless_disguise_options
-      return {} unless config.headless && !config.using_botbrowser?
+      return {} unless disguise_headless?
 
       options = { 'screen-info' => HEADLESS_SCREEN }
-      major = self.class.chrome_major_version(config.browser_path)
-      platform = UA_PLATFORMS[Ferrum::Utils::Platform.name]
-      if major && platform
-        options['user-agent'] =
-          "Mozilla/5.0 (#{platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/#{major}.0.0.0 Safari/537.36"
-      end
+      options['user-agent'] = masked_user_agent if masked_user_agent
       options
+    end
+
+    # Emulation.setUserAgentOverride parameters, nil to leave Chrome's own.
+    # A user agent chosen by the session wins.
+    def user_agent_override
+      return unless masked_user_agent && !config.merged_browser_options.key?('user-agent')
+
+      platform = Ferrum::Utils::Platform.name
+      {
+        userAgent: masked_user_agent,
+        userAgentMetadata: {
+          platform: UA_METADATA_PLATFORMS[platform], platformVersion: self.class.os_version,
+          architecture: RbConfig::CONFIG['host_cpu'].match?(/arm|aarch64/) ? 'arm' : 'x86',
+          bitness: '64', model: '', mobile: false, wow64: false,
+          fullVersion: self.class.chrome_version(config.browser_path)
+        }
+      }
+    end
+
+    # Chrome's user agent without "Headless", nil when the version is unknown
+    def masked_user_agent
+      return unless disguise_headless?
+
+      version = self.class.chrome_version(config.browser_path)
+      platform = UA_PLATFORMS[Ferrum::Utils::Platform.name]
+      return unless version && platform
+
+      "Mozilla/5.0 (#{platform}) AppleWebKit/537.36 (KHTML, like Gecko) " \
+        "Chrome/#{version.to_i}.0.0.0 Safari/537.36"
     end
   end
 end

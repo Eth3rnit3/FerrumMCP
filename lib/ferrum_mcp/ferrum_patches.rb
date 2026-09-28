@@ -27,6 +27,46 @@ module FerrumMCP
       end
     end
 
+    # Applies BrowserManager#user_agent_override (Ferrum option
+    # :user_agent_override) to every target before it runs. Ferrum resumes new
+    # pages and out-of-process iframes (Turnstile) as soon as they attach, and
+    # only prepares their Page when the code asks for it: the override is sent
+    # from an attach handler registered before Ferrum's, and commands on a
+    # session run in order. Dedicated workers inherit it from their page.
+    module MaskedUserAgentTargets
+      WORKER_TYPES = %w[service_worker shared_worker].freeze
+
+      private
+
+      def subscribe
+        @client.on('Target.attachedToTarget') { |params| mask_user_agent(params) }
+        super
+      end
+
+      def mask_user_agent(params)
+        override = @client.options.to_h[:user_agent_override]
+        type = params.dig('targetInfo', 'type')
+        return unless override
+
+        method = if WORKER_TYPES.include?(type) then 'Network.setUserAgentOverride'
+                 elsif Ferrum::Contexts::ALLOWED_TARGET_TYPES.include?(type) then 'Emulation.setUserAgentOverride'
+                 end
+        @client.session(params['sessionId']).command(method, async: true, **override) if method
+      end
+    end
+
+    # Pages Ferrum attaches to itself (Chrome's startup tab) never go through
+    # Target.attachedToTarget.
+    module MaskedUserAgentPage
+      private
+
+      def prepare_page
+        override = @options.to_h[:user_agent_override]
+        command('Emulation.setUserAgentOverride', **override) if override
+        super
+      end
+    end
+
     # Ferrum enables the Runtime domain on every page to learn the execution
     # context of each frame. With Runtime enabled, Chrome serializes every
     # console.* argument for the client, reading getters (an error's stack or
@@ -151,7 +191,9 @@ module FerrumMCP
       return if Ferrum::Contexts.include?(ResumeBackgroundTargets)
 
       Ferrum::Contexts.prepend(ResumeBackgroundTargets)
+      Ferrum::Contexts.prepend(MaskedUserAgentTargets)
       Ferrum::Page.prepend(HiddenRuntimePage)
+      Ferrum::Page.prepend(MaskedUserAgentPage)
       Ferrum::Frame.prepend(HiddenRuntimeFrame)
     end
   end
