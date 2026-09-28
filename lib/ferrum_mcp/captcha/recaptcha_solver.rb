@@ -17,6 +17,9 @@ module FerrumMCP
       BFRAME = %r{/recaptcha/(?:api2|enterprise)/bframe}
       DEFAULT_ATTEMPTS = 5
       MAX_GARBLED_IN_A_ROW = 2
+      MIN_AUDIO_BYTES = 16_000 # a full challenge is ~30 KB
+      AUDIO_DOWNLOADS = 3
+      AUDIO_RETRY_DELAY = 1
 
       # Phrases whisper produces on audio it cannot understand (it was trained
       # on subtitled videos). Real challenges are short everyday sentences.
@@ -166,11 +169,23 @@ module FerrumMCP
       end
 
       def transcribe(source)
-        encoded = challenge_frame.evaluate_async(FETCH_AUDIO_JS, 20, source)
-        raise ToolError, 'Could not download the reCAPTCHA audio' unless encoded
-
-        audio = Base64.decode64(encoded)
+        audio = download_audio(source)
         transcriber.analyze_bytes(audio).tap { |heard| keep_sample(audio, heard) }
+      end
+
+      # Fetched right after the challenge appears, the payload can come back
+      # cut short (8 KB of a ~30 KB clip). Download again and keep the largest.
+      def download_audio(source)
+        downloads = []
+        AUDIO_DOWNLOADS.times do |attempt|
+          sleep AUDIO_RETRY_DELAY if attempt.positive?
+          encoded = challenge_frame.evaluate_async(FETCH_AUDIO_JS, 20, source)
+          downloads << Base64.decode64(encoded) if encoded
+          break if downloads.last.to_s.bytesize >= MIN_AUDIO_BYTES
+        end
+        raise ToolError, 'Could not download the reCAPTCHA audio' if downloads.empty?
+
+        downloads.max_by(&:bytesize)
       end
 
       def expected_language

@@ -79,7 +79,9 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
     end
 
     it 'uses the largest download when it stays small' do
-      allow(frame).to receive(:evaluate_async).and_return(*[4000, 9000, 6000].map { |n| Base64.strict_encode64('a' * n) })
+      allow(frame).to receive(:evaluate_async).and_return(*[4000, 9000, 6000].map do |n|
+        Base64.strict_encode64('a' * n)
+      end)
 
       solver.send(:transcribe, 'https://www.google.com/recaptcha/api2/payload?p=x')
 
