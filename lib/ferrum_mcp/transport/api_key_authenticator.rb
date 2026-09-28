@@ -15,6 +15,7 @@ module FerrumMCP
         @api_keys = options[:api_keys] || []
         @logger = options[:logger]
         @skip_paths = options[:skip_paths] || []
+        @trust_proxy = options.fetch(:trust_proxy, false)
       end
 
       def call(env)
@@ -90,10 +91,7 @@ module FerrumMCP
       end
 
       def extract_ip(env)
-        forwarded = env['HTTP_X_FORWARDED_FOR']
-        return forwarded.split(',').first.strip if forwarded
-
-        env['REMOTE_ADDR'] || 'unknown'
+        ClientAddress.extract(env, trust_proxy: @trust_proxy)
       end
 
       def unauthorized_response(message)

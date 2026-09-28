@@ -9,6 +9,7 @@ module FerrumMCP
         @app = app
         @max_requests = options[:max_requests] || 100
         @window = options[:window] || 60 # seconds
+        @trust_proxy = options.fetch(:trust_proxy, false)
         @requests = {}
         @mutex = Mutex.new
       end
@@ -25,12 +26,7 @@ module FerrumMCP
       private
 
       def extract_ip(env)
-        # Check X-Forwarded-For header first (for proxies/load balancers)
-        forwarded = env['HTTP_X_FORWARDED_FOR']
-        return forwarded.split(',').first.strip if forwarded
-
-        # Fall back to REMOTE_ADDR
-        env['REMOTE_ADDR'] || 'unknown'
+        ClientAddress.extract(env, trust_proxy: @trust_proxy)
       end
 
       def rate_limited?(client_ip)
