@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><title>User agent probe</title></head>
+<body>
+  <script>
+    // What brotector reads: user agent and client hints, from the page and
+    // from a dedicated worker (a user agent flag leaves the high-entropy
+    // client hints empty, which no stock Chrome reports).
+    const HINTS = ['architecture', 'bitness', 'model', 'platform', 'platformVersion', 'uaFullVersion', 'fullVersionList'];
+
+    async function describe() {
+      const nav = self.navigator;
+      const data = await nav.userAgentData.getHighEntropyValues(HINTS);
+      return {
+        userAgent: nav.userAgent,
+        brands: nav.userAgentData.brands.map((b) => b.brand),
+        uaFullVersion: data.uaFullVersion,
+        platformVersion: data.platformVersion,
+        architecture: data.architecture
+      };
+    }
+
+    function inWorker() {
+      const source = `${describe.toString()}; const HINTS = ${JSON.stringify(HINTS)};
+        self.onmessage = async () => postMessage(await describe());`;
+      const worker = new Worker(URL.createObjectURL(new Blob([source], { type: 'application/javascript' })));
+      return new Promise((resolve) => {
+        worker.onmessage = (event) => resolve(event.data);
+        worker.postMessage(null);
+      });
+    }
+
+    window.uaProbe = Promise.all([describe(), inWorker()]).then(([page, worker]) => ({ page, worker }));
+  </script>
+</body>
+</html>
