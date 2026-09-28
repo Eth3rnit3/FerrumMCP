@@ -45,6 +45,29 @@ RSpec.describe FerrumMCP::Session do
     end
   end
 
+  describe '#merged_browser_options' do
+    let(:options) { {} }
+    let(:flags) { session.session_config.merged_browser_options }
+
+    # Cloudflare flags CDP input dispatched into a cross-origin iframe that
+    # shares the page's renderer process, which is what Ferrum's default
+    # --disable-features=site-per-process produces.
+    it 'runs Cloudflare challenge frames out of process' do
+      expect(flags['isolate-origins']).to eq('https://challenges.cloudflare.com')
+      expect(flags['disable-features'].split(',')).not_to include('IsolateOrigins')
+    end
+
+    it 'keeps other cross-origin frames in process so solvers can reach them' do
+      expect(flags['disable-features'].split(',')).to include('site-per-process')
+    end
+
+    it 'lets a session override the defaults' do
+      custom = described_class.new(config: config, options: { browser_options: { '--isolate-origins' => 'https://a.test' } })
+
+      expect(custom.session_config.merged_browser_options['isolate-origins']).to eq('https://a.test')
+    end
+  end
+
   describe '#with_browser' do
     it 'yields the browser manager' do
       expect { |b| session.with_browser(&b) }.to yield_with_args(session.browser_manager)
