@@ -159,6 +159,7 @@ module FerrumMCP
     def ferrum_default_options
       defaults = Ferrum::Browser::Options::Chrome::DEFAULT_OPTIONS.except(*DROPPED_FERRUM_DEFAULTS)
       defaults = defaults.except('headless', 'disable-gpu') unless config.headless
+      defaults = defaults.merge('disable-gpu' => nil) if Ferrum::Utils::Platform.windows? # Chromium bug 737678
       defaults = defaults.merge('use-angle' => 'metal') if Ferrum::Utils::Platform.mac_arm?
       defaults
     end
