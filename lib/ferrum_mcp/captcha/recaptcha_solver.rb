@@ -17,6 +17,7 @@ module FerrumMCP
       BFRAME = %r{/recaptcha/(?:api2|enterprise)/bframe}
       DEFAULT_ATTEMPTS = 5
       MAX_GARBLED_IN_A_ROW = 2
+      WARM_UP_SECONDS = (3.0..6.0)
       MIN_AUDIO_BYTES = 16_000 # a full challenge is ~30 KB
       AUDIO_DOWNLOADS = 3
       AUDIO_RETRY_DELAY = 1
@@ -110,14 +111,14 @@ module FerrumMCP
           page.evaluate(EXECUTE_INVISIBLE_JS)
         else
           logger.info 'reCAPTCHA: clicking the checkbox'
-          pause(0.4, 1.0)
+          warm_up(rand(WARM_UP_SECONDS))
           human_click_node(@anchor.at_css('#recaptcha-anchor'))
         end
       end
 
       def switch_to_audio
         logger.info 'reCAPTCHA: switching to the audio challenge'
-        pause(0.8, 1.6)
+        pause(1.5, 3.5) # looking at the image grid
         human_click_node(challenge_frame.at_css('#recaptcha-audio-button'))
         wait_until(8) { %w[audio blocked].include?(current_challenge) }
       end

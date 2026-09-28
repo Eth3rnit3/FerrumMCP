@@ -120,18 +120,33 @@ module FerrumMCP
                                                  force: type == :mousePressed ? 0.5 : 0, pointerType: 'mouse')
       end
 
-      # Move along a quadratic Bézier curve with ease-in-out timing.
+      # Move along a quadratic Bézier curve with ease-in-out timing, clamped to
+      # the viewport when its size is known.
       def human_move(pos_x, pos_y)
         from = @pointer || [pos_x + rand(-260..-120), pos_y + rand(60..180)]
         control = [((from[0] + pos_x) / 2.0) + rand(-80..80), ((from[1] + pos_y) / 2.0) + rand(-80..80)]
         steps = rand(18..32)
 
         (1..steps).each do |i|
-          point_x, point_y = bezier(from, control, [pos_x, pos_y], ease(i / steps.to_f))
+          point_x, point_y = clamp(bezier(from, control, [pos_x, pos_y], ease(i / steps.to_f)))
           page.mouse.move(x: point_x, y: point_y)
           sleep rand(0.006..0.02)
         end
         @pointer = [pos_x, pos_y]
+      end
+
+      # Behave like someone reading the page before acting: wander over it,
+      # pause, scroll a bit and come back. reCAPTCHA watches the pointer on the
+      # whole page, and a pointer that appears on the checkbox from nowhere
+      # gets the decoy audio.
+      def warm_up(seconds)
+        @viewport = page.evaluate('[window.innerWidth, window.innerHeight]')
+        width, height = @viewport
+        (seconds / 0.8).ceil.times do
+          human_move(rand((width * 0.1)..(width * 0.9)), rand((height * 0.1)..(height * 0.8)))
+          pause(0.15, 0.7)
+        end
+        scroll_a_little(width, height) if seconds >= 4
       end
 
       # Type into a node one key at a time with irregular delays.
@@ -153,6 +168,22 @@ module FerrumMCP
       end
 
       private
+
+      def scroll_a_little(width, height)
+        x = width / 2.0
+        y = height / 2.0
+        distance = rand(120..280)
+        [distance, -distance].each do |delta|
+          page.command('Input.dispatchMouseEvent', type: 'mouseWheel', x: x, y: y, deltaX: 0, deltaY: delta)
+          pause(0.4, 1.0)
+        end
+      end
+
+      def clamp(point)
+        return point unless @viewport
+
+        [point[0].clamp(0, @viewport[0]), point[1].clamp(0, @viewport[1])]
+      end
 
       def jitter(amount)
         rand(-amount.to_f..amount.to_f)
