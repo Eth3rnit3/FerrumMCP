@@ -21,9 +21,13 @@ module FerrumMCP
 
       # @return [Array<Symbol>] CAPTCHA types present, in FRAME_PATTERNS order
       def detect(page)
-        urls = page.frames.map { |frame| frame.url.to_s }
-        urls += iframes(page).map { |iframe| iframe[:src] }
+        urls = frame_urls(page).values + iframes(page).map { |iframe| iframe[:src] }
         types_for_urls(urls)
+      end
+
+      # See FrameTree: Ferrum's Frame#url can wait minutes on stale frames
+      def frame_urls(page)
+        FrameTree.urls(page)
       end
 
       # Every <iframe> of the page, including those behind closed shadow roots

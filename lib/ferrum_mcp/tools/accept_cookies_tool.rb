@@ -247,15 +247,16 @@ module FerrumMCP
 
         logger.debug "Found #{iframes.length} iframe(s), checking for cookie banners..."
 
-        # Get frames (includes main frame + all iframes)
-        frames = page.frames
+        # Live frames only (stale ones hang Ferrum, see FrameTree), main frame first
+        urls = FrameTree.urls(page)
+        frames = page.frames.select { |frame| urls.key?(frame.id) }
         return { found: false } if frames.empty?
 
         # Skip the main frame (index 0), only check iframes
         frames[1..].each_with_index do |frame, index|
           next unless frame
 
-          logger.debug "Checking iframe #{index + 1}: #{frame.url}"
+          logger.debug "Checking iframe #{index + 1}: #{urls[frame.id]}"
 
           # Try strategies within iframe using frame.at_css() directly
           result = try_iframe_frameworks(frame)

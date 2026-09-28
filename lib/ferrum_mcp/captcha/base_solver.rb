@@ -36,10 +36,16 @@ module FerrumMCP
       end
 
       def frames_matching(pattern)
-        page.frames.select { |frame| frame.url.to_s.match?(pattern) }
+        urls = Detector.frame_urls(page)
+        page.frames.select { |frame| urls[frame.id].to_s.match?(pattern) }
       rescue StandardError => e
         logger.debug "Frame lookup failed: #{e.message}"
         []
+      end
+
+      # URL of a live frame without evaluating JavaScript (see Detector.frame_urls)
+      def frame_url(frame)
+        Detector.frame_urls(page)[frame.id].to_s
       end
 
       # Poll until the block returns a truthy value. Errors raised while the

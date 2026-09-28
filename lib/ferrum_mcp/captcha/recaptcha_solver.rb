@@ -82,7 +82,7 @@ module FerrumMCP
       end
 
       def invisible?(frame = @anchor)
-        frame.url.include?('size=invisible')
+        frame_url(frame).include?('size=invisible')
       end
 
       def widget_suffix
