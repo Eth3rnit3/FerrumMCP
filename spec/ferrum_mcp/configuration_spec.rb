@@ -347,12 +347,16 @@ RSpec.describe FerrumMCP::Configuration do
       expect(logger.instance_variable_get(:@logdev).dev).to eq($stderr)
     end
 
-    it 'does not write inside the gem directory by default' do
+    it 'defaults to ./logs under the current directory, not the gem directory' do
       gem_root = File.expand_path('../..', __dir__)
-      logger = described_class.new.logger
-      dev = logger.instance_variable_get(:@logdev).dev
+      dir = Dir.mktmpdir('ferrum-cwd')
 
-      expect(dev.path).not_to start_with(File.join(gem_root, 'logs')) if dev.respond_to?(:path)
+      path = Dir.chdir(dir) { described_class.new.logger.instance_variable_get(:@logdev).dev.path }
+
+      expect(path).to start_with(File.realpath(dir))
+      expect(path).not_to start_with(File.join(gem_root, 'logs'))
+    ensure
+      FileUtils.rm_rf(dir) if dir
     end
   end
 end

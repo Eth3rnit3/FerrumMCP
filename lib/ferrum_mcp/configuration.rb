@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require 'fileutils'
+require 'tmpdir'
+
 module FerrumMCP
   # Configuration class for Ferrum MCP Server
   class Configuration
-    attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :transport, :max_sessions,
-                  :rate_limit_enabled, :rate_limit_max_requests, :rate_limit_window,
-                  :api_key_enabled, :api_keys
+    attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :log_file, :transport,
+                  :max_sessions, :rate_limit_enabled, :rate_limit_max_requests, :rate_limit_window,
+                  :api_key_enabled, :api_keys, :trust_proxy
     attr_reader :browsers, :user_profiles, :bot_profiles
 
     # Browser configuration structure
@@ -35,9 +38,13 @@ module FerrumMCP
       @timeout = ENV.fetch('BROWSER_TIMEOUT', '60').to_i
       @server_host = ENV.fetch('MCP_SERVER_HOST', '0.0.0.0')
       @server_port = ENV.fetch('MCP_SERVER_PORT', '3000').to_i
-      @log_level = ENV.fetch('LOG_LEVEL', 'debug').to_sym
+      @log_level = ENV.fetch('LOG_LEVEL', 'info').to_sym
+      @log_file = ENV.fetch('LOG_FILE', nil)
       @transport = transport
       @max_sessions = ENV.fetch('MAX_CONCURRENT_SESSIONS', '10').to_i
+
+      # Only honour X-Forwarded-For when the server sits behind a trusted proxy
+      @trust_proxy = ENV.fetch('TRUST_PROXY', 'false') == 'true'
 
       # Rate limiting configuration
       @rate_limit_enabled = ENV.fetch('RATE_LIMIT_ENABLED', 'true') == 'true'
@@ -85,7 +92,7 @@ module FerrumMCP
     end
 
     def logger
-      @logger ||= create_multi_logger
+      @logger ||= create_logger
     end
 
     # Environment variable keys to skip when loading browsers
@@ -239,17 +246,27 @@ module FerrumMCP
       profiles
     end
 
-    def create_multi_logger
-      # Create log directory relative to the project root
-      # Use __FILE__ to get the gem's location, then go up to project root
-      project_root = File.expand_path('../..', __dir__)
-      log_dir = File.join(project_root, 'logs')
-      FileUtils.mkdir_p(log_dir) unless File.directory?(log_dir)
+    # Logs never go to STDOUT: in stdio transport STDOUT carries the protocol.
+    # LOG_FILE=<path> writes to that file, LOG_FILE=stderr writes to STDERR,
+    # unset writes to ./logs/ferrum_mcp.log under the current directory (never
+    # inside the installed gem), falling back to the system temp dir.
+    def create_logger
+      Logger.new(log_device, level: log_level)
+    end
 
-      log_file = File.join(log_dir, 'ferrum_mcp.log')
+    def log_device
+      target = log_file.to_s.strip
+      return $stderr if target.casecmp('stderr').zero?
+      return prepare_log_path(target) unless target.empty?
 
-      # Only write to file, no console output
-      Logger.new(log_file, level: log_level)
+      prepare_log_path(File.join(Dir.pwd, 'logs', 'ferrum_mcp.log'))
+    rescue SystemCallError
+      File.join(Dir.tmpdir, 'ferrum_mcp.log')
+    end
+
+    def prepare_log_path(path)
+      FileUtils.mkdir_p(File.dirname(path))
+      path
     end
   end
 end
