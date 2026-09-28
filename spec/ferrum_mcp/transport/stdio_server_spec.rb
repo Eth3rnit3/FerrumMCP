@@ -128,6 +128,50 @@ RSpec.describe FerrumMCP::Transport::StdioServer do
     end
   end
 
+  describe '#start read loop' do
+    it 'delegates the read loop to the MCP transport instead of reading stdin itself' do
+      request = { jsonrpc: '2.0', id: 1, method: 'ping' }.to_json
+      input = StringIO.new("#{request}\n")
+      allow(stdio_server.mcp_transport).to receive(:open) # transport loop stubbed out
+
+      original_stdin = $stdin
+      begin
+        $stdin = input # rubocop:disable RSpec/ExpectOutput
+        stdio_server.start
+      ensure
+        $stdin = original_stdin # rubocop:disable RSpec/ExpectOutput
+      end
+
+      expect(stdio_server.mcp_transport).to have_received(:open)
+      expect(input.pos).to eq(0)
+    end
+
+    it 'writes exactly one response line per request' do
+      requests = [1, 2].map { |id| { jsonrpc: '2.0', id: id, method: 'ping' }.to_json }
+      input = StringIO.new("#{requests.join("\n")}\n")
+      output = StringIO.new
+
+      original_stdin = $stdin
+      original_stdout = $stdout
+      begin
+        # rubocop:disable RSpec/ExpectOutput
+        $stdin = input
+        $stdout = output
+        # rubocop:enable RSpec/ExpectOutput
+        stdio_server.start
+      ensure
+        # rubocop:disable RSpec/ExpectOutput
+        $stdin = original_stdin
+        $stdout = original_stdout
+        # rubocop:enable RSpec/ExpectOutput
+      end
+
+      lines = output.string.lines.map(&:strip).reject(&:empty?)
+      expect(lines.size).to eq(2)
+      expect(lines.map { |l| JSON.parse(l)['id'] }).to eq([1, 2])
+    end
+  end
+
   describe '#stop' do
     it 'closes the MCP transport' do
       allow(stdio_server.mcp_transport).to receive(:close)
