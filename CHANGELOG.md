@@ -51,11 +51,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rate limiter trusted `X-Forwarded-For` unconditionally (trivially bypassable).
 - `drag_and_drop` reported wrong coordinates for elements found through XPath.
 - `get_text` returned text with surrounding newlines and indentation (now collapsed, `raw: true` to opt out).
+- BotBrowser Docker image failed to build: the pinned upstream package had been removed (404). The latest
+  release is now resolved at build time (`BOTBROWSER_VERSION` build arg to pin one).
 - `snapshot` listed unlabeled radio buttons of one group with the same name; their `value` is now shown.
 
 ### Removed
 - Deprecated `Server#start_browser` / `Server#stop_browser`.
 - `wait_for_selector` / `wait_for_text` were listed in the 1.0.0 notes before they existed; they now do.
+
+### CI
+- Docker images (standard and BotBrowser) are built on every pull request, and the standard image is
+  smoke-tested over HTTP and stdio with a real browser session.
+- The release workflow fails when the release tag does not match `FerrumMCP::VERSION`.
 
 ### Upgrade notes
 - Custom tools must implement `#perform(params)` (params arrive with symbol keys) and declare their interface

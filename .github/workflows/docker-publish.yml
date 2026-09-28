@@ -158,6 +158,8 @@ jobs:
         with:
           context: .
           file: ./Dockerfile.with-botbrowser
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.DOCKER_IMAGE }}:botbrowser-amd64-${{ github.sha }}
@@ -195,6 +197,8 @@ jobs:
         with:
           context: .
           file: ./Dockerfile.with-botbrowser
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.DOCKER_IMAGE }}:botbrowser-arm64-${{ github.sha }}

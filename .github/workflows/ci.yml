@@ -181,6 +181,8 @@ jobs:
         with:
           context: .
           file: ./Dockerfile.with-botbrowser
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: linux/amd64
           push: false
           load: true
@@ -196,6 +198,7 @@ jobs:
           done
           curl -fsS http://localhost:3000/health | grep -q '"ok"'
           docker exec ferrum-bb test -x /opt/botbrowser/chrome
+          docker exec ferrum-bb /opt/botbrowser/chrome --version || true
 
       - name: Container logs
         if: always()

@@ -1,5 +1,9 @@
 # Docker with BotBrowser Integration
 
+> **BotBrowser version**: the image installs the latest upstream BotBrowser release by default, because old
+> releases are removed upstream. Pin one with `--build-arg BOTBROWSER_VERSION=155.0.8059.5`. Building behind a
+> shared IP may hit the GitHub API rate limit; pass a token with `--secret id=github_token,env=GITHUB_TOKEN`.
+
 This guide explains how to build and run FerrumMCP Docker images with BotBrowser support for anti-detection capabilities.
 
 ## Overview
