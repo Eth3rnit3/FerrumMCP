@@ -46,11 +46,20 @@ RSpec.describe FerrumMCP::BrowserManager do
       )
     end
 
+    # With --no-startup-window Ferrum opens its tab with Target.createTarget;
+    # reCAPTCHA distrusted that tab (images + decoy audio for a human, same IP
+    # and profile), while driving Chrome's own startup tab passed directly.
+    it 'lets Chrome open its own startup tab' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options]).not_to have_key('no-startup-window')
+    end
+
     it 'keeps what driving the browser needs' do
       manager_for(headless: false, browser_options: {}).start
 
       expect(launch_kwargs[:browser_options]).to include(
-        'no-first-run' => nil, 'no-startup-window' => nil, 'use-mock-keychain' => nil,
+        'no-first-run' => nil, 'use-mock-keychain' => nil,
         'disable-renderer-backgrounding' => nil, 'disable-blink-features' => 'AutomationControlled'
       )
     end
