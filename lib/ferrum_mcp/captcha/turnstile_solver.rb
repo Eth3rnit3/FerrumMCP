@@ -36,15 +36,15 @@ module FerrumMCP
         return solved(0) if wait_until(4) { passed? }
 
         max_attempts.times do |attempt|
-          frame = wait_until(8) { visible_frame }
-          return unsolved(:failed, 'Turnstile widget did not render', attempts: attempt) unless frame
+          box = wait_until(8) { widget_box }
+          return unsolved(:failed, 'Turnstile widget did not render', attempts: attempt) unless box
 
-          click_checkbox(frame)
+          click_checkbox(box)
           return solved(attempt + 1) if wait_until(15) { passed? }
         end
 
-        unsolved(:failed, "Turnstile did not issue a token after #{max_attempts} clicks. The browser is likely " \
-                          'fingerprinted as automated; try a BotBrowser session.', attempts: max_attempts)
+        unsolved(:failed, "Turnstile did not issue a token after #{max_attempts} clicks (the browser " \
+                          'fingerprint or IP reputation was rejected)', attempts: max_attempts)
       end
 
       protected
@@ -59,14 +59,13 @@ module FerrumMCP
         [options.fetch(:max_attempts, DEFAULT_ATTEMPTS), DEFAULT_ATTEMPTS].min
       end
 
-      def visible_frame
-        frames_matching(Detector::FRAME_PATTERNS[:turnstile]).find { |frame| frame_visible?(frame) }
+      # The widget iframe runs out of process (see Session#default_browser_options),
+      # so it is located through the pierced DOM rather than page.frames.
+      def widget_box
+        iframe_boxes(Detector::FRAME_PATTERNS[:turnstile]).find { |box| box[:width] > 100 && box[:height] > 30 }
       end
 
-      def click_checkbox(frame)
-        box = frame_box(frame)
-        return unless box
-
+      def click_checkbox(box)
         logger.info 'Turnstile: clicking the checkbox'
         pause(0.5, 1.2)
         x = box[:x] + [CHECKBOX_OFFSET_X, box[:width] / 2].min + rand(-4.0..4.0)

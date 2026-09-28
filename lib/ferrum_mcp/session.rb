@@ -268,7 +268,13 @@ module FerrumMCP
         'no-sandbox' => nil,
         'disable-dev-shm-usage' => nil,
         'disable-blink-features' => 'AutomationControlled',
-        'disable-gpu' => nil
+        'disable-gpu' => nil,
+        # Ferrum keeps every frame in the page's process so it can reach them,
+        # but Cloudflare rejects CDP input dispatched into an in-process
+        # cross-origin frame. Isolate its origin only; other CAPTCHA frames
+        # (reCAPTCHA, hCaptcha) stay reachable.
+        'disable-features' => 'site-per-process,TranslateUI',
+        'isolate-origins' => 'https://challenges.cloudflare.com'
       }
 
       options['disable-setuid-sandbox'] = nil if ENV['CI']

@@ -22,7 +22,29 @@ module FerrumMCP
       # @return [Array<Symbol>] CAPTCHA types present, in FRAME_PATTERNS order
       def detect(page)
         urls = page.frames.map { |frame| frame.url.to_s }
+        urls += iframes(page).map { |iframe| iframe[:src] }
         types_for_urls(urls)
+      end
+
+      # Every <iframe> of the page, including those behind closed shadow roots
+      # and out-of-process ones, which Ferrum's page.frames does not list.
+      # @return [Array<Hash>] { src:, backend_node_id: }
+      def iframes(page)
+        root = page.command('DOM.getDocument', depth: -1, pierce: true)['root']
+        walk(root).filter_map do |node|
+          next unless node['nodeName'] == 'IFRAME'
+
+          attributes = node['attributes'].to_a.each_slice(2).to_h
+          { src: attributes['src'].to_s, backend_node_id: node['backendNodeId'] }
+        end
+      rescue StandardError
+        []
+      end
+
+      def walk(node)
+        children = node['children'].to_a + node['shadowRoots'].to_a
+        children << node['contentDocument'] if node['contentDocument']
+        [node] + children.flat_map { |child| walk(child) }
       end
 
       def types_for_urls(urls)

@@ -64,13 +64,29 @@ module FerrumMCP
       # a frame. Works through closed shadow roots since it goes through CDP.
       def frame_box(frame)
         owner = page.command('DOM.getFrameOwner', frameId: frame.id)
-        quad = page.command('DOM.getBoxModel', backendNodeId: owner['backendNodeId'])['model']['border']
+        node_box(owner['backendNodeId'])
+      rescue StandardError => e
+        logger.debug "frame_box failed: #{e.message}"
+        nil
+      end
+
+      def node_box(backend_node_id)
+        quad = page.command('DOM.getBoxModel', backendNodeId: backend_node_id)['model']['border']
         xs = quad.each_slice(2).map(&:first)
         ys = quad.each_slice(2).map(&:last)
         { x: xs.min, y: ys.min, width: xs.max - xs.min, height: ys.max - ys.min }
       rescue StandardError => e
-        logger.debug "frame_box failed: #{e.message}"
+        logger.debug "node_box failed: #{e.message}"
         nil
+      end
+
+      # Boxes of rendered <iframe> elements whose src matches, including
+      # out-of-process frames that page.frames cannot see.
+      def iframe_boxes(pattern)
+        Detector.iframes(page)
+                .select { |iframe| iframe[:src].match?(pattern) }
+                .filter_map { |iframe| node_box(iframe[:backend_node_id]) }
+                .select { |box| box[:width] > 1 && box[:height] > 1 }
       end
 
       def frame_visible?(frame)
@@ -89,8 +105,19 @@ module FerrumMCP
       def human_click(pos_x, pos_y)
         human_move(pos_x, pos_y)
         pause(0.05, 0.2)
-        page.mouse.click(x: pos_x, y: pos_y, delay: rand(0.05..0.13))
+        mouse_button(:mousePressed, pos_x, pos_y)
+        sleep rand(0.06..0.14)
+        mouse_button(:mouseReleased, pos_x, pos_y)
         pause(0.2, 0.45)
+      end
+
+      # Ferrum's Mouse#down sends force 0, so pointerdown fires with
+      # pressure 0 while a button is held, which no real mouse does (the
+      # Pointer Events spec mandates 0.5). Anti-bot scripts check for it.
+      def mouse_button(type, pos_x, pos_y)
+        page.command('Input.dispatchMouseEvent', type: type.to_s, x: pos_x, y: pos_y, button: 'left',
+                                                 buttons: type == :mousePressed ? 1 : 0, clickCount: 1,
+                                                 force: type == :mousePressed ? 0.5 : 0, pointerType: 'mouse')
       end
 
       # Move along a quadratic Bézier curve with ease-in-out timing.

@@ -3,6 +3,14 @@
 module FerrumMCP
   # Manages Ferrum browser lifecycle with BotBrowser integration
   class BrowserManager
+    # Ferrum defaults that give automation away:
+    # - disable-web-security switches site isolation off entirely, putting
+    #   cross-origin frames (Cloudflare) in the page process, where input
+    #   dispatched over CDP is rejected
+    # - enable-automation shows the infobar and marks the browser as automated
+    # Ferrum can only add flags, so its defaults are passed explicitly.
+    DROPPED_FERRUM_DEFAULTS = %w[disable-web-security enable-automation].freeze
+
     attr_reader :browser, :config, :logger
 
     def initialize(config)
@@ -51,7 +59,8 @@ module FerrumMCP
         headless: config.headless,
         timeout: config.timeout,
         process_timeout: ENV['CI'] ? 120 : config.timeout,
-        pending_connection_errors: false
+        pending_connection_errors: false,
+        ignore_default_browser_options: true
       }
 
       # Only set browser_path if explicitly configured
@@ -116,10 +125,18 @@ module FerrumMCP
     # Browser flags come from the session configuration (defaults merged with
     # session-specific options, keys without leading dashes).
     def computed_browser_options
-      options = config.merged_browser_options
+      options = ferrum_default_options.merge(config.merged_browser_options)
       logger.info "Using BotBrowser profile: #{options['bot-profile']}" if options['bot-profile']
       logger.info "Using user profile: #{options['user-data-dir']}" if options['user-data-dir']
       options
+    end
+
+    # What Ferrum would pass itself (see Ferrum::Browser::Options::Chrome#merge_default)
+    def ferrum_default_options
+      defaults = Ferrum::Browser::Options::Chrome::DEFAULT_OPTIONS.except(*DROPPED_FERRUM_DEFAULTS)
+      defaults = defaults.except('headless', 'disable-gpu') unless config.headless
+      defaults = defaults.merge('use-angle' => 'metal') if Ferrum::Utils::Platform.mac_arm?
+      defaults
     end
   end
 end
