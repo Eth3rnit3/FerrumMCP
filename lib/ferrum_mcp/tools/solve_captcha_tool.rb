@@ -15,7 +15,7 @@ module FerrumMCP
       description 'Detect and solve the CAPTCHA on the current page. reCAPTCHA v2 (checkbox, invisible, ' \
                   'enterprise) is solved through its audio challenge with local Whisper speech recognition; ' \
                   'Cloudflare Turnstile (widget and "Just a moment" page) and the hCaptcha checkbox are passed with ' \
-                  'human-like clicks. Returns the token on success; fails with an explicit status (blocked, ' \
+                  'human-like clicks. Returns the token on success; fails with an explicit status (blocked, distrusted, ' \
                   'challenge_required, failed) otherwise.'
 
       param :type, type: :string, enum: TYPES, default: 'auto',

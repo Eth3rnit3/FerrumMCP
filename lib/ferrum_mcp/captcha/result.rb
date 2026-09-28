@@ -7,6 +7,7 @@ module FerrumMCP
     # status:
     #   :solved             - the widget reports success and a token is available
     #   :blocked            - the provider refuses to serve challenges (rate limit, bot flag)
+    #   :distrusted         - the provider only serves unsolvable decoy challenges
     #   :challenge_required - a visual challenge appeared that cannot be solved automatically
     #   :failed             - attempts exhausted or the widget never reached a solved state
     Result = Struct.new(:type, :status, :token, :attempts, :message, :details, keyword_init: true) do

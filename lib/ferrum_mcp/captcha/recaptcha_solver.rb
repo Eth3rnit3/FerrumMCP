@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'base64'
+require 'fileutils'
 
 module FerrumMCP
   module Captcha
@@ -11,74 +12,31 @@ module FerrumMCP
     # for several correct answers in a row, so the solver loops until the anchor
     # reports aria-checked="true", then reads the token from the host page.
     class RecaptchaSolver < BaseSolver
+      include RecaptchaScripts
+
       BFRAME = %r{/recaptcha/(?:api2|enterprise)/bframe}
       DEFAULT_ATTEMPTS = 5
+      MAX_GARBLED_IN_A_ROW = 2
 
-      # Evaluated in the challenge frame
-      CHALLENGE_STATE_JS = <<~JS
-        (() => {
-          const shown = (sel) => [...document.querySelectorAll(sel)].some((el) =>
-            el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
-          if (shown('.rc-doscaptcha-header, .rc-doscaptcha-body')) return 'blocked';
-          const audio = document.querySelector('#audio-source');
-          if (shown('#rc-audio, .rc-audiochallenge-control, #audio-response') && audio && audio.src) return 'audio';
-          if (shown('#rc-imageselect, .rc-imageselect-payload')) return 'image';
-          return null;
-        })()
-      JS
+      # Phrases whisper produces on audio it cannot understand (it was trained
+      # on subtitled videos). Real challenges are short everyday sentences.
+      HALLUCINATIONS = [
+        /\Asee you (next time|soon)\z/,
+        /thanks? (you )?(so much )?for watching/,
+        /\A(i'm not sure ?)+\z/,
+        /subscribe|like and share/,
+        /gracias por ver|obrigado por assistir|merci d'avoir regard/
+      ].freeze
 
-      AUDIO_ERROR_JS = <<~JS
-        (() => {
-          const el = document.querySelector('.rc-audiochallenge-error-message');
-          return el && el.getClientRects().length > 0 ? el.innerText.trim() : '';
-        })()
-      JS
+      # Unintelligible audio: reCAPTCHA serves it to clients it distrusts.
+      # Answering it only lowers the IP's reputation, so ask for another one.
+      def self.garbled?(transcription, expected_language)
+        text = transcription.text.to_s
+        return true if text.empty? || HALLUCINATIONS.any? { |pattern| text.match?(pattern) }
+        return false if expected_language.to_s == 'auto' || transcription.language.nil?
 
-      FETCH_AUDIO_JS = <<~JS
-        fetch(arguments[0], { credentials: 'include' })
-          .then((response) => response.arrayBuffer())
-          .then((buffer) => {
-            const bytes = new Uint8Array(buffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i += 0x8000) {
-              binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-            }
-            arguments[1](btoa(binary));
-          })
-          .catch(() => arguments[1](null));
-      JS
-
-      # Evaluated in the host page: is the challenge popup of this widget shown?
-      CHALLENGE_VISIBLE_JS = <<~JS
-        (() => {
-          const frame = document.querySelector(`iframe[name="${arguments[0]}"]`) ||
-                        document.querySelector('iframe[src*="/recaptcha/"][src*="bframe"]');
-          if (!frame) return false;
-          const rect = frame.getBoundingClientRect();
-          return getComputedStyle(frame).visibility !== 'hidden' && rect.width > 0 && rect.height > 0 && rect.bottom > 0;
-        })()
-      JS
-
-      # Evaluated in the host page: token of the widget whose anchor is arguments[0]
-      TOKEN_JS = <<~JS
-        (() => {
-          let node = document.querySelector(`iframe[name="${arguments[0]}"]`);
-          for (let i = 0; node && i < 6; i++, node = node.parentElement) {
-            const area = node.querySelector && node.querySelector('textarea[name="g-recaptcha-response"]');
-            if (area && area.value) return area.value;
-          }
-          const any = [...document.querySelectorAll('textarea[name="g-recaptcha-response"]')].find((a) => a.value);
-          return any ? any.value : null;
-        })()
-      JS
-
-      EXECUTE_INVISIBLE_JS = <<~JS
-        (() => {
-          const api = window.grecaptcha && (window.grecaptcha.enterprise || window.grecaptcha);
-          if (!api || typeof api.execute !== 'function') return false;
-          try { api.execute(); return true; } catch (e) { return false; }
-        })()
-      JS
+        transcription.language != expected_language.to_s
+      end
 
       def solve
         @anchor = pick_anchor
@@ -162,30 +120,45 @@ module FerrumMCP
       end
 
       def solve_audio_rounds
-        transcriptions = []
+        @transcriptions = []
+        garbled_in_a_row = 0
 
         max_attempts.times do |round|
-          state = current_challenge
-          return blocked(attempts: round, transcriptions: transcriptions) if state == 'blocked'
-          return solved(round, transcriptions) if checked?
+          return blocked(attempts: round, transcriptions: @transcriptions) if current_challenge == 'blocked'
+          return solved(round, @transcriptions) if checked?
 
           source = audio_source
           return unsolved(:failed, 'reCAPTCHA audio challenge not available', attempts: round) unless source
 
-          answer = transcribe(source)
-          transcriptions << answer
-          logger.info "reCAPTCHA: round #{round + 1} heard #{answer.inspect}"
+          heard = listen(source, round)
+          garbled_in_a_row = heard ? 0 : garbled_in_a_row + 1
+          return distrusted(round + 1, @transcriptions) if garbled_in_a_row >= MAX_GARBLED_IN_A_ROW
 
-          outcome = answer.empty? ? :reload : submit_answer(answer, source)
-          case outcome
-          when :solved then return solved(round + 1, transcriptions)
-          when :blocked then return blocked(attempts: round + 1, transcriptions: transcriptions)
-          when :reload then reload_challenge(source)
-          end
+          result = answer_round(heard, source, round)
+          return result if result
         end
 
         unsolved(:failed, "reCAPTCHA not solved after #{max_attempts} audio challenges",
-                 attempts: max_attempts, transcriptions: transcriptions)
+                 attempts: max_attempts, transcriptions: @transcriptions)
+      end
+
+      # Transcribed answer, or nil when the audio is garbled
+      def listen(source, round)
+        heard = transcribe(source)
+        garbled = self.class.garbled?(heard, expected_language)
+        @transcriptions << (garbled ? "(garbled #{heard.language}) #{heard.text}" : heard.text)
+        logger.info "reCAPTCHA: round #{round + 1} heard #{heard.text.inspect} " \
+                    "[#{heard.language} #{heard.language_probability}]#{' -> garbled' if garbled}"
+        garbled ? nil : heard.text
+      end
+
+      # Final Result, or nil to play another round
+      def answer_round(answer, source, round)
+        case answer ? submit_answer(answer, source) : :reload
+        when :solved then solved(round + 1, @transcriptions)
+        when :blocked then blocked(attempts: round + 1, transcriptions: @transcriptions)
+        when :reload then reload_challenge(source) && nil
+        end
       end
 
       def audio_source
@@ -196,7 +169,26 @@ module FerrumMCP
         encoded = challenge_frame.evaluate_async(FETCH_AUDIO_JS, 20, source)
         raise ToolError, 'Could not download the reCAPTCHA audio' unless encoded
 
-        transcriber.transcribe_bytes(Base64.decode64(encoded))
+        audio = Base64.decode64(encoded)
+        transcriber.analyze_bytes(audio).tap { |heard| keep_sample(audio, heard) }
+      end
+
+      def expected_language
+        options[:language] || ENV.fetch('WHISPER_LANGUAGE', 'en')
+      end
+
+      # CAPTCHA_AUDIO_DIR: keep every challenge audio and what was heard, to
+      # study failures and tune the garbled-audio detection.
+      def keep_sample(audio, heard)
+        dir = ENV.fetch('CAPTCHA_AUDIO_DIR', nil)
+        return unless dir
+
+        FileUtils.mkdir_p(dir)
+        base = File.join(dir, "recaptcha-#{Time.now.strftime('%Y%m%d-%H%M%S-%L')}")
+        File.binwrite("#{base}.mp3", audio)
+        File.write("#{base}.json", JSON.generate(heard.to_h))
+      rescue StandardError => e
+        logger.debug "keep_sample failed: #{e.message}"
       end
 
       # Type the answer, press verify and classify what happened next.
@@ -228,6 +220,13 @@ module FerrumMCP
         token = wait_until(5) { page.evaluate(TOKEN_JS, @anchor.name.to_s) }
         details = { transcriptions: transcriptions.empty? ? nil : transcriptions }.compact
         Result.solved(type, token: token, attempts: attempts, message: 'reCAPTCHA solved', **details)
+      end
+
+      def distrusted(attempts, transcriptions)
+        unsolved(:distrusted,
+                 'reCAPTCHA only serves its decoy audio: this browser session is not trusted. Stopped early ' \
+                 'to protect the IP. Retry later, from another IP, or with a browser profile that has history.',
+                 attempts: attempts, transcriptions: transcriptions)
       end
 
       def blocked(**details)
