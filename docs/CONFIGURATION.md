@@ -187,15 +187,13 @@ BOTBROWSER_PROFILE=/profiles/profile.enc     # Creates bot profile with id "defa
 
 ## Session Configuration
 
-### Session Limits (Coming in v1.1)
+### Session Limits
 
 ```bash
-MAX_CONCURRENT_SESSIONS=10    # Maximum concurrent browser sessions
-SESSION_IDLE_TIMEOUT=1800     # Auto-close after 30 minutes (seconds)
-SESSION_CLEANUP_INTERVAL=300  # Cleanup check every 5 minutes (seconds)
+MAX_CONCURRENT_SESSIONS=10    # Maximum concurrent browser sessions (default: 10)
 ```
 
-**Note:** Session limits are currently hardcoded but will be configurable in v1.1.
+Idle sessions close after 30 minutes; the cleanup runs every 5 minutes. Both are fixed.
 
 ## Whisper Configuration (CAPTCHA Solving)
 
@@ -292,4 +290,4 @@ docker run --env-file .env -p 3000:3000 eth3rnit3/ferrum-mcp
 
 - See [Getting Started](GETTING_STARTED.md) for basic setup
 - Read [API Reference](API_REFERENCE.md) for tool documentation
-- Check [BotBrowser Integration](BOTBROWSER_INTEGRATION.md) for anti-detection setup
+- Check [BotBrowser in Docker](DOCKER_BOTBROWSER.md) for anti-detection setup

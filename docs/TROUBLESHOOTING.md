@@ -1,677 +1,76 @@
-# Troubleshooting Guide
+# Troubleshooting
 
-This guide helps you diagnose and fix common issues with FerrumMCP.
+Start by reading the logs. They go to `LOG_FILE`: `./logs/ferrum_mcp.log` relative to the directory the server was started from, or `stderr`. Set `LOG_LEVEL=debug` for details. With Claude Desktop, set an absolute `LOG_FILE` in the config's `env` block (see [Getting started](GETTING_STARTED.md#claude-desktop)).
 
-## Table of Contents
+## Server won't start
 
-- [Server Won't Start](#server-wont-start)
-- [Browser Issues](#browser-issues)
-- [Session Management](#session-management)
-- [Tool Errors](#tool-errors)
-- [Claude Desktop Integration](#claude-desktop-integration)
-- [Docker Issues](#docker-issues)
-- [BotBrowser Integration](#botbrowser-integration)
-- [Performance Issues](#performance-issues)
-- [Logging and Debugging](#logging-and-debugging)
+| Message / symptom | Cause and fix |
+|---|---|
+| `ERROR: Invalid browser configuration` | A configured browser path (`BROWSER_PATH`, `BROWSER_<ID>`, `BOTBROWSER_PATH`) doesn't exist. Fix or remove it; without one, Ferrum finds the system Chrome/Chromium. |
+| `Failed to start browser: …` | Chrome can't launch: check it is installed (`which google-chrome chromium chromium-browser`), and on a server without display set `BROWSER_HEADLESS=true`. In Docker, add `--security-opt seccomp=unconfined`. |
+| Port already in use | `lsof -i :3000`, or start with `--port 3001` / `MCP_SERVER_PORT=3001`. |
+| Code loading errors after an update | `bundle install`, then `RACK_ENV=production bundle exec ruby -r ./lib/ferrum_mcp -e 'puts :ok'` (eager-loads every file, as CI does). |
 
----
+`ferrum-mcp help` lists the CLI options (`start`, `--transport`, `--host`, `--port`, `--log-level`).
 
-## Server Won't Start
+## MCP client doesn't see the server
 
-### Error: `cannot load such file -- ferrum`
+- **Claude Desktop**: validate the JSON (`python3 -m json.tool claude_desktop_config.json`), use absolute paths if `ferrum-mcp` isn't on the PATH Claude Desktop sees (rbenv, asdf), restart Claude Desktop, then check its MCP log (macOS: `~/Library/Logs/Claude/mcp*.log`).
+- **Test the server by hand** with the MCP Inspector: `npx @modelcontextprotocol/inspector ferrum-mcp start --transport stdio`. It performs the `initialize` handshake, then lets you call `tools/list` and any tool.
+- **HTTP transport**: the endpoint is `http://localhost:3000/mcp` (not `0.0.0.0`, not `/mcp/v1`). `curl http://localhost:3000/health` should return `{"status":"ok"}`.
+- **`Unauthorized`**: `API_KEY_ENABLED=true` requires `Authorization: Bearer <key>` on `/mcp`.
+- **`Rate limit exceeded`**: raise `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW`, or set `RATE_LIMIT_ENABLED=false` for local use.
 
-**Cause**: Dependencies not installed
+## Sessions
 
-**Solution**:
-```bash
-bundle install
-```
+| Message / symptom | Cause and fix |
+|---|---|
+| `session_id is required` | Every browser tool needs one: call `create_session` first. |
+| `Session not found: <id>` | The session was closed, timed out (30 min idle) or belongs to another server instance. `list_sessions` returns `{ count, sessions: [{ id, … }] }`. |
+| `Maximum concurrent sessions limit reached (10)` | Close sessions you no longer use, or raise `MAX_CONCURRENT_SESSIONS`. |
+| `Browser for session … died during a tool call` | Chrome crashed. Retry the call: the session restarts Chrome (the page state is lost). |
+| `headless: false` rejected | Expected in Docker (`DOCKER=true`); use the gem locally to watch the browser. |
 
-### Error: `Address already in use - bind(2) for "0.0.0.0" port 3000`
+## Tools
 
-**Cause**: Port 3000 is already in use
+| Symptom | Fix |
+|---|---|
+| `Element not found: <selector>` | Take a `snapshot` and use its refs (`ref:e12`), or wait first with `wait_for_selector` (states visible / hidden / attached / detached) or `wait_for_text`. Selectors can be CSS, XPath (`//…` or `xpath:…`) or refs. |
+| `Failed to click: … Try with force: true` | Something covers the element (banner, modal): `accept_cookies`, close the overlay, or retry with `force: true`. `click` and `fill_form` already retry moving elements. |
+| Navigation times out | `navigate` waits for the network to go idle; pages that never go idle need `wait_for_idle: false`, then `wait_for_selector`. `timeout` defaults to 30 s. |
+| `Navigation to <host> is not allowed by the server URL policy` | The host is blocked by `ALLOWED_HOSTS` / `BLOCKED_HOSTS`. |
+| `fill_form` ignores fields | `fields` is an array: `[{ "selector": "#user", "value": "demo" }, { "selector": "#pass", "value": "secret", "clear": true }]`. |
+| `evaluate_js` / `execute_script` errors | `evaluate_js` takes `expression` and returns its JSON-serializable value; `execute_script` runs statements without a return value. |
+| `upload_file` refuses a file | Only paths under `UPLOAD_ALLOWED_DIRS` (default: working directory and temp dir) can be uploaded. |
 
-**Solution**:
-```bash
-# Find process using port 3000
-lsof -i :3000
+## CAPTCHAs
 
-# Kill the process
-kill -9 <PID>
+`solve_captcha` fails with `CAPTCHA not solved (<type>, <status>): <reason>`:
 
-# Or use a different port
-MCP_SERVER_PORT=3001 ruby bin/ferrum-mcp
-```
+| Status | Meaning and what to do |
+|---|---|
+| `distrusted` | reCAPTCHA only served its decoy audio to this session. It stopped early to protect the IP. A long-lived browser profile (`user_profile_id`) and a residential IP help; retrying from the same session and IP won't. |
+| `blocked` | Google answered "Try again later" for this IP. Wait, or change IP. |
+| `challenge_required` | hCaptcha asked for a visual challenge (no audio exists); a screenshot is attached. |
+| `failed` | The widget never reached a solved state (Turnstile rejected the click, no challenge appeared, attempts exhausted). |
 
-### Error: `Zeitwerk::NameError: expected file ... to define constant ...`
+- `No supported CAPTCHA found on the page`: no reCAPTCHA, hCaptcha or Turnstile frame loaded. A full-page "Sorry, you have been blocked" is a Cloudflare firewall block of the IP, not a challenge.
+- `whisper-cli not found`: install whisper.cpp (`brew install whisper-cpp`) or set `WHISPER_PATH`. Only reCAPTCHA needs it. `ffmpeg` is recommended for decoding.
+- `Failed to download Whisper model`: models go to `~/.whisper.cpp/models/`, which must be writable. You can also download `ggml-<model>.bin` by hand, or point `WHISPER_MODEL` at a `.bin` file.
+- `CAPTCHA_AUDIO_DIR=/some/dir` keeps every reCAPTCHA audio and its transcription, to inspect what was heard.
 
-**Cause**: File naming doesn't match class name
+## BotBrowser
 
-**Solution**:
-```bash
-# Check Zeitwerk eager loading
-bundle exec rake zeitwerk:check
-```
+- A profile only applies when the session passes `bot_profile_id` (the lowercase `<ID>` of `BOT_PROFILE_<ID>`). A profile whose file doesn't exist is silently skipped; check the path, or the mount in Docker.
+- `browser_id: "botbrowser"` only exists if `BROWSER_BOTBROWSER` is defined; `BOTBROWSER_PATH` alone creates the browser `default`.
+- Demo profiles make sessions unstable; use trial or paid profiles.
 
-Fix any naming mismatches reported.
+More in [BotBrowser in Docker](DOCKER_BOTBROWSER.md) and [Configuration](CONFIGURATION.md).
 
-### Error: `Browser path not found: /path/to/chrome`
+## Docker
 
-**Cause**: Chrome/Chromium not installed or wrong path
+See the [common issues table in the Docker guide](DOCKER.md#common-issues): `seccomp=unconfined`, `LOG_FILE=stderr` for `docker logs`, mounted `logs/` owned by UID 1000, headless only.
 
-**Solution**:
+## Still stuck
 
-**macOS**:
-```bash
-# Chrome
-BROWSER_CHROME=chrome:/Applications/Google Chrome.app/Contents/MacOS/Google Chrome:Chrome:Default
-
-# Or use system default
-BROWSER_CHROME=chrome::Chrome:Default
-```
-
-**Linux**:
-```bash
-# Find Chrome
-which google-chrome
-which chromium-browser
-
-# Set path
-BROWSER_CHROME=chrome:/usr/bin/google-chrome:Chrome:Default
-```
-
----
-
-## Browser Issues
-
-### Error: `Ferrum::DeadBrowserError: Browser is dead`
-
-**Cause**: Browser crashed or was killed
-
-**Solution**:
-1. Close the affected session: `close_session(session_id: "...")`
-2. Create a new session
-3. Check logs for crash reason: `logs/ferrum_mcp.log`
-
-**Common causes**:
-- Out of memory
-- Browser timeout exceeded
-- Incompatible Chrome version
-
-### Error: `Ferrum::TimeoutError: Timed out waiting for response`
-
-**Cause**: Browser operation took too long
-
-**Solution**:
-```bash
-# Increase timeout
-BROWSER_TIMEOUT=120 ruby bin/ferrum-mcp
-```
-
-Or when creating session:
-```ruby
-create_session(timeout: 120)
-```
-
-### Error: `Chrome failed to start: exited abnormally`
-
-**Cause**: Chrome can't run (usually in Docker/CI)
-
-**Solution**:
-
-**Docker**:
-```bash
-# Run with required security options
-docker run --shm-size=2g \
-  --security-opt seccomp=unconfined \
-  -p 3000:3000 \
-  eth3rnit3/ferrum-mcp
-```
-
-**Headless mode**:
-```bash
-BROWSER_HEADLESS=true ruby bin/ferrum-mcp
-```
-
-### Browser window appears but doesn't load pages
-
-**Cause**: Network connectivity or DNS issues
-
-**Solution**:
-```ruby
-# Test with simple page
-navigate(url: "https://example.com", session_id: "...")
-
-# Check logs
-tail -f logs/ferrum_mcp.log
-```
-
-**Check**:
-- Internet connectivity
-- Proxy settings
-- Firewall rules
-
----
-
-## Session Management
-
-### Error: `SessionError: Session not found`
-
-**Cause**: Session doesn't exist or was closed
-
-**Solution**:
-```ruby
-# List active sessions
-list_sessions()
-
-# Create new session
-session_id = create_session()
-```
-
-### Sessions not auto-closing
-
-**Cause**: Sessions are being actively used (no idle time)
-
-**Behavior**: Sessions only close after 30 minutes of **inactivity**
-
-**Solution**: Close sessions manually when done:
-```ruby
-close_session(session_id: "...")
-```
-
-### Too many sessions consuming resources
-
-**Current behavior**: No hard limit on concurrent sessions
-
-**Solution**:
-```ruby
-# List all sessions
-sessions = list_sessions()
-
-# Close inactive sessions
-sessions.each do |session|
-  close_session(session_id: session['session_id'])
-end
-```
-
-**Note**: Session limits (`MAX_CONCURRENT_SESSIONS`) planned for v1.1
-
----
-
-## Tool Errors
-
-### Error: `ToolError: Element not found`
-
-**Cause**: Element doesn't exist or CSS/XPath selector is wrong
-
-**Solution**:
-```ruby
-# Debug: Get page HTML
-html = get_html(session_id: "...")
-
-# Try different selectors
-# CSS: .class-name, #id, button[type="submit"]
-# XPath: //button[@type="submit"]
-
-# Wait for element to appear (if page is loading)
-# Note: wait_for_element is currently disabled
-# Use navigate with wait for idle instead
-navigate(url: "...", wait_until: "networkidle", session_id: "...")
-```
-
-### Error: `ToolError: Stale element reference`
-
-**Cause**: Element changed after being found (page modified)
-
-**Solution**: Tools automatically retry 3 times. If still failing:
-```ruby
-# Refresh page and try again
-refresh(session_id: "...")
-click(selector: "...", session_id: "...")
-```
-
-### Screenshot returns blank/black image
-
-**Cause**: Page not fully loaded or rendering issue
-
-**Solution**:
-```ruby
-# Wait for page to load - navigation already waits for load event
-navigate(url: "...", session_id: "...")
-# Take screenshot
-screenshot(session_id: "...")
-```
-
-### Fill form doesn't work
-
-**Cause**: Form field not found or not interactable
-
-**Solution**:
-```ruby
-# 1. Verify field exists
-get_html(session_id: "...")
-
-# 2. Click field first to focus
-click(selector: "input[name='username']", session_id: "...")
-
-# 3. Fill form
-fill_form(
-  fields: { "input[name='username']": "myusername" },
-  session_id: "..."
-)
-```
-
-### JavaScript execution fails
-
-**Cause**: Syntax error or browser context issue
-
-**Solution**:
-```ruby
-# For return value, use evaluate_js
-result = evaluate_js(
-  script: "document.title",
-  session_id: "..."
-)
-
-# For side effects, use execute_script
-execute_script(
-  script: "document.querySelector('#btn').click()",
-  session_id: "..."
-)
-
-# Debug errors
-execute_script(
-  script: "console.log('Debug output')",
-  session_id: "..."
-)
-# Check browser console logs
-```
-
----
-
-## Claude Desktop Integration
-
-### Claude Desktop doesn't show FerrumMCP
-
-**Cause**: Configuration error or server not starting
-
-**Solution**:
-
-1. **Check config file location**:
-   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-   - Linux: `~/.config/Claude/claude_desktop_config.json`
-
-2. **Verify JSON syntax**:
-   ```bash
-   # macOS
-   cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | jq .
-   ```
-
-3. **Check paths are absolute**:
-   ```json
-   {
-     "mcpServers": {
-       "ferrum-mcp": {
-         "command": "/Users/username/.rbenv/versions/3.3.5/bin/ruby",
-         "args": [
-           "/Users/username/code/ferrum-mcp/bin/ferrum-mcp",
-           "--transport",
-           "stdio"
-         ]
-       }
-     }
-   }
-   ```
-
-4. **Restart Claude Desktop** completely (quit and reopen)
-
-5. **Check logs**:
-   ```bash
-   tail -f ~/code/ferrum-mcp/logs/ferrum_mcp.log
-   ```
-
-### Error: `command not found: ruby`
-
-**Cause**: Ruby path is wrong or not absolute
-
-**Solution**:
-```bash
-# Find Ruby path
-which ruby
-# Example: /Users/username/.rbenv/versions/3.3.5/bin/ruby
-
-# Use absolute path in config
-```
-
-### Claude says "Tool not available"
-
-**Cause**: Server not running or communication issue
-
-**Solution**:
-1. Test server manually:
-   ```bash
-   ruby bin/ferrum-mcp --transport stdio
-   # Type: {"method": "list_tools"}
-   # Press Enter
-   ```
-
-2. Check for error output
-3. Verify Ruby version: `ruby --version` (need 3.2+)
-
----
-
-## Docker Issues
-
-### Error: `docker: no matching manifest for linux/arm64`
-
-**Cause**: Image not built for ARM architecture (M1/M2 Macs)
-
-**Current status**: Multi-platform builds enabled (amd64, arm64)
-
-**Solution**:
-```bash
-# Pull latest image
-docker pull eth3rnit3/ferrum-mcp:latest
-
-# Or build locally
-docker build --platform linux/arm64 -t ferrum-mcp .
-```
-
-### Container starts but server not accessible
-
-**Cause**: Port mapping or firewall issue
-
-**Solution**:
-```bash
-# Check container is running
-docker ps
-
-# Check port mapping
-docker port <container_id>
-
-# Correct mapping
-docker run -p 3000:3000 eth3rnit3/ferrum-mcp
-```
-
-### Chrome crashes in Docker
-
-**Cause**: Insufficient shared memory
-
-**Solution**:
-```bash
-docker run --shm-size=2g \
-  -p 3000:3000 \
-  eth3rnit3/ferrum-mcp
-```
-
-### Permission denied errors in Docker
-
-**Cause**: Container running as root
-
-**Solution** (workaround until v1.1):
-```bash
-docker run --user 1000:1000 \
-  -p 3000:3000 \
-  eth3rnit3/ferrum-mcp
-```
-
----
-
-## BotBrowser Integration
-
-See [BOTBROWSER_INTEGRATION.md](BOTBROWSER_INTEGRATION.md) for detailed troubleshooting.
-
-### Error: `BotBrowser path not found`
-
-**Solution**:
-```bash
-# Verify BotBrowser installed
-ls /opt/botbrowser/chrome
-
-# Set path
-BROWSER_BOTBROWSER=botbrowser:/opt/botbrowser/chrome:BotBrowser:Anti-detection
-```
-
-### Error: Popup "You are currently using a demo profile" or "Session with given id not found" after navigation
-
-**Symptoms**:
-- BotBrowser shows a popup about demo/invalid profile on startup
-- "Session with given id not found" error after navigation
-- CDP session loss between tool calls
-- Tools work individually but fail when chained
-
-**Cause**: Invalid, expired, or demo BotBrowser profile
-
-**How BotBrowser profiles work**:
-- BotBrowser uses encrypted `.enc` profile files for anti-detection fingerprints
-- Each profile contains browser fingerprint data (user agent, canvas, WebGL, etc.)
-- **Demo profiles**: Limited functionality, unstable CDP, cause session loss
-- **Trial/Premium profiles**: Full functionality, stable CDP session
-
-Demo or invalid profiles cause unstable Chrome DevTools Protocol (CDP) behavior, making it impossible to execute multiple operations in sequence.
-
-**Solution**: Use valid trial or premium BotBrowser profiles
-
-**Configuration**:
-
-```bash
-# In .env file
-BOT_PROFILE_ID=/path/to/valid/profile.enc:Profile Name:Description
-
-# For Docker, mount profile directory
--v /path/to/profiles:/profiles:ro
--e "BOT_PROFILE_ID=/profiles/your_profile.enc:Name:Description"
-```
-
-**How to verify profile is working**:
-```ruby
-# Create session with BotBrowser profile
-create_session(browser_id: "botbrowser", bot_profile_id: "your_profile_id")
-
-# Test sequence of operations (this fails with invalid profiles)
-navigate(url: "https://example.com", session_id: "...")
-get_text(selector: "h1", session_id: "...")  # ← Fails here if profile is invalid
-```
-
-**If successful**:
-- ✓ No popup appears on browser startup
-- ✓ Navigation completes
-- ✓ Subsequent operations work (get_text, screenshot, etc.)
-- ✓ Session persists across multiple tool calls
-
-**Getting BotBrowser profiles**:
-- Trial profiles: Included with BotBrowser download packages
-- Premium profiles: Contact BotBrowser support (botbrowser@bk.ru or @botbrowser_support on Telegram)
-- Profile version must match BotBrowser version
-
-### Error: `Failed to load profile`
-
-**Cause**: Invalid or encrypted profile
-
-**Solution**:
-```bash
-# Verify profile exists
-ls /path/to/profile.enc
-
-# Set profile
-BOT_PROFILE_US=/path/to/profile.enc:US Chrome:US fingerprint
-
-# Check profile is encrypted (.enc extension)
-```
-
-### BotBrowser session slower than regular Chrome
-
-**Expected behavior**: Anti-detection adds overhead
-
-**Mitigation**:
-- Use regular Chrome for non-protected sites
-- Increase timeout for BotBrowser sessions
-- Use separate session for BotBrowser
-
----
-
-## Performance Issues
-
-### High memory usage
-
-**Cause**: Multiple sessions or memory leak
-
-**Solution**:
-```bash
-# Monitor sessions
-list_sessions()
-
-# Close unused sessions
-close_session(session_id: "...")
-
-# Enable headless mode
-BROWSER_HEADLESS=true ruby bin/ferrum-mcp
-
-# Limit concurrent sessions (manual until v1.1)
-```
-
-### Slow tool execution
-
-**Cause**: Network latency, page load time, or timeouts
-
-**Solution**:
-```ruby
-# Increase timeout
-create_session(timeout: 120)
-
-# Use headless mode (faster)
-create_session(headless: true)
-
-# Navigate with faster wait condition
-navigate(url: "...", wait_until: "domcontentloaded", session_id: "...")
-```
-
-### CPU usage spikes
-
-**Cause**: Multiple browsers or heavy page rendering
-
-**Solution**:
-- Limit concurrent sessions
-- Use headless mode
-- Close sessions when done
-- Monitor: `htop` or Activity Monitor
-
----
-
-## Logging and Debugging
-
-### Enable debug logging
-
-```bash
-LOG_LEVEL=debug ruby bin/ferrum-mcp
-```
-
-### Check logs
-
-```bash
-# View logs
-tail -f logs/ferrum_mcp.log
-
-# Search for errors
-grep ERROR logs/ferrum_mcp.log
-
-# Search for specific session
-grep "session-123" logs/ferrum_mcp.log
-```
-
-### Log levels
-
-- `DEBUG`: Detailed execution traces
-- `INFO`: Session lifecycle, tool execution (default)
-- `WARN`: Degraded functionality
-- `ERROR`: Failures requiring attention
-
-### Common log errors
-
-**`ERROR -- : Browser startup failed`**
-→ Check browser path and installation
-
-**`ERROR -- : Session not found`**
-→ Session expired or invalid session_id
-
-**`WARN -- : Session idle timeout reached`**
-→ Normal, session auto-closed after 30 minutes
-
-**`ERROR -- : Stale element reference`**
-→ Tool automatically retries, usually recovers
-
-### Enable RSpec verbose output
-
-```bash
-bundle exec rspec --format documentation
-```
-
-### Test specific scenario
-
-```bash
-# Create test script
-cat > test_scenario.rb << 'EOF'
-require_relative 'lib/ferrum_mcp'
-
-config = FerrumMCP::Configuration.new
-server = FerrumMCP::Server.new(config)
-
-# Your test code here
-session_id = server.execute_tool('create_session', { headless: false })
-puts "Session created: #{session_id}"
-EOF
-
-ruby test_scenario.rb
-```
-
----
-
-## Getting Help
-
-If you're still stuck:
-
-1. **Check documentation**:
-   - [Getting Started](GETTING_STARTED.md)
-   - [API Reference](API_REFERENCE.md)
-   - [Configuration](CONFIGURATION.md)
-
-2. **Search existing issues**:
-   - [GitHub Issues](https://github.com/Eth3rnit3/FerrumMCP/issues)
-
-3. **Enable debug logging**:
-   ```bash
-   LOG_LEVEL=debug ruby bin/ferrum-mcp
-   ```
-
-4. **Create a minimal reproduction**:
-   - Simplest possible steps to reproduce
-   - Include error messages
-   - Share logs (redact sensitive info)
-
-5. **Open an issue**:
-   - Use bug report template
-   - Include environment details
-   - Attach logs and screenshots
-
-6. **Contact**:
-   - Email: [eth3rnit3@gmail.com](mailto:eth3rnit3@gmail.com)
-
----
-
-## Quick Diagnostic Checklist
-
-Before opening an issue, verify:
-
-- [ ] Ruby version ≥ 3.2: `ruby --version`
-- [ ] Dependencies installed: `bundle install`
-- [ ] Chrome installed: `which google-chrome` or `which chromium-browser`
-- [ ] Port available: `lsof -i :3000`
-- [ ] Logs checked: `tail -f logs/ferrum_mcp.log`
-- [ ] Configuration valid: Check `.env` file
-- [ ] RuboCop passes: `bundle exec rubocop`
-- [ ] Tests pass: `bundle exec rspec`
-
----
-
-**Last Updated**: 2025-01-23
+Open an issue at https://github.com/Eth3rnit3/FerrumMCP/issues with the FerrumMCP version (`ferrum-mcp version`), how you run it (gem, Docker, source), the tool call, and the relevant log lines with `LOG_LEVEL=debug`.

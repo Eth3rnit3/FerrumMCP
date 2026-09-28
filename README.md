@@ -68,7 +68,7 @@ Selectors accept CSS, XPath (`//…` or `xpath:…`) and snapshot refs. MCP reso
 | reCAPTCHA v2 | Solved through the audio challenge with local [whisper.cpp](https://github.com/ggerganov/whisper.cpp) **when Google serves a real audio**. Anonymous sessions usually get Google's decoy audio instead: the tool recognises it and stops (`distrusted`) rather than burning the IP. A long-lived browser profile and a residential IP help a lot. |
 | hCaptcha | Checkbox only; a visual challenge returns `challenge_required` with a screenshot |
 
-reCAPTCHA needs `whisper-cli` and `ffmpeg` (`brew install whisper-cpp ffmpeg`); models download on first use. See [Whisper configuration](docs/CONFIGURATION.md#whisper-configuration-captcha-solving).
+reCAPTCHA needs `whisper-cli` (`brew install whisper-cpp`), `ffmpeg` is recommended; models download on first use. See [Whisper configuration](docs/CONFIGURATION.md#whisper-configuration-captcha-solving).
 
 ## Configuration
 

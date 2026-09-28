@@ -75,7 +75,7 @@ module FerrumMCP
           ENVIRONMENT VARIABLES:
               MCP_SERVER_HOST             Server host (default: 0.0.0.0)
               MCP_SERVER_PORT             Server port (default: 3000)
-              BROWSER_HEADLESS            Run browser in headless mode (default: true)
+              BROWSER_HEADLESS            Run browser in headless mode (default: false)
               BROWSER_TIMEOUT             Browser timeout in seconds (default: 60)
               LOG_LEVEL                   Log level (default: info)
 

@@ -1,249 +1,100 @@
-# Getting Started with FerrumMCP
+# Getting Started
 
-## What is FerrumMCP?
+FerrumMCP is an MCP server that drives a real Chrome for AI assistants. This guide gets it running and connected to Claude.
 
-FerrumMCP provides AI assistants with browser automation capabilities via the MCP protocol. It allows your AI to navigate websites, interact with elements, extract content, and take screenshots - all through a standardized interface.
+## Requirements
 
-**Key features:**
-- 🌐 Full browser automation (navigate, click, fill forms, etc.)
-- 📸 Screenshot capture (full page or specific elements)
-- 🔍 Content extraction (text, HTML, attributes)
-- 🍪 Cookie management
-- ⚡ JavaScript execution
-- 🔄 Session-based architecture with multiple concurrent browsers
-- 🤖 Smart cookie banner detection and acceptance
-- 🧩 CAPTCHA solving with Whisper AI (alpha)
-- 🦾 BotBrowser integration for anti-detection
+- **Gem / source**: Ruby 3.2+ and Chrome or Chromium
+- **Docker**: nothing else (Chromium is in the image)
+- **Optional**: `whisper-cli` (whisper.cpp), plus `ffmpeg` (recommended), only to solve reCAPTCHA audio challenges. Turnstile and hCaptcha don't need them.
 
-## Quick Start
+## Install
 
-### Option 1: Using Docker (Recommended)
-
-Pull and run the official Docker image:
+**Gem** (recommended):
 
 ```bash
-docker pull eth3rnit3/ferrum-mcp:latest
-docker run -p 3000:3000 eth3rnit3/ferrum-mcp:latest
+gem install ferrum-mcp
+ferrum-mcp start                       # HTTP server on http://localhost:3000/mcp
+ferrum-mcp start --transport stdio     # STDIO, for MCP clients that spawn the server
 ```
 
-The server will be available at `http://0.0.0.0:3000`.
-
-**Docker Hub:** [eth3rnit3/ferrum-mcp](https://hub.docker.com/r/eth3rnit3/ferrum-mcp)
-
-### Option 2: Local Installation
+**Docker** (headless only):
 
 ```bash
-git clone https://github.com/Eth3rnit3/FerrumMCP.git
-cd FerrumMCP
+docker run --rm --security-opt seccomp=unconfined -p 3000:3000 eth3rnit3/ferrum-mcp:latest
+```
+
+**From source**:
+
+```bash
+git clone https://github.com/Eth3rnit3/FerrumMCP.git && cd FerrumMCP
 bundle install
+bundle exec ruby bin/ferrum-mcp start --transport stdio
 ```
 
-**Requirements:**
-- Ruby 3.2 or higher
-- Chrome/Chromium browser
-- (Optional) whisper-cli for CAPTCHA solving
-- (Optional) BotBrowser for anti-detection
+Check it's up (HTTP): `curl http://localhost:3000/health` → `{"status":"ok"}`.
 
-### Start the Server
+## Connect an MCP client
 
-#### HTTP Transport (Default)
+### Claude Code
 
 ```bash
-ruby bin/ferrum-mcp
-# or explicitly
-ruby bin/ferrum-mcp --transport http
+claude mcp add ferrum -- ferrum-mcp start --transport stdio
+# or, against a running HTTP server:
+claude mcp add --transport http ferrum http://localhost:3000/mcp
 ```
-
-The server will start on `http://0.0.0.0:3000` by default.
-
-#### STDIO Transport
-
-For MCP clients that require stdio protocol (e.g., Claude Desktop):
-
-```bash
-ruby bin/ferrum-mcp --transport stdio
-```
-
-#### Help and Options
-
-View all available options:
-
-```bash
-ruby bin/ferrum-mcp --help
-```
-
-## Connect Your AI Assistant
 
 ### Claude Desktop
 
-#### Option 1: Using Docker (Recommended)
+Edit `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`, Linux: `~/.config/Claude/`), then restart Claude Desktop.
 
-The easiest and most reliable way to run FerrumMCP with Claude Desktop is via Docker. This eliminates dependencies and provides a consistent environment.
-
-**Prerequisites:**
-- Docker installed and running
-- FerrumMCP Docker image built or pulled
-
-**Configuration file location:**
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux**: `~/.config/Claude/claude_desktop_config.json`
-
-**Build the image:**
-```bash
-cd /path/to/ferrum-mcp
-docker build -t ferrum-mcp:latest .
-```
-
-**Or pull from Docker Hub:**
-```bash
-docker pull eth3rnit3/ferrum-mcp:latest
-```
-
-**Claude Desktop configuration:**
 ```json
 {
   "mcpServers": {
-    "ferrum-mcp": {
+    "ferrum": {
+      "command": "ferrum-mcp",
+      "args": ["start", "--transport", "stdio"],
+      "env": {
+        "BROWSER_HEADLESS": "false",
+        "LOG_FILE": "/Users/you/ferrum_mcp.log"
+      }
+    }
+  }
+}
+```
+
+Put settings in the `env` block: Claude Desktop does not start the server in your project directory, so a `.env` file there is not read, and the default log path (`./logs/ferrum_mcp.log`) would be relative to an unknown directory. Use an absolute `LOG_FILE`, or `stderr` to see logs in Claude Desktop's MCP log. If `ferrum-mcp` is not on the PATH Claude Desktop sees (rbenv, asdf), use the absolute path of the executable (`which ferrum-mcp`).
+
+With Docker instead:
+
+```json
+{
+  "mcpServers": {
+    "ferrum": {
       "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "--security-opt",
-        "seccomp=unconfined",
-        "ferrum-mcp:latest",
-        "ruby",
-        "bin/ferrum-mcp",
-        "--transport",
-        "stdio"
-      ],
-      "env": {}
+      "args": ["run", "--rm", "-i", "--security-opt", "seccomp=unconfined",
+               "eth3rnit3/ferrum-mcp:latest", "bin/ferrum-mcp", "start", "--transport", "stdio"]
     }
   }
 }
 ```
 
-**Important notes:**
-- `--rm`: Automatically removes the container when it stops
-- `-i`: Interactive mode (required for stdio communication)
-- `--security-opt seccomp=unconfined`: Required for Chromium to run in Docker
-- **Headless mode is mandatory** in Docker (automatically enforced)
-- Sessions with `headless: false` will be rejected with an error
+## First session
 
-After updating the config, **restart Claude Desktop**.
+Every browser tool needs a `session_id`. Ask Claude something like:
 
-#### Option 2: Using Local Ruby Installation
+- "Create a browser session (not headless) and open https://example.com"
+- "Take a snapshot of the page and click the 'More information' link"
+- "Fill the login form with user `demo` and submit it"
+- "Accept the cookie banner, then take a screenshot"
+- "Run `document.title` in the page"
+- "Solve the CAPTCHA on this page"
 
-If you prefer running FerrumMCP locally without Docker:
+The usual loop is `create_session` → `navigate` → `snapshot` (lists interactive elements with refs such as `ref:e12`) → `click` / `fill_form` with those refs → `close_session`. Sessions close by themselves after 30 minutes idle.
 
-```json
-{
-  "mcpServers": {
-    "ferrum-mcp": {
-      "command": "/path/to/ruby",
-      "args": [
-        "/path/to/ferrum-mcp/bin/ferrum-mcp",
-        "--transport",
-        "stdio"
-      ],
-      "env": {
-        "BROWSER_HEADLESS": "false"
-      }
-    }
-  }
-}
-```
+## Next steps
 
-**Important**: Replace the paths with your actual paths:
-- **Ruby path**: Find it with `which ruby` (e.g., `/Users/username/.rbenv/versions/3.3.5/bin/ruby`)
-- **Server path**: Full path to your `bin/ferrum-mcp` (e.g., `/Users/username/code/ferrum-mcp/bin/ferrum-mcp`)
-
-**Example with rbenv**:
-```json
-{
-  "mcpServers": {
-    "ferrum-mcp": {
-      "command": "/Users/username/.rbenv/versions/3.3.5/bin/ruby",
-      "args": [
-        "/Users/username/code/ferrum-mcp/bin/ferrum-mcp",
-        "--transport",
-        "stdio"
-      ],
-      "env": {
-        "BROWSER_HEADLESS": "false"
-      }
-    }
-  }
-}
-```
-
-After updating the config, restart Claude Desktop.
-
-#### Using HTTP Transport
-
-Alternative setup using HTTP (requires manual server start):
-
-```bash
-# Start the server
-ruby bin/ferrum-mcp --transport http
-
-# In another terminal, add to Claude
-claude mcp add --transport http ferrum-mcp http://0.0.0.0:3000/mcp
-```
-
-### Other MCP Clients
-
-For any MCP-compatible client:
-- **HTTP Transport**: Configure pointing to `http://0.0.0.0:3000/mcp`
-- **STDIO Transport**: Run `ruby bin/ferrum-mcp --transport stdio` as a subprocess
-
-## Usage Examples
-
-Once connected, your AI assistant can perform browser automation tasks:
-
-**Navigate to a website:**
-> "Navigate to https://example.com"
-
-**Extract information:**
-> "Go to GitHub trending and tell me the top 3 repositories"
-
-**Take screenshots:**
-> "Take a screenshot of the current page"
-
-**Interact with forms:**
-> "Fill in the search box with 'AI tools' and submit the form"
-
-**Execute JavaScript:**
-> "Click the login button and wait for the page to load"
-
-**Handle cookies:**
-> "Accept the cookie banner on this website"
-
-**Solve CAPTCHAs:**
-> "Solve the audio CAPTCHA on this page"
-
-## Session Management
-
-FerrumMCP uses a session-based architecture. Each browser instance is managed as a session:
-
-1. **Create a session** before performing browser operations
-2. **Use the session ID** for all subsequent operations
-3. **Close the session** when done (or let it auto-close after 30 minutes of inactivity)
-
-Example workflow:
-```
-AI: Create a new browser session
-AI: Navigate to https://example.com (using session ID)
-AI: Take a screenshot (using session ID)
-AI: Close the session
-```
-
-You can run multiple sessions concurrently with different configurations (different browsers, profiles, etc.).
-
-## Next Steps
-
-- Read the [API Reference](API_REFERENCE.md) to understand all available tools
-- Check [Configuration Guide](CONFIGURATION.md) for advanced setup
-- See [Troubleshooting](TROUBLESHOOTING.md) if you encounter issues
-- Learn about [BotBrowser Integration](BOTBROWSER_INTEGRATION.md) for anti-detection
+- [API reference](API_REFERENCE.md): every tool and its parameters
+- [Configuration](CONFIGURATION.md): browsers, profiles, security, Whisper
+- [Docker](DOCKER.md) and [BotBrowser in Docker](DOCKER_BOTBROWSER.md)
+- [Troubleshooting](TROUBLESHOOTING.md)
