@@ -5,218 +5,144 @@ require 'open3'
 require 'fileutils'
 require 'net/http'
 require 'uri'
-require 'shellwords'
 
 module FerrumMCP
-  # Service to handle Whisper speech recognition for CAPTCHA solving
-  # Uses whisper-cli (whisper.cpp) for fast, efficient transcription
+  # Speech-to-text for audio CAPTCHAs, backed by whisper-cli (whisper.cpp).
+  #
+  # Audio is normalised to 16 kHz mono WAV with ffmpeg when it is available,
+  # which is the format whisper.cpp is trained on and accepts on every build.
   class WhisperService
-    attr_reader :whisper_path, :model, :language, :logger
+    MODELS = %w[tiny tiny.en base base.en small small.en medium medium.en large-v3-turbo].freeze
+    MODEL_BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main'
+    MODELS_DIR = File.expand_path('~/.whisper.cpp/models')
 
-    # Model URLs for whisper.cpp
-    MODEL_URLS = {
-      'tiny' => 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin',
-      'base' => 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
-      'small' => 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin',
-      'medium' => 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin'
-    }.freeze
+    attr_reader :whisper_path, :ffmpeg_path, :model, :language, :logger
 
     def initialize(model: nil, language: nil, logger: nil)
       @whisper_path = ENV.fetch('WHISPER_PATH', 'whisper-cli')
-      @model = model || ENV.fetch('WHISPER_MODEL', 'base')
+      @ffmpeg_path = ENV.fetch('FFMPEG_PATH', 'ffmpeg')
+      @model = model || ENV.fetch('WHISPER_MODEL', 'base.en')
       @language = language || ENV.fetch('WHISPER_LANGUAGE', 'en')
-      @logger = logger || Logger.new($stdout)
+      @logger = logger || Logger.new(File::NULL)
+    end
 
+    # Raise a ToolError explaining what is missing. Downloads the model if needed.
+    def ensure_ready!
       verify_whisper_available!
       ensure_model_available!
+      self
     end
 
-    # Transcribe audio file to text
-    # @param audio_path [String] Path to audio file
-    # @return [String] Transcribed and cleaned text
-    def transcribe(audio_path)
-      logger.debug "Transcribing audio: #{audio_path}"
-
-      cmd = build_whisper_command(audio_path)
-      logger.debug "Command: #{cmd.join(' ')}"
-
-      stdout, stderr, status = Open3.capture3(*cmd)
-
-      unless status.success?
-        logger.error "Whisper failed: #{stderr}"
-        raise ToolError, "Whisper transcription failed: #{stderr}"
-      end
-
-      logger.debug "Whisper stdout: #{stdout}"
-
-      # Extract transcription from output or file
-      transcription = extract_transcription_from_output(stdout) || read_transcription_file(audio_path)
-      clean_transcription(transcription)
-    ensure
-      # Cleanup .txt file created by whisper-cli
-      txt_file = "#{audio_path}.txt"
-      FileUtils.rm_f(txt_file)
-    end
-
-    # Download audio from URL using browser context
-    # @param browser [Ferrum::Browser] Browser instance
-    # @param url [String] Audio URL
-    # @return [Tempfile] Temporary audio file
-    def download_audio(_browser, url)
-      temp_file = Tempfile.new(['captcha_audio', '.mp3'])
-      temp_file.binmode
-
-      logger.info "Downloading audio from: #{url[0..80]}..."
-
-      # Use curl to download (simpler and more reliable)
-      _, stderr, status = Open3.capture3("curl -s -L -o #{temp_file.path} #{url.shellescape}")
-
-      unless status.success?
-        logger.error "curl failed: #{stderr}"
-        raise ToolError, "Failed to download audio with curl: #{stderr}"
-      end
-
-      # Verify file was downloaded
-      unless File.exist?(temp_file.path) && File.size(temp_file.path).positive?
-        raise ToolError, 'Audio file is empty or not downloaded'
-      end
-
-      logger.info "Downloaded: #{File.size(temp_file.path)} bytes"
-      temp_file
-    rescue StandardError => e
-      temp_file&.close
-      temp_file&.unlink
-      raise ToolError, "Failed to download audio: #{e.message}"
-    end
-
-    # Check if Whisper is available
-    # @return [Boolean]
     def available?
-      verify_whisper_available!
-      true
-    rescue StandardError
-      false
+      executable?(whisper_path)
+    end
+
+    # @param bytes [String] raw audio (mp3, wav, ogg...)
+    # @return [String] cleaned transcription
+    def transcribe_bytes(bytes, extension: '.mp3')
+      Tempfile.create(['captcha_audio', extension], binmode: true) do |file|
+        file.write(bytes)
+        file.flush
+        transcribe(file.path)
+      end
+    end
+
+    # @param audio_path [String] path to an audio file
+    # @return [String] cleaned transcription
+    def transcribe(audio_path)
+      with_wav(audio_path) do |wav_path|
+        cmd = [whisper_path, '-m', model_path, '-l', language, '-nt', '-np', '-f', wav_path]
+        logger.debug "Whisper: #{cmd.join(' ')}"
+
+        stdout, stderr, status = Open3.capture3(*cmd)
+        raise ToolError, "Whisper transcription failed: #{stderr.lines.last(3).join.strip}" unless status.success?
+
+        self.class.clean(stdout)
+      end
+    end
+
+    # Normalise a transcription into what CAPTCHA inputs expect: lowercase
+    # words, no punctuation, no whisper annotations such as [BLANK_AUDIO].
+    def self.clean(text)
+      text.to_s
+          .gsub(/\[[^\]]*\]|\([^)]*\)/, ' ')
+          .downcase
+          .gsub(/[^\p{L}\p{N}\s']/, ' ')
+          .gsub(/\s+/, ' ')
+          .strip
+    end
+
+    def model_path
+      return model if model.end_with?('.bin')
+
+      File.join(MODELS_DIR, "ggml-#{model}.bin")
     end
 
     private
 
-    def verify_whisper_available!
-      _, stderr, status = Open3.capture3("#{whisper_path} --help 2>&1")
+    def with_wav(audio_path)
+      return yield(audio_path) unless executable?(ffmpeg_path)
 
-      unless status.success?
-        raise ToolError,
-              "Whisper not found at '#{whisper_path}'. " \
-              "Install with: brew install whisper-cpp\n" \
-              "Or on Linux: follow instructions at https://github.com/ggerganov/whisper.cpp\n" \
-              "Or set WHISPER_PATH environment variable.\n" \
-              "Error: #{stderr}"
+      Tempfile.create(['captcha_audio', '.wav']) do |wav|
+        cmd = [ffmpeg_path, '-y', '-loglevel', 'error', '-i', audio_path, '-ar', '16000', '-ac', '1', wav.path]
+        _, stderr, status = Open3.capture3(*cmd)
+        raise ToolError, "ffmpeg could not decode the audio: #{stderr.strip}" unless status.success?
+
+        yield wav.path
       end
+    end
 
-      logger.info "Whisper CLI available at: #{whisper_path}"
+    def executable?(command)
+      return File.executable?(command) if command.include?(File::SEPARATOR)
+
+      ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? { |dir| File.executable?(File.join(dir, command)) }
+    end
+
+    def verify_whisper_available!
+      return if available?
+
+      raise ToolError,
+            "whisper-cli not found (WHISPER_PATH=#{whisper_path}). Install whisper.cpp " \
+            '(macOS: brew install whisper-cpp) or set WHISPER_PATH.'
     end
 
     def ensure_model_available!
-      model_path = get_model_path
+      return if File.exist?(model_path)
+      raise ToolError, "Whisper model not found: #{model_path}" if model.end_with?('.bin')
+      raise ToolError, "Unknown Whisper model '#{model}'. Available: #{MODELS.join(', ')}" unless MODELS.include?(model)
 
-      # Check if model already exists
-      if File.exist?(model_path)
-        logger.debug "Model already available: #{model_path}"
-        return
-      end
-
-      # Download model
-      logger.info "Model '#{model}' not found, downloading..."
-      download_model(model_path)
+      download_model
     end
 
-    def get_model_path # rubocop:disable Naming/AccessorMethodName
-      models_dir = File.expand_path('~/.whisper.cpp/models')
-      FileUtils.mkdir_p(models_dir)
-      File.join(models_dir, "ggml-#{model}.bin")
+    def download_model
+      FileUtils.mkdir_p(MODELS_DIR)
+      url = "#{MODEL_BASE_URL}/ggml-#{model}.bin"
+      logger.info "Downloading Whisper model '#{model}' from #{url}"
+      partial = "#{model_path}.part"
+
+      fetch(URI(url), partial)
+      File.rename(partial, model_path)
+      logger.info "Whisper model ready: #{model_path}"
+    rescue StandardError => e
+      FileUtils.rm_f(partial) if partial
+      raise ToolError, "Failed to download Whisper model '#{model}': #{e.message}"
     end
 
-    def download_model(model_path) # rubocop:disable Metrics/AbcSize
-      url = MODEL_URLS[model]
-
-      raise ToolError, "Unknown model: #{model}. Available: #{MODEL_URLS.keys.join(', ')}" unless url
-
-      logger.info "Downloading model from: #{url}"
-      logger.info 'This may take a few minutes...'
-
-      # Download with progress
-      uri = URI(url)
+    def fetch(uri, destination, redirects: 5)
       Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
-        request = Net::HTTP::Get.new(uri)
+        http.request(Net::HTTP::Get.new(uri)) do |response|
+          case response
+          when Net::HTTPRedirection
+            raise ToolError, 'Too many redirects' if redirects.zero?
 
-        http.request(request) do |response|
-          raise ToolError, "Failed to download model: HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
-
-          total_size = response['content-length'].to_i
-          downloaded = 0
-
-          File.open(model_path, 'wb') do |file|
-            response.read_body do |chunk|
-              file.write(chunk)
-              downloaded += chunk.size
-
-              # Log progress every 10MB
-              if (downloaded % (10 * 1024 * 1024)).zero? || downloaded == total_size
-                progress = (downloaded * 100.0 / total_size).round(1)
-                mb_downloaded = downloaded / 1024 / 1024
-                mb_total = total_size / 1024 / 1024
-                logger.info "Download progress: #{progress}% (#{mb_downloaded}MB / #{mb_total}MB)"
-              end
-            end
+            return fetch(URI.join(uri, response['location']), destination, redirects: redirects - 1)
+          when Net::HTTPSuccess
+            File.open(destination, 'wb') { |file| response.read_body { |chunk| file.write(chunk) } }
+          else
+            raise ToolError, "HTTP #{response.code}"
           end
         end
       end
-
-      logger.info "Model downloaded successfully: #{model_path}"
-    rescue StandardError => e
-      FileUtils.rm_f(model_path)
-      raise ToolError, "Failed to download model: #{e.message}"
-    end
-
-    def build_whisper_command(audio_path)
-      model_path = get_model_path
-
-      [
-        whisper_path,
-        '--model', model_path,
-        '--language', language,
-        '--output-txt',
-        '--file', audio_path
-      ]
-    end
-
-    def extract_transcription_from_output(output)
-      # whisper-cli outputs the transcription in the stdout
-      # Format: [00:00:00.000 --> 00:00:05.000]  transcription text here
-      lines = output.lines.grep(/\]\s+\w/)
-      return nil if lines.empty?
-
-      # Extract text after the timestamp
-      transcription = lines.map do |line|
-        line.sub(/\[.*?\]\s*/, '').strip
-      end.join(' ')
-
-      transcription.empty? ? nil : transcription
-    end
-
-    def read_transcription_file(audio_path)
-      # whisper-cli creates audio_path.txt in the same directory
-      txt_file = "#{audio_path}.txt"
-
-      raise ToolError, "Whisper output file not found: #{txt_file}" unless File.exist?(txt_file)
-
-      File.read(txt_file).strip
-    end
-
-    def clean_transcription(text)
-      text.strip
-          .gsub(/\s+/, ' ')           # normalize whitespace
-          .gsub(/[^\w\s]/, '')        # remove punctuation
-          .downcase                   # lowercase for consistency
     end
   end
 end
