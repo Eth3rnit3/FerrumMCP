@@ -1,6 +1,6 @@
-# Use Ruby 3.2 with Alpine for smaller image size
+# Use Ruby 3.3 with Alpine for smaller image size
 # Supports both AMD64 and ARM64 platforms
-FROM ruby:3.2-alpine
+FROM ruby:3.3-alpine
 
 # Install runtime dependencies first (smaller layer, cached)
 RUN apk add --no-cache \

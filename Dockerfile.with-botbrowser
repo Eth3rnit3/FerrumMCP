@@ -7,7 +7,7 @@
 #   docker build -f Dockerfile.with-botbrowser -t ferrum-mcp:botbrowser .
 
 # Use Ruby 3.2 with Debian Slim for glibc compatibility
-FROM ruby:3.2-slim
+FROM ruby:3.3-slim
 
 # Build arguments
 ARG TARGETARCH
