@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-28
+
 ### Added
 - **Snapshot tool** (`snapshot`): compact, LLM-friendly list of interactive elements and headings with stable
   refs (`e12`). Every element-based tool accepts `ref:e12` as a selector.
@@ -48,10 +50,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   session could be resurrected by a concurrent call.
 - Rate limiter trusted `X-Forwarded-For` unconditionally (trivially bypassable).
 - `drag_and_drop` reported wrong coordinates for elements found through XPath.
+- `get_text` returned text with surrounding newlines and indentation (now collapsed, `raw: true` to opt out).
+- `snapshot` listed unlabeled radio buttons of one group with the same name; their `value` is now shown.
 
 ### Removed
 - Deprecated `Server#start_browser` / `Server#stop_browser`.
-- `wait_for_selector` / `wait_for_text` were listed here before they existed; they now do.
+- `wait_for_selector` / `wait_for_text` were listed in the 1.0.0 notes before they existed; they now do.
+
+### Upgrade notes
+- Custom tools must implement `#perform(params)` (params arrive with symbol keys) and declare their interface
+  with `tool_name` / `description` / `param` instead of overriding `.input_schema`.
+- `browser_options` keys are written without leading dashes (`"window-size"`); dashed keys are still accepted.
+- `get_text` now collapses whitespace; pass `raw: true` for the previous behaviour.
+
+## [1.0.0] - 2025-11-22
+
+
+### Added
+- Comprehensive documentation structure in `docs/` directory
+- API reference with all 27+ tools documented
+- Configuration guide for multi-browser and multi-profile setups
+- Getting started guide with detailed setup instructions
+- CHANGELOG.md for version tracking
+- SECURITY.md with responsible disclosure policy
+- CONTRIBUTING.md with contribution guidelines
+- GitHub issue and PR templates
+- Gemspec for RubyGems packaging
+- CLI command structure with `ServerRunner` and `CommandHandler` classes
+- Comprehensive help text with usage examples
+- `wait_for_selector` tool for explicit element waiting
+- `wait_for_text` tool for text-based waiting
+
+### Changed
+- README.md restructured as table of contents
+- Documentation reorganized into dedicated `docs/` folder
+- **CLI architecture refactored** with clear separation of concerns
+  - Created `ServerRunner` class for server lifecycle management
+  - Created `CommandHandler` class for command dispatching
+  - Simplified `bin/ferrum-mcp` to minimal entry point (reduced from ~131 to ~67 lines)
+  - Removed `server.rb` to eliminate duplication
+  - Updated command format: `ferrum-mcp [COMMAND] [OPTIONS]` (e.g., `ferrum-mcp help`, `ferrum-mcp version`, `ferrum-mcp start`)
+- Test infrastructure improved with `SessionManager` integration
+  - All tool tests now use `SessionManager#with_session` pattern
+  - Consistent session management across test suite
+  - Better test isolation and cleanup
+- Updated `server_options_spec.rb` to match new CLI structure
+
+### Fixed
+- BaseTool `find_element` now uses Ferrum's native wait instead of manual polling with sleep
+- Navigation tools properly wait for network idle after page transitions
+- XSS protection in HoverTool using proper JavaScript escaping with `inspect`
+- XPath injection protection in FindByTextTool with proper quote escaping
+- Stale element retry logic in ClickTool and FillFormTool
+- EvaluateJSTool now properly returns JavaScript evaluation results
+- BrowserManager crash detection and graceful error handling
+- PressKey tool no longer duplicates characters when pressing special keys
+- ClickTool supports force clicking hidden elements with `force: true` parameter
+- DragAndDropTool supports both target elements and coordinates
+- GetTextTool supports XPath selectors with `xpath:` prefix
+- QueryShadowDOMTool for interacting with Shadow DOM elements (click, get_text, get_html, get_attribute)
+
+### Security
+- Documented security model and trust assumptions
+- Added session limit recommendations
+- Implemented XSS and XPath injection protections in multiple tools
+
 
 ## [0.1.0] - 2024-11-22
 
@@ -219,8 +282,12 @@ This is the initial release, but note for future versions:
 
 ## Release Links
 
+- [1.1.0] - Hardening, tool DSL, snapshot/waiting/tab tools (2026-09-28)
+- [1.0.0] - Multi-session, BotBrowser, docs, gem publishing (2025-11-22)
 - [0.1.0] - Initial release (2024-11-22)
 - [Unreleased] - Current development
 
-[Unreleased]: https://github.com/Eth3rnit3/FerrumMCP/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Eth3rnit3/FerrumMCP/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Eth3rnit3/FerrumMCP/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/Eth3rnit3/FerrumMCP/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/Eth3rnit3/FerrumMCP/releases/tag/v0.1.0
