@@ -159,6 +159,7 @@ module FerrumMCP
             if (tag === 'input' && el.type && !['text', 'checkbox', 'radio'].includes(el.type)) item.type = el.type;
             if (el.placeholder) item.placeholder = clean(el.placeholder);
             if ((role === 'textbox' || role === 'combobox' || role === 'listbox' || role === 'slider') && el.value) item.value = clean(el.value);
+            if (role === 'radio' && tag === 'input' && el.value && el.value !== 'on') item.value = clean(el.value);
             if (role === 'checkbox' || role === 'radio' || role === 'switch') {
               item.checked = el.checked === true || el.getAttribute('aria-checked') === 'true';
             }

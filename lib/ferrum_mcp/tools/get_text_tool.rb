@@ -11,6 +11,8 @@ module FerrumMCP
       param :multiple, type: :boolean, default: false,
                        description: 'Extract from all matching elements (default: false)'
       param :wait, type: :number, default: 5, description: 'Seconds to wait for the element (default: 5)'
+      param :raw, type: :boolean, default: false,
+                  description: 'Return text exactly as in the DOM instead of collapsing whitespace (default: false)'
 
       def perform(params)
         ensure_browser_active
@@ -20,15 +22,21 @@ module FerrumMCP
         find_element(selector, timeout: params[:wait])
         elements = find_elements(selector)
 
+        texts = elements.map { |el| params[:raw] ? el.text : normalize_whitespace(el.text) }
         if params[:multiple]
-          texts = elements.map(&:text)
           success_response(texts: texts, count: texts.length)
         else
-          success_response(text: elements.first.text)
+          success_response(text: texts.first)
         end
       rescue StandardError => e
         logger.error "Get text failed: #{e.message}"
         error_response("Failed to get text: #{e.message}")
+      end
+
+      private
+
+      def normalize_whitespace(text)
+        text.to_s.gsub(/[[:space:]]+/, ' ').strip
       end
     end
   end

@@ -877,6 +877,7 @@ Compact, agent-friendly view of the page: interactive elements (links, buttons, 
 - Refs are stored on the elements (`data-fmcp-ref`) and stay stable across snapshots until the page navigates
 - Typical loop: `snapshot` → `click ref:e5` → `wait_for_text` → `snapshot`
 - Names follow accessibility rules: `aria-label`, `<label for>`, placeholder, name, then visible text
+- Radio buttons also show their `value`, so unlabeled buttons of one group stay distinguishable
 
 ---
 
@@ -888,8 +889,10 @@ Extract text content from one or more elements.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| selector | string | Yes | CSS selector or XPath (use `xpath:` prefix) |
+| selector | string | Yes | CSS selector, XPath (`xpath:` prefix) or snapshot ref |
 | multiple | boolean | No | Extract from all matching elements (default: false) |
+| wait | number | No | Seconds to wait for the element (default: 5) |
+| raw | boolean | No | Return the text exactly as in the DOM (default: false, whitespace is collapsed and trimmed) |
 | session_id | string | Yes | Session ID to use |
 
 **Example Request (Single Element):**
