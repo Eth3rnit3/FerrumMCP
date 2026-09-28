@@ -38,6 +38,44 @@ RSpec.describe FerrumMCP::BrowserManager do
       expect(launch_kwargs[:browser_options]).not_to have_key('headless')
     end
 
+    context 'when headless' do
+      before { allow(described_class).to receive(:chrome_major_version).and_return(154) }
+
+      # Cloudflare rejects the "HeadlessChrome/x" user agent outright
+      it 'presents the regular Chrome user agent of the installed version' do
+        manager_for(headless: true, browser_options: {}).start
+
+        user_agent = launch_kwargs[:browser_options]['user-agent']
+        expect(user_agent).to include('Chrome/154.0.0.0').and start_with('Mozilla/5.0 (')
+        expect(user_agent).not_to include('Headless')
+      end
+
+      it 'reports a screen larger than the 800x600 headless default' do
+        manager_for(headless: true, browser_options: {}).start
+
+        expect(launch_kwargs[:browser_options]['screen-info']).to eq('{1920x1080}')
+      end
+
+      it 'keeps a user agent chosen by the session' do
+        manager_for(headless: true, browser_options: { 'user-agent' => 'Custom/1.0' }).start
+
+        expect(launch_kwargs[:browser_options]['user-agent']).to eq('Custom/1.0')
+      end
+
+      it 'leaves the user agent alone when the Chrome version is unknown' do
+        allow(described_class).to receive(:chrome_major_version).and_return(nil)
+        manager_for(headless: true, browser_options: {}).start
+
+        expect(launch_kwargs[:browser_options]).not_to have_key('user-agent')
+      end
+    end
+
+    it 'does not disguise a visible browser' do
+      manager_for(headless: false, browser_options: {}).start
+
+      expect(launch_kwargs[:browser_options].keys).not_to include('user-agent', 'screen-info')
+    end
+
     it 'still runs headless when asked to' do
       manager_for(headless: true, browser_options: {}).start
 
