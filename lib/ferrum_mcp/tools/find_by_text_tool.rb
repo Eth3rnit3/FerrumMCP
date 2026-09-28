@@ -31,19 +31,23 @@ module FerrumMCP
         elements = page.xpath(xpath)
         return error_response("No elements found with text: '#{text}'") if elements.empty?
 
-        if params[:multiple]
-          results = elements.map.with_index { |element, index| describe(element).merge(index: index) }
-          success_response(found: results.length, elements: results, xpath: xpath)
-        else
-          element = elements.find { |el| element_visible?(el) } || elements.first
-          success_response(describe(element).merge(xpath: xpath, total_found: elements.length))
-        end
+        success_response(build_result(elements, xpath, params[:multiple]))
       rescue StandardError => e
         logger.error "Find by text failed: #{e.message}"
         error_response("Failed to find elements: #{e.message}")
       end
 
       private
+
+      def build_result(elements, xpath, multiple)
+        if multiple
+          results = elements.map.with_index { |element, index| describe(element).merge(index: index) }
+          { found: results.length, elements: results, xpath: xpath }
+        else
+          element = elements.find { |el| element_visible?(el) } || elements.first
+          describe(element).merge(xpath: xpath, total_found: elements.length)
+        end
+      end
 
       def describe(element)
         {

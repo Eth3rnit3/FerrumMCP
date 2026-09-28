@@ -44,6 +44,17 @@ RSpec.configure do |config|
     end
   end
 
+  # Specs under tools/ and integration/ (plus the CLI process specs and the
+  # multi-browser suite) drive a real Chrome; everything else runs without it.
+  #   rake test:unit        -> rspec --tag ~integration
+  #   rake test:integration -> rspec --tag integration
+  config.define_derived_metadata(file_path: %r{/spec/(ferrum_mcp/tools|integration)/}) do |metadata|
+    metadata[:integration] = true
+  end
+  config.define_derived_metadata(file_path: %r{/spec/ferrum_mcp/(multi_browser|server_options)_spec\.rb}) do |metadata|
+    metadata[:integration] = true
+  end
+
   # Start a test HTTP server for testing
   config.before(:suite) do
     @test_server = start_test_server

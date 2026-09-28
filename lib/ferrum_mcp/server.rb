@@ -182,27 +182,24 @@ module FerrumMCP
 
     def setup_error_handling
       MCP.configure do |mcp_config|
-        mcp_config.exception_reporter = lambda { |exception, context|
-          logger.error '=' * 80
-          logger.error "MCP Exception: #{exception.class} - #{exception.message}"
-          logger.error "Context: #{context.inspect}"
-
-          # Log the original error if there is one
-          if exception.respond_to?(:original_error) && exception.original_error
-            logger.error "ORIGINAL ERROR: #{exception.original_error.class} - #{exception.original_error.message}"
-            logger.error 'ORIGINAL BACKTRACE:'
-            logger.error exception.original_error.backtrace.first(15).join("\n")
-          end
-
-          logger.error 'Exception backtrace:'
-          logger.error exception.backtrace.join("\n")
-          logger.error '=' * 80
-        }
-
+        mcp_config.exception_reporter = ->(exception, context) { report_exception(exception, context) }
         mcp_config.instrumentation_callback = lambda { |data|
           logger.debug "MCP Method: #{data[:method]}, Duration: #{data[:duration]}s"
         }
       end
+    end
+
+    def report_exception(exception, context)
+      logger.error '=' * 80
+      logger.error "MCP Exception: #{exception.class} - #{exception.message}"
+      logger.error "Context: #{context.inspect}"
+      original = exception.respond_to?(:original_error) ? exception.original_error : nil
+      if original
+        logger.error "ORIGINAL ERROR: #{original.class} - #{original.message}"
+        logger.error original.backtrace.first(15).join("\n")
+      end
+      logger.error exception.backtrace.join("\n")
+      logger.error '=' * 80
     end
 
     def error_response(message)

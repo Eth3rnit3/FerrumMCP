@@ -8,7 +8,7 @@ AllCops:
   NewCops: enable
   Exclude:
     - 'bin/**/*'
-    - 'scripts/**/*'
+    - 'examples/**/*'
     - 'vendor/**/*'
     - 'node_modules/**/*'
     - 'tmp/**/*'
@@ -43,23 +43,25 @@ Style/StringLiterals:
 Style/HashSyntax:
   EnforcedStyle: ruby19
 
-# Metrics exceptions for complex tool methods
+# The two heuristic tools (cookie banners, captcha) are selector-heavy by
+# nature; every other file is held to the normal limits.
 Metrics/AbcSize:
-  Max: 30
+  Max: 40
   Exclude:
-    - 'lib/ferrum_mcp/tools/**/*'
-    - 'lib/ferrum_mcp/server.rb'
-    - 'lib/ferrum_mcp/browser_manager.rb'
+    - 'lib/ferrum_mcp/tools/accept_cookies_tool.rb'
+    - 'lib/ferrum_mcp/tools/solve_captcha_tool.rb'
 
 Metrics/CyclomaticComplexity:
   Max: 10
   Exclude:
-    - 'lib/ferrum_mcp/tools/**/*'
+    - 'lib/ferrum_mcp/tools/accept_cookies_tool.rb'
+    - 'lib/ferrum_mcp/tools/solve_captcha_tool.rb'
 
 Metrics/PerceivedComplexity:
   Max: 10
   Exclude:
-    - 'lib/ferrum_mcp/tools/**/*'
+    - 'lib/ferrum_mcp/tools/accept_cookies_tool.rb'
+    - 'lib/ferrum_mcp/tools/solve_captcha_tool.rb'
 
 # RSpec configuration
 RSpec/MultipleMemoizedHelpers:
