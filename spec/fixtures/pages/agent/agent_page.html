@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Agent Tools Test Page</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #tall-spacer { height: 3000px; background: linear-gradient(#fff, #ddd); }
+    #scroll-box { height: 100px; overflow-y: scroll; border: 1px solid #999; }
+    #scroll-box .inner { height: 800px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1 id="main-heading">Agent Tools</h1>
+  <nav>
+    <a id="docs-link" href="/docs">Documentation</a>
+    <a id="blank-link" href="/fixtures/navigation/page2" target="_blank">Open in new tab</a>
+  </nav>
+
+  <form id="signup">
+    <label for="email">Email address</label>
+    <input id="email" type="email" name="email" placeholder="you@example.com">
+    <input type="checkbox" id="newsletter" name="newsletter" checked>
+    <select id="plan" name="plan">
+      <option value="">Choose a plan</option>
+      <option value="free">Free</option>
+      <option value="pro">Pro plan</option>
+      <option value="team">Team</option>
+    </select>
+    <select id="tags" name="tags" multiple>
+      <option value="a">Alpha</option>
+      <option value="b">Beta</option>
+      <option value="c">Gamma</option>
+    </select>
+    <input type="file" id="avatar" name="avatar">
+    <button type="button" id="submit-btn" aria-label="Create account">Sign up</button>
+    <button type="button" id="hidden-btn" class="hidden">Hidden action</button>
+    <button type="button" id="disabled-btn" disabled>Disabled action</button>
+  </form>
+
+  <div role="button" id="custom-role" tabindex="0">Custom role button</div>
+  <div id="status" aria-live="polite">idle</div>
+  <div id="late-container"></div>
+  <div id="removable">Temporary content</div>
+  <img id="logo" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Company logo">
+
+  <div id="scroll-box"><div class="inner"><p id="deep-paragraph">Deep inside the box</p></div></div>
+
+  <div id="tall-spacer"></div>
+  <p id="bottom-marker">Bottom of the page</p>
+
+  <script>
+    // Element appears after a delay, text changes after a delay, element disappears after a delay
+    document.getElementById('submit-btn').addEventListener('click', function () {
+      document.getElementById('status').textContent = 'submitting';
+      setTimeout(function () {
+        var late = document.createElement('button');
+        late.id = 'late-btn';
+        late.textContent = 'Late button';
+        document.getElementById('late-container').appendChild(late);
+        document.getElementById('status').textContent = 'ready';
+        var removable = document.getElementById('removable');
+        removable.parentNode.removeChild(removable);
+      }, 600);
+    });
+
+    document.getElementById('plan').addEventListener('change', function (e) {
+      document.getElementById('status').textContent = 'plan:' + e.target.value;
+    });
+    document.getElementById('avatar').addEventListener('change', function (e) {
+      document.getElementById('status').textContent = 'files:' + Array.from(e.target.files).map(f => f.name).join(',');
+    });
+    document.getElementById('custom-role').addEventListener('click', function () {
+      document.getElementById('status').textContent = 'custom-clicked';
+    });
+  </script>
+</body>
+</html>
