@@ -2,39 +2,17 @@
 
 module FerrumMCP
   module Tools
-    # Tool to evaluate JavaScript
+    # Evaluate JavaScript and return the result
     class EvaluateJSTool < BaseTool
-      def self.tool_name
-        'evaluate_js'
-      end
+      tool_name 'evaluate_js'
+      description 'Evaluate a JavaScript expression in the page and return its (JSON-serializable) result'
 
-      def self.description
-        'Evaluate JavaScript expression and return the result'
-      end
+      param :expression, type: :string, required: true, description: 'JavaScript expression to evaluate'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            expression: {
-              type: 'string',
-              description: 'JavaScript expression to evaluate'
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[expression session_id]
-        }
-      end
-
-      def execute(params)
+      def perform(params)
         ensure_browser_active
-        expression = params['expression'] || params[:expression]
-
         logger.info 'Evaluating JavaScript'
-        result = browser.evaluate(expression)
+        result = page.evaluate(params[:expression].to_s)
 
         success_response(result: result)
       rescue StandardError => e

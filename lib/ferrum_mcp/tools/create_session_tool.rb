@@ -2,73 +2,47 @@
 
 module FerrumMCP
   module Tools
+    # Create a new browser session
     class CreateSessionTool < SessionTool
-      def self.tool_name
-        'create_session'
-      end
+      tool_name 'create_session'
+      description <<~DESC
+        Create a new browser session with custom options.
+        Supports multiple browsers in parallel (Chrome, BotBrowser).
+        Returns a session_id to use with other tools.
 
-      def self.description
-        <<~DESC
-          Create a new browser session with custom options.
-          Supports multiple browsers in parallel (Chrome, BotBrowser).
-          Returns a session_id to use with other tools.
+        Note: When running in Docker (DOCKER=true), headless mode is mandatory.
+        Attempting to create a non-headless session will result in an error.
+      DESC
 
-          Note: When running in Docker (DOCKER=true), headless mode is mandatory.
-          Attempting to create a non-headless session will result in an error.
-        DESC
-      end
+      param :browser_id, type: :string,
+                         description: 'Optional: Browser ID to use (from ferrum://browsers resource)'
+      param :user_profile_id, type: :string,
+                              description: 'Optional: User profile ID to use (from ferrum://user-profiles resource)'
+      param :bot_profile_id, type: :string,
+                             description: 'Optional: BotBrowser profile ID to use (from ferrum://bot-profiles resource)'
+      param :browser_path, type: :string,
+                           description: 'Optional: Path to browser executable (legacy, prefer browser_id)'
+      param :botbrowser_profile, type: :string,
+                                 description: 'Optional: Path to BotBrowser profile (legacy, prefer bot_profile_id)'
+      param :headless, type: :boolean,
+                       description: 'Optional: Run browser in headless mode (default: BROWSER_HEADLESS). ' \
+                                    'REQUIRED to be true when running in Docker.'
+      param :timeout, type: :number, description: 'Optional: Browser timeout in seconds (default: 60)'
+      param :browser_options, type: :object,
+                              description: 'Optional: Additional Chrome command-line flags without the leading ' \
+                                           'dashes (e.g. {"window-size": "1920,1080", "lang": "fr-FR"})',
+                              schema: { additionalProperties: { type: 'string' } }
+      param :metadata, type: :object,
+                       description: 'Optional: Custom metadata for this session (e.g., {"user": "john"})',
+                       schema: { additionalProperties: true }
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            browser_id: {
-              type: 'string',
-              description: 'Optional: Browser ID to use (from ferrum://browsers resource)'
-            },
-            user_profile_id: {
-              type: 'string',
-              description: 'Optional: User profile ID to use (from ferrum://user-profiles resource)'
-            },
-            bot_profile_id: {
-              type: 'string',
-              description: 'Optional: BotBrowser profile ID to use (from ferrum://bot-profiles resource)'
-            },
-            browser_path: {
-              type: 'string',
-              description: 'Optional: Path to browser executable (legacy, prefer browser_id)'
-            },
-            botbrowser_profile: {
-              type: 'string',
-              description: 'Optional: Path to BotBrowser profile (legacy, prefer bot_profile_id)'
-            },
-            headless: {
-              type: 'boolean',
-              description: 'Optional: Run browser in headless mode (default: false). ' \
-                           'REQUIRED to be true when running in Docker.'
-            },
-            timeout: {
-              type: 'number',
-              description: 'Optional: Browser timeout in seconds (default: 60)'
-            },
-            browser_options: {
-              type: 'object',
-              description: 'Optional: Additional browser command-line options (e.g., {"--window-size": "1920,1080"})',
-              additionalProperties: { type: 'string' }
-            },
-            metadata: {
-              type: 'object',
-              description: 'Optional: Custom metadata for this session (e.g., {"user": "john", "project": "scraping"})',
-              additionalProperties: true
-            }
-          }
-        }
-      end
+      SESSION_OPTION_KEYS = %i[browser_id user_profile_id bot_profile_id browser_path botbrowser_profile
+                               headless timeout browser_options metadata].freeze
 
-      def execute(params)
+      def perform(params)
         logger.info 'Creating new browser session'
 
-        options = build_options(params)
+        options = params.slice(*SESSION_OPTION_KEYS).compact
         validate_docker_headless!(options)
 
         session_id = session_manager.create_session(options)
@@ -86,60 +60,14 @@ module FerrumMCP
       private
 
       def validate_docker_headless!(options)
-        # Check if running in Docker environment
         return unless ENV['DOCKER'] == 'true'
 
-        # In Docker, headless mode is mandatory
-        # Check if headless is explicitly set to false
         if options.key?(:headless) && options[:headless] == false
           raise 'Headless mode is required when running in Docker. ' \
                 'Cannot create a non-headless session in a containerized environment.'
         end
 
-        # Force headless to true in Docker if not explicitly set
         options[:headless] = true unless options.key?(:headless)
-      end
-
-      def build_options(params)
-        options = {}
-
-        # New resource-based parameters (preferred)
-        if params[:browser_id] || params['browser_id']
-          options[:browser_id] =
-            params[:browser_id] || params['browser_id']
-        end
-        if params[:user_profile_id] || params['user_profile_id']
-          options[:user_profile_id] =
-            params[:user_profile_id] || params['user_profile_id']
-        end
-        if params[:bot_profile_id] || params['bot_profile_id']
-          options[:bot_profile_id] =
-            params[:bot_profile_id] || params['bot_profile_id']
-        end
-
-        # Legacy parameters (for backward compatibility)
-        if params[:browser_path] || params['browser_path']
-          options[:browser_path] =
-            params[:browser_path] || params['browser_path']
-        end
-        if params[:botbrowser_profile] || params['botbrowser_profile']
-          options[:botbrowser_profile] =
-            params[:botbrowser_profile] || params['botbrowser_profile']
-        end
-
-        # Other options
-        if params.key?(:headless) || params.key?('headless')
-          # Use fetch to handle false values correctly
-          options[:headless] = params.key?(:headless) ? params[:headless] : params['headless']
-        end
-        options[:timeout] = params[:timeout] || params['timeout'] if params[:timeout] || params['timeout']
-        if params[:browser_options] || params['browser_options']
-          options[:browser_options] =
-            params[:browser_options] || params['browser_options']
-        end
-        options[:metadata] = params[:metadata] || params['metadata'] if params[:metadata] || params['metadata']
-
-        options
       end
     end
   end

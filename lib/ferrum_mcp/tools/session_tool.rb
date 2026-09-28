@@ -2,8 +2,13 @@
 
 module FerrumMCP
   module Tools
-    # Base class for session management tools
+    # Base class for session management tools: they talk to the SessionManager
+    # and do not need a running browser.
     class SessionTool
+      extend Definition
+
+      requires_session false
+
       attr_reader :session_manager, :logger
 
       def initialize(session_manager)
@@ -11,16 +16,12 @@ module FerrumMCP
         @logger = session_manager.logger
       end
 
-      def self.tool_name
-        raise NotImplementedError, 'Subclasses must implement .tool_name'
+      def execute(raw_params)
+        perform(self.class.normalize_params(raw_params))
       end
 
-      def self.description
-        raise NotImplementedError, 'Subclasses must implement .description'
-      end
-
-      def self.input_schema
-        raise NotImplementedError, 'Subclasses must implement .input_schema'
+      def perform(_params)
+        raise NotImplementedError, 'Subclasses must implement #perform'
       end
 
       protected

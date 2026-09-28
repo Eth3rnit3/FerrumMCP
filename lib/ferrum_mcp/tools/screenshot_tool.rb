@@ -1,83 +1,37 @@
 # frozen_string_literal: true
 
-require 'vips'
+require 'base64'
 
 module FerrumMCP
   module Tools
-    # Tool to take screenshots
+    # Take screenshots
     class ScreenshotTool < BaseTool
       # Claude API has a maximum dimension of 8000 pixels per side
       MAX_DIMENSION = 8000
-      def self.tool_name
-        'screenshot'
-      end
 
-      def self.description
-        'Take a screenshot of the page or a specific element'
-      end
+      tool_name 'screenshot'
+      description 'Take a screenshot of the page or of a specific element (returned as an image)'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            selector: {
-              type: 'string',
-              description: 'Optional: CSS selector to screenshot specific element'
-            },
-            full_page: {
-              type: 'boolean',
-              description: 'Capture full scrollable page (default: false)',
-              default: false
-            },
-            format: {
-              type: 'string',
-              enum: %w[png jpeg],
-              description: 'Image format (default: png)',
-              default: 'png'
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: ['session_id']
-        }
-      end
+      param :selector, type: :string, description: 'Optional: selector of the element to screenshot'
+      param :full_page, type: :boolean, default: false, description: 'Capture the full scrollable page (default: false)'
+      param :format, type: :string, default: 'png', enum: %w[png jpeg], description: 'Image format (default: png)'
 
-      def execute(params)
+      def perform(params)
         ensure_browser_active
-        selector = param(params, :selector)
-        full_page = param(params, :full_page) || false
-        format = param(params, :format) || 'png'
-
+        selector = params[:selector]
+        format = params[:format]
         logger.info 'Taking screenshot'
 
-        # If selector provided, verify element exists and is visible
+        options = { format: format, full: params[:full_page], encoding: :binary }
         if selector
           element = find_element(selector)
-          element.scroll_into_view if element.respond_to?(:scroll_into_view)
-
-          # Small delay to ensure element is fully rendered
-          sleep 0.1
+          element.scroll_into_view
+          sleep 0.1 # let the element render after scrolling
+          options[:selector] = css_selector_for(selector, element)
         end
 
-        # Request binary encoding from Ferrum (by default it returns base64)
-        options = { format: format, full: full_page, encoding: :binary }
-
-        # Add selector to options if provided
-        options[:selector] = selector if selector
-
-        screenshot_data = browser.screenshot(**options)
-
-        # Resize if dimensions exceed Claude API limits
-        screenshot_data = resize_if_needed(screenshot_data, format)
-
-        # Now encode the binary data to base64 for MCP
-        base64_data = Base64.strict_encode64(screenshot_data)
-        mime_type = format == 'png' ? 'image/png' : 'image/jpeg'
-
-        # Use image_response for MCP image injection
-        image_response(base64_data, mime_type)
+        data = resize_if_needed(page.screenshot(**options), format)
+        image_response(Base64.strict_encode64(data), format == 'png' ? 'image/png' : 'image/jpeg')
       rescue StandardError => e
         logger.error "Screenshot failed: #{e.message}"
         error_response("Failed to take screenshot: #{e.message}")
@@ -85,33 +39,22 @@ module FerrumMCP
 
       private
 
-      # Resize image if any dimension exceeds MAX_DIMENSION
-      # @param image_data [String] Binary image data
-      # @param format [String] Image format ('png' or 'jpeg')
-      # @return [String] Resized binary image data (or original if no resize needed)
+      # Ferrum's screenshot(selector:) only takes CSS; map refs/xpath to a CSS
+      # selector by tagging the resolved element.
+      def css_selector_for(selector, element)
+        kind, expression = resolve_selector(selector)
+        return expression if kind == :css
+
+        page.execute("arguments[0].setAttribute('data-fmcp-shot', '1')", element)
+        '[data-fmcp-shot="1"]'
+      end
+
+      # Resize image if any dimension exceeds MAX_DIMENSION. Needs libvips; when
+      # it is not installed the original image is returned untouched.
       def resize_if_needed(image_data, format)
-        image = Vips::Image.new_from_buffer(image_data, '')
-        width = image.width
-        height = image.height
+        return image_data unless ImageResizer.available?
 
-        # Check if resize is needed
-        if width <= MAX_DIMENSION && height <= MAX_DIMENSION
-          logger.debug "Screenshot dimensions (#{width}x#{height}) within limits, no resize needed"
-          return image_data
-        end
-
-        # Calculate scaling factor to fit within MAX_DIMENSION
-        scale = [MAX_DIMENSION.to_f / width, MAX_DIMENSION.to_f / height].min
-        new_width = (width * scale).to_i
-        new_height = (height * scale).to_i
-
-        logger.info "Resizing screenshot from #{width}x#{height} to #{new_width}x#{new_height}"
-
-        # Resize image (using high quality Lanczos3 interpolation)
-        resized = image.thumbnail_image(new_width, height: new_height, size: :force)
-
-        # Return resized binary data in the correct format
-        resized.write_to_buffer(".#{format}")
+        ImageResizer.fit(image_data, MAX_DIMENSION, format, logger: logger)
       rescue StandardError => e
         logger.warn "Failed to resize screenshot: #{e.message}, returning original"
         image_data

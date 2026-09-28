@@ -29,7 +29,8 @@ module FerrumMCP
           if config.rate_limit_enabled
             use FerrumMCP::Transport::RateLimiter,
                 max_requests: config.rate_limit_max_requests,
-                window: config.rate_limit_window
+                window: config.rate_limit_window,
+                trust_proxy: config.trust_proxy
           end
 
           # Add API key authentication middleware if enabled
@@ -37,7 +38,8 @@ module FerrumMCP
             use FerrumMCP::Transport::ApiKeyAuthenticator,
                 api_keys: config.api_keys,
                 logger: logger,
-                skip_paths: ['/health', '/']
+                skip_paths: ['/health', '/'],
+                trust_proxy: config.trust_proxy
           end
 
           # Health check endpoint

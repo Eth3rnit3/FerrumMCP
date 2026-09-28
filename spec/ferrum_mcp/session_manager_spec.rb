@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'timeout'
 
 RSpec.describe FerrumMCP::SessionManager do
   let(:config) { FerrumMCP::Configuration.new }
@@ -263,6 +264,67 @@ RSpec.describe FerrumMCP::SessionManager do
 
       threads.each(&:join)
       expect(results.size).to eq(5)
+    end
+  end
+
+  describe 'concurrency and browser health (Ferrum stubbed)' do
+    let(:fake_browser) { instance_double(Ferrum::Browser, quit: nil) }
+
+    before do
+      allow(Ferrum::Browser).to receive(:new).and_return(fake_browser)
+    end
+
+    it 'does not block other sessions while one session is being stopped' do
+      slow_id = session_manager.create_session
+      other_id = session_manager.create_session
+      slow = session_manager.get_session(slow_id)
+      release = Queue.new
+      allow(slow.browser_manager).to receive(:active?).and_return(true)
+      allow(slow.browser_manager).to receive(:stop) { release.pop }
+
+      closer = Thread.new { session_manager.close_session(slow_id) }
+      sleep 0.1
+
+      result = begin
+        Timeout.timeout(1) { session_manager.get_session(other_id) }
+      rescue Timeout::Error
+        :timed_out
+      ensure
+        release << :go
+        closer.join(2)
+      end
+
+      expect(result).to be_a(FerrumMCP::Session)
+    end
+
+    it 'refuses to restart a session after it has been closed' do
+      id = session_manager.create_session
+      session = session_manager.get_session(id)
+      session_manager.close_session(id)
+
+      expect { session.start }.to raise_error(FerrumMCP::SessionError, /closed/)
+      expect(Ferrum::Browser).not_to have_received(:new)
+    end
+
+    it 'restarts the browser when the Chrome process is gone' do
+      id = session_manager.create_session
+      session_manager.with_session(id) { |_| nil }
+      allow(fake_browser).to receive(:process).and_return(instance_double(Ferrum::Browser::Process, pid: 424_242))
+      allow(Process).to receive(:kill).with(0, 424_242).and_raise(Errno::ESRCH)
+
+      session_manager.with_session(id) { |_| nil }
+
+      expect(Ferrum::Browser).to have_received(:new).twice
+    end
+
+    it 'marks the session inactive when a tool hits a dead browser' do
+      id = session_manager.create_session
+
+      expect do
+        session_manager.with_session(id) { |_| raise Ferrum::DeadBrowserError }
+      end.to raise_error(Ferrum::DeadBrowserError)
+
+      expect(session_manager.get_session(id).active?).to be(false)
     end
   end
 end

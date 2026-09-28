@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-28
+
+### Added
+- **Snapshot tool** (`snapshot`): compact, LLM-friendly list of interactive elements and headings with stable
+  refs (`e12`). Every element-based tool accepts `ref:e12` as a selector.
+- **Waiting tools**: `wait_for_selector` (visible/hidden/attached/detached), `wait_for_text`,
+  `wait_for_network_idle`.
+- **Page tools**: `scroll`, `select_option`, `upload_file`, `set_viewport`.
+- **Tab tools**: `list_tabs`, `new_tab`, `switch_tab`, `close_tab`. Tools act on the session's current tab.
+- XPath (`xpath:` prefix or `//`) accepted by every element-based tool, not only `click`/`get_text`.
+- `LOG_FILE` (path or `stderr`) to choose the log destination.
+- `TRUST_PROXY` to opt in to `X-Forwarded-For` for rate limiting and audit logs.
+- `ALLOWED_HOSTS` / `BLOCKED_HOSTS` navigation policy (exact hosts, `*.suffix`, CIDR).
+- `UPLOAD_ALLOWED_DIRS` restricting where `upload_file` may read from.
+- `fill_form` field option `clear`, `get_html` option `max_length`, `get_text` option `wait`,
+  `navigate` options `wait_for_idle` / `timeout`, `set_cookie` option `expires`.
+- `rake test:unit` (no Chrome) and `rake test:integration`.
+- Unit specs for `BrowserManager`, `SessionManager` concurrency, the CLI runner, logging and the rate limiter.
+
+### Changed
+- **Tool DSL**: tools declare `tool_name`, `description` and `param`s; the JSON schema is generated,
+  `session_id` is injected automatically and params reach `#perform` with symbol keys and defaults applied.
+- `BrowserManager` detects a dead Chrome process and the session restarts it on the next call.
+- Cookies are read through Ferrum's cookie accessors (structured `domain`, `path`, `expires`, flags).
+- Screenshot resizing is optional: without libvips the image is returned untouched.
+- `LOG_LEVEL` defaults to `info` everywhere (Configuration used to default to `debug`).
+- Ruby: Gemfile requires `>= 3.2`, Docker images build on Ruby 3.3.
+- `test/` debug scripts removed, `scripts/` moved to `examples/`.
+- RuboCop metric exclusions narrowed to the two heuristic tools (`accept_cookies`, `solve_captcha`).
+
+### Fixed
+- Session `browser_options` never reached Ferrum (private method behind a `respond_to?` check) and keys
+  written with a leading `--` produced `----flag`. Keys are now normalized.
+- `user_profile_id` was resolved but never mapped to `user-data-dir`.
+- `StdioServer` duplicated the MCP transport read loop.
+- Shutdown called the deprecated `stop_browser`, never stopped the cleanup thread and exited from
+  inside a signal trap. Signals now interrupt the main loop, which runs the shutdown sequence.
+- Logs were written inside the installed gem directory.
+- The CLI required `bundler/setup`, breaking `gem install ferrum-mcp && ferrum-mcp start`.
+- `close_session` stopped Chrome while holding the global lock, blocking every other session; a closed
+  session could be resurrected by a concurrent call.
+- Rate limiter trusted `X-Forwarded-For` unconditionally (trivially bypassable).
+- `drag_and_drop` reported wrong coordinates for elements found through XPath.
+- `get_text` returned text with surrounding newlines and indentation (now collapsed, `raw: true` to opt out).
+- BotBrowser Docker image failed to build: the pinned upstream package had been removed (404). The latest
+  release is now resolved at build time (`BOTBROWSER_VERSION` build arg to pin one).
+- `snapshot` listed unlabeled radio buttons of one group with the same name; their `value` is now shown.
+
+### Removed
+- Deprecated `Server#start_browser` / `Server#stop_browser`.
+- `wait_for_selector` / `wait_for_text` were listed in the 1.0.0 notes before they existed; they now do.
+
+### CI
+- Docker images (standard and BotBrowser) are built on every pull request, and the standard image is
+  smoke-tested over HTTP and stdio with a real browser session.
+- The release workflow fails when the release tag does not match `FerrumMCP::VERSION`.
+
+### Upgrade notes
+- Custom tools must implement `#perform(params)` (params arrive with symbol keys) and declare their interface
+  with `tool_name` / `description` / `param` instead of overriding `.input_schema`.
+- `browser_options` keys are written without leading dashes (`"window-size"`); dashed keys are still accepted.
+- `get_text` now collapses whitespace; pass `raw: true` for the previous behaviour.
+
+## [1.0.0] - 2025-11-22
+
+
 ### Added
 - Comprehensive documentation structure in `docs/` directory
 - API reference with all 27+ tools documented
@@ -55,6 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documented security model and trust assumptions
 - Added session limit recommendations
 - Implemented XSS and XPath injection protections in multiple tools
+
 
 ## [0.1.0] - 2024-11-22
 
@@ -222,8 +289,12 @@ This is the initial release, but note for future versions:
 
 ## Release Links
 
+- [1.1.0] - Hardening, tool DSL, snapshot/waiting/tab tools (2026-09-28)
+- [1.0.0] - Multi-session, BotBrowser, docs, gem publishing (2025-11-22)
 - [0.1.0] - Initial release (2024-11-22)
 - [Unreleased] - Current development
 
-[Unreleased]: https://github.com/Eth3rnit3/FerrumMCP/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Eth3rnit3/FerrumMCP/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Eth3rnit3/FerrumMCP/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/Eth3rnit3/FerrumMCP/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/Eth3rnit3/FerrumMCP/releases/tag/v0.1.0

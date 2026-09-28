@@ -25,6 +25,16 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
 
+      - name: Check release tag matches gem version
+        run: |
+          VERSION=$(ruby -r ./lib/ferrum_mcp/version -e 'print FerrumMCP::VERSION')
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Gem version: $VERSION, release tag: $TAG"
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::Release tag $TAG does not match lib/ferrum_mcp/version.rb (v$VERSION)"
+            exit 1
+          fi
+
       - name: Build gem
         id: build
         run: |

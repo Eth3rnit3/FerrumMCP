@@ -9,6 +9,32 @@ module FerrumMCP
       @config = config
       @logger = config.logger
       @browser = nil
+      @page = nil
+    end
+
+    # Current tab. Tools operate on this page so that tab switching works.
+    def page
+      raise BrowserError, 'Browser is not active' unless @browser
+
+      @page = nil if @page && !page_open?(@page)
+      @page ||= @browser.page
+    end
+
+    # All open tabs of the default browser context
+    def pages
+      raise BrowserError, 'Browser is not active' unless @browser
+
+      @browser.pages
+    end
+
+    def select_page(page)
+      @page = page
+    end
+
+    def create_page
+      raise BrowserError, 'Browser is not active' unless @browser
+
+      @browser.create_page
     end
 
     def start
@@ -45,10 +71,12 @@ module FerrumMCP
 
       logger.info 'Stopping browser...'
       @browser.quit
-      @browser = nil
       logger.info 'Browser stopped'
     rescue StandardError => e
       logger.error "Error stopping browser: #{e.message}"
+    ensure
+      @browser = nil
+      @page = nil
     end
 
     def restart
@@ -60,41 +88,37 @@ module FerrumMCP
       !@browser.nil?
     end
 
-    private
+    # True when a browser is started and its Chrome process still exists.
+    # Cheap (no CDP round-trip): a signal-0 check on the process id.
+    def healthy?
+      return false unless @browser
 
-    # Compute browser options, merging defaults with session-specific options
-    def computed_browser_options
-      # Use merged options if config supports it (SessionConfiguration)
-      options = if config.respond_to?(:merged_browser_options)
-                  config.merged_browser_options
-                else
-                  browser_options
-                end
+      pid = @browser.process&.pid
+      return true unless pid
 
-      # Log BotBrowser profile usage
-      if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)
-        logger.info "Using BotBrowser profile: #{config.botbrowser_profile}"
-      end
-
-      options
+      Process.kill(0, pid)
+      true
+    rescue Errno::ESRCH
+      logger.warn "Browser process #{pid} is gone"
+      false
+    rescue Errno::EPERM
+      true
     end
 
-    def browser_options
-      options = {
-        'no-sandbox' => nil,
-        'disable-dev-shm-usage' => nil,
-        'disable-blink-features' => 'AutomationControlled',
-        'disable-gpu' => nil
-      }
+    private
 
-      # Additional options for CI environments
-      options['disable-setuid-sandbox'] = nil if ENV['CI']
+    def page_open?(page)
+      @browser.pages.any? { |p| p.target_id == page.target_id }
+    rescue StandardError
+      false
+    end
 
-      # Add BotBrowser profile if configured
-      if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)
-        options['bot-profile'] = config.botbrowser_profile
-      end
-
+    # Browser flags come from the session configuration (defaults merged with
+    # session-specific options, keys without leading dashes).
+    def computed_browser_options
+      options = config.merged_browser_options
+      logger.info "Using BotBrowser profile: #{options['bot-profile']}" if options['bot-profile']
+      logger.info "Using user profile: #{options['user-data-dir']}" if options['user-data-dir']
       options
     end
   end

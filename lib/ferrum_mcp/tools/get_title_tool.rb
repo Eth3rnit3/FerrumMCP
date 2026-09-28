@@ -2,37 +2,14 @@
 
 module FerrumMCP
   module Tools
-    # Tool to get page title
+    # Get page title
     class GetTitleTool < BaseTool
-      def self.tool_name
-        'get_title'
-      end
+      tool_name 'get_title'
+      description 'Get the title of the current page'
 
-      def self.description
-        'Get the title of the current page'
-      end
-
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: ['session_id']
-        }
-      end
-
-      def execute(_params)
+      def perform(_params)
         ensure_browser_active
-        logger.info 'Getting page title'
-
-        success_response(
-          title: browser.title,
-          url: browser.url
-        )
+        success_response(title: page.title, url: page.url)
       rescue StandardError => e
         logger.error "Get title failed: #{e.message}"
         error_response("Failed to get title: #{e.message}")

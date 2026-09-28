@@ -6,31 +6,11 @@ module FerrumMCP
     # Uses multiple strategies to find and click accept buttons
     # rubocop:disable Metrics/ClassLength
     class AcceptCookiesTool < BaseTool
-      def self.tool_name
-        'accept_cookies'
-      end
+      tool_name 'accept_cookies'
+      description 'Automatically detect and accept cookie consent banners using multiple detection strategies'
 
-      def self.description
-        'Automatically detect and accept cookie consent banners using multiple detection strategies'
-      end
-
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            wait: {
-              type: 'number',
-              description: 'Seconds to wait for cookie banner to appear (default: 3)',
-              default: 3
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[session_id]
-        }
-      end
+      param :wait, type: :number, default: 3,
+                   description: 'Seconds to wait for the cookie banner to appear (default: 3)'
 
       # Common text patterns for cookie accept buttons (multiple languages)
       # Patterns are ordered from most specific to least specific to avoid false positives
@@ -59,9 +39,9 @@ module FerrumMCP
         settings options manage gérer
       ].freeze
 
-      def execute(params)
+      def perform(params)
         ensure_browser_active
-        wait_time = param(params, :wait) || 3
+        wait_time = params[:wait]
 
         logger.info 'Attempting to accept cookies using multiple strategies...'
 
@@ -262,13 +242,13 @@ module FerrumMCP
         logger.debug 'Trying iframe detection...'
 
         # Get all iframes
-        iframes = browser.css('iframe')
+        iframes = page.css('iframe')
         return { found: false } if iframes.empty?
 
         logger.debug "Found #{iframes.length} iframe(s), checking for cookie banners..."
 
         # Get frames (includes main frame + all iframes)
-        frames = browser.frames
+        frames = page.frames
         return { found: false } if frames.empty?
 
         # Skip the main frame (index 0), only check iframes
@@ -374,7 +354,7 @@ module FerrumMCP
       # Helper: Try multiple CSS selectors
       def try_selectors(selectors)
         selectors.each do |selector|
-          element = browser.at_css(selector)
+          element = page.at_css(selector)
           next unless element
 
           # Check if element is visible
@@ -405,7 +385,7 @@ module FerrumMCP
         xpath = "//#{tag}[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', " \
                 "'abcdefghijklmnopqrstuvwxyz'), #{escaped_text})]"
 
-        browser.xpath(xpath)
+        page.xpath(xpath)
       rescue StandardError => e
         logger.debug "XPath search for '#{text}' failed: #{e.message}"
         []
@@ -441,7 +421,7 @@ module FerrumMCP
 
         # Fallback to JavaScript click
         begin
-          browser.execute(<<~JAVASCRIPT, element)
+          page.execute(<<~JAVASCRIPT, element)
             arguments[0].scrollIntoView({ behavior: 'instant', block: 'center' });
             arguments[0].click();
           JAVASCRIPT

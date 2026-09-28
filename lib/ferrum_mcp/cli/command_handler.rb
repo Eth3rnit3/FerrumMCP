@@ -21,9 +21,10 @@ module FerrumMCP
       end
 
       def self.start_server(options)
-        # Load dependencies only when starting server
-        require 'bundler/setup'
-        require 'dotenv/load'
+        # Load .env (if any) only when starting the server. No bundler/setup
+        # here: the installed gem must work outside a Bundler project.
+        require 'dotenv'
+        Dotenv.load
 
         # Set environment variables from options
         ENV['MCP_SERVER_HOST'] = options[:host]

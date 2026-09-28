@@ -18,9 +18,21 @@ task :rubocop_fix do
   sh 'bundle exec rubocop -A'
 end
 
-desc 'Run tests'
+desc 'Run all tests (Chrome required for integration specs)'
 task :test do
   sh 'bundle exec rspec'
+end
+
+namespace :test do
+  desc 'Run unit tests only (no Chrome needed)'
+  task :unit do
+    sh 'bundle exec rspec --tag "~integration"'
+  end
+
+  desc 'Run integration tests only (drives a real Chrome)'
+  task :integration do
+    sh 'bundle exec rspec --tag integration'
+  end
 end
 
 desc 'List all available tools'
@@ -53,7 +65,12 @@ task :check_env do
     'MCP_SERVER_PORT' => ENV.fetch('MCP_SERVER_PORT', '3000'),
     'BROWSER_HEADLESS' => ENV.fetch('BROWSER_HEADLESS', 'false'),
     'BROWSER_TIMEOUT' => ENV.fetch('BROWSER_TIMEOUT', '60'),
-    'LOG_LEVEL' => ENV.fetch('LOG_LEVEL', 'info')
+    'LOG_LEVEL' => ENV.fetch('LOG_LEVEL', 'info'),
+    'LOG_FILE' => ENV.fetch('LOG_FILE', nil),
+    'TRUST_PROXY' => ENV.fetch('TRUST_PROXY', 'false'),
+    'ALLOWED_HOSTS' => ENV.fetch('ALLOWED_HOSTS', nil),
+    'BLOCKED_HOSTS' => ENV.fetch('BLOCKED_HOSTS', nil),
+    'UPLOAD_ALLOWED_DIRS' => ENV.fetch('UPLOAD_ALLOWED_DIRS', nil)
   }
 
   env_vars.each do |key, value|

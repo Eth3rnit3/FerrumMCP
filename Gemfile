@@ -2,7 +2,7 @@
 
 source 'https://rubygems.org'
 
-ruby '~> 3.2'
+ruby '>= 3.2'
 
 gem 'dotenv', '~> 3.1'
 gem 'ferrum', '~> 0.17.1'

@@ -12,7 +12,7 @@ FerrumMCP is a browser automation server implementing the Model Context Protocol
 
 **Server Layer** (`lib/ferrum_mcp/bin/ferrum-mcp`)
 - `FerrumMCP::Server`: Main MCP server implementation
-- Manages 27+ browser automation tools organized into 6 categories (Session Management, Navigation, Interaction, Extraction, Waiting, Advanced)
+- Manages 40 browser automation tools organized into 7 categories (Session Management, Navigation, Interaction, Extraction, Waiting, Tabs & Viewport, Advanced)
 - Tools are defined in `TOOL_CLASSES` constant and registered with the MCP server at initialization
 - **Session-based architecture**: All browser operations require an explicit session
 
@@ -37,15 +37,18 @@ FerrumMCP is a browser automation server implementing the Model Context Protocol
 - Transport is selected at startup via `--transport` flag (http or stdio)
 
 **Tool Architecture** (`lib/ferrum_mcp/tools/`)
-- All tools inherit from `BaseTool`
-- Each tool must implement: `execute(params)`, `.tool_name`, `.description`, `.input_schema`
+- Browser tools inherit from `BaseTool`, session-management tools from `SessionTool`; both use the `Definition` DSL
+- A tool declares `tool_name`, `description` and `param`s; `input_schema` is generated, `session_id` is injected for browser tools, and `#perform(params)` receives symbol keys with defaults applied
 - Tools use `success_response`, `error_response`, or `image_response` helper methods
-- `find_element` helper with timeout support for element location
+- Tools act on the session's **current tab** (`page`, a `Ferrum::Page`); `browser` is the `Ferrum::Browser`
+- `find_element` / `find_elements` accept CSS, XPath (`xpath:` prefix or `//`) and snapshot refs (`ref:e12`)
+- `snapshot` tags elements with `data-fmcp-ref`; refs stay stable until the document changes
 
 **Configuration** (`lib/ferrum_mcp/configuration.rb`)
 - Multi-browser and multi-profile support via structured ENV variables
 - Supports multiple browsers, user profiles, and BotBrowser profiles
-- File-only logging (no console output) to `logs/ferrum_mcp.log`
+- Logging to `LOG_FILE` (path or `stderr`), default `./logs/ferrum_mcp.log` under the working directory; never STDOUT
+- Optional `UrlPolicy` (`ALLOWED_HOSTS` / `BLOCKED_HOSTS`) and `UPLOAD_ALLOWED_DIRS`
 - Validates all configured browser paths at startup
 - Backward compatible with legacy `BROWSER_PATH` and `BOTBROWSER_PROFILE` variables
 
@@ -90,9 +93,13 @@ bundle exec rspec spec/ferrum_mcp/tools/navigation_tools_spec.rb
 
 # Run tests with coverage
 COVERAGE=true bundle exec rspec
+
+# Unit tests only (no Chrome, a few seconds) / integration tests only
+rake test:unit
+rake test:integration
 ```
 
-Tests use a WEBrick test server on port 9999 started in `spec_helper.rb`. All tests run with headless browser and error-level logging.
+Tests use a WEBrick test server on port 9999 (override with `TEST_SERVER_PORT`) started in `spec_helper.rb`. Specs under `spec/ferrum_mcp/tools/` and `spec/integration/` are tagged `:integration` and drive a real headless Chrome; the rest stub `Ferrum::Browser`. All tests run with error-level logging.
 
 ### Linting
 
@@ -262,29 +269,34 @@ Old environment variables still work:
 ## Adding New Tools
 
 1. Create tool file in `lib/ferrum_mcp/tools/` (e.g., `my_tool.rb`)
-2. Inherit from `BaseTool` and implement required methods:
-   - `.tool_name`: String identifier for MCP
-   - `.description`: Human-readable description
-   - `.input_schema`: JSON schema for parameters
-     - **IMPORTANT**: Add `session_id` as a **required** parameter in your schema
-   - `#execute(params)`: Main logic, returns `success_response(data)` or `error_response(message)`
-3. Add to `TOOL_CLASSES` array in `lib/ferrum_mcp/bin/ferrum-mcp`
-4. Tool will be auto-registered with MCP server at startup
+2. Inherit from `BaseTool` (browser tool) or `SessionTool` (session management) and declare the interface with the DSL:
+   - `tool_name 'my_tool'`: String identifier for MCP
+   - `description '...'`: Human-readable description
+   - `param :name, type:, description:, required:, default:, enum:, schema:`: one line per parameter (`session_id` is added automatically for browser tools)
+   - `#perform(params)`: Main logic, returns `success_response(data)`, `image_response(...)` or `error_response(message)`
+3. Add to `TOOL_CLASSES` array in `lib/ferrum_mcp/server.rb`
+4. Add an integration spec under `spec/ferrum_mcp/tools/` and document the tool in `docs/API_REFERENCE.md`
 
-Example schema with session_id:
+Example:
 ```ruby
-def self.input_schema
-  {
-    type: 'object',
-    properties: {
-      session_id: {
-        type: 'string',
-        description: 'Session ID to use for this operation'
-      },
-      # ... your other parameters
-    },
-    required: ['session_id', ...]  # session_id is REQUIRED
-  }
+module FerrumMCP
+  module Tools
+    class HighlightTool < BaseTool
+      tool_name 'highlight'
+      description 'Outline an element in red'
+
+      param :selector, type: :string, required: true, description: 'CSS selector, XPath or snapshot ref'
+      param :color, type: :string, default: 'red', description: 'CSS color (default: red)'
+
+      def perform(params)
+        element = find_element(params[:selector])
+        page.execute("arguments[0].style.outline = '3px solid ' + arguments[1]", element, params[:color])
+        success_response(message: "Highlighted #{params[:selector]}")
+      rescue StandardError => e
+        error_response("Failed to highlight: #{e.message}")
+      end
+    end
+  end
 end
 ```
 
@@ -295,7 +307,11 @@ end
 - `MCP_SERVER_PORT`: HTTP server port (default: 3000)
 - `BROWSER_HEADLESS`: Run headless (default: false)
 - `BROWSER_TIMEOUT`: Browser timeout in seconds (default: 60)
-- `LOG_LEVEL`: Logging level - debug/info/warn/error (default: debug)
+- `LOG_LEVEL`: Logging level - debug/info/warn/error (default: info)
+- `LOG_FILE`: Log destination, a path or `stderr` (default: `./logs/ferrum_mcp.log`)
+- `TRUST_PROXY`: Honour `X-Forwarded-For` for rate limiting/audit (default: false; only behind a trusted proxy)
+- `ALLOWED_HOSTS` / `BLOCKED_HOSTS`: Optional navigation policy (exact host, `*.suffix`, CIDR)
+- `UPLOAD_ALLOWED_DIRS`: Directories `upload_file` may read from (default: cwd and temp dir)
 
 ### API Key Authentication (HTTP Transport only)
 - `API_KEY_ENABLED`: Enable Bearer token authentication (default: false)
@@ -329,13 +345,14 @@ See `.env.example` for detailed configuration examples.
 
 ## Key Implementation Details
 
-- **Tool Execution Flow**: `Server#execute_tool` → validates `session_id` → gets session from `SessionManager` → starts browser if needed → creates tool instance → calls `tool.execute` → wraps result in `MCP::Tool::Response`
+- **Tool Execution Flow**: `Server#execute_tool` → `Tool.requires_session?` → validates `session_id` → `SessionManager#with_session` (starts or restarts the browser if needed) → `tool.execute` (normalizes params) → `tool.perform` → wraps result in `MCP::Tool::Response`
 - **Resource Discovery**: `ResourceManager` builds MCP resources from configuration at server startup; `Server#setup_resources` registers `resources_read_handler` for dynamic resource reading
 - **Session Management**: `SessionManager#with_session(session_id)` provides thread-safe access to browser
 - **Multi-Configuration**: `Configuration` parses ENV variables on initialization, creating `BrowserConfig`, `UserProfileConfig`, and `BotProfileConfig` structs
 - **Error Handling**: MCP exception reporter configured in `Server#setup_error_handling` logs to file
 - **Image Responses**: Screenshot tool returns base64 image data with `type: 'image'` and `mime_type`
 - **Element Finding**: `BaseTool#find_element` includes retry logic with configurable timeout
-- **Browser State**: Each session's browser remains active until session is closed or idle timeout (30min)
+- **Browser State**: Each session's browser remains active until session is closed or idle timeout (30min); a dead Chrome process (`BrowserManager#healthy?`) is restarted on the next call, and a `Ferrum::DeadBrowserError` inside a tool marks the session inactive
+- **Locking**: `SessionManager` holds its global mutex only for map operations; browsers are stopped outside of it. `Session` has a `closed` state so a closed session cannot be restarted
 - **Auto-cleanup**: Background thread cleans up idle sessions every 5 minutes
 - **Thread Safety**: All session operations are protected by mutex locks

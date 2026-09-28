@@ -15,14 +15,23 @@ module FerrumMCP
       @last_used_at = Time.now
       @metadata = options[:metadata] || {}
       @mutex = Mutex.new
+      @closed = false
       @session_config, @browser_manager = create_browser_manager
     end
 
-    # Execute a block with thread-safe access to the browser
+    # Execute a block with thread-safe access to the browser.
+    # A dead browser detected during the block leaves the session inactive so
+    # the next call restarts it instead of failing forever.
     def with_browser
       @mutex.synchronize do
         @last_used_at = Time.now
-        yield @browser_manager
+        begin
+          yield @browser_manager
+        rescue Ferrum::DeadBrowserError
+          logger.warn "Browser for session #{@id} died during a tool call"
+          @browser_manager.stop
+          raise
+        end
       end
     end
 
@@ -31,17 +40,37 @@ module FerrumMCP
       @browser_manager.active?
     end
 
+    def closed?
+      @closed
+    end
+
     # Start the browser for this session
     def start
+      @mutex.synchronize { start_browser }
+    end
+
+    # Make sure a live browser is available, restarting it if its process died.
+    def ensure_started
       @mutex.synchronize do
-        @browser_manager.start unless @browser_manager.active?
-        @last_used_at = Time.now
+        if @browser_manager.active? && !@browser_manager.healthy?
+          logger.warn "Restarting dead browser for session #{@id}"
+          @browser_manager.stop
+        end
+        start_browser
       end
     end
 
-    # Stop the browser for this session
+    # Stop the browser for this session (the session can be started again)
     def stop
       @mutex.synchronize do
+        @browser_manager.stop if @browser_manager.active?
+      end
+    end
+
+    # Close the session for good: stops the browser and refuses any restart
+    def close
+      @mutex.synchronize do
+        @closed = true
         @browser_manager.stop if @browser_manager.active?
       end
     end
@@ -56,6 +85,7 @@ module FerrumMCP
       {
         id: @id,
         active: active?,
+        closed: closed?,
         created_at: @created_at.iso8601,
         last_used_at: @last_used_at.iso8601,
         idle_seconds: (Time.now - @last_used_at).to_i,
@@ -84,6 +114,18 @@ module FerrumMCP
     end
 
     private
+
+    def logger
+      @config.logger
+    end
+
+    # Caller must hold @mutex
+    def start_browser
+      raise SessionError, "Session #{@id} is closed" if @closed
+
+      @browser_manager.start unless @browser_manager.active?
+      @last_used_at = Time.now
+    end
 
     def normalize_options(options)
       {
@@ -157,6 +199,21 @@ module FerrumMCP
       @base_config.logger
     end
 
+    def url_policy
+      @base_config.url_policy
+    end
+
+    def upload_allowed_dirs
+      @base_config.upload_allowed_dirs
+    end
+
+    # Browser flags handed to Ferrum: defaults merged with session-specific
+    # options. Ferrum prefixes every key with "--" itself, so keys are stored
+    # without dashes ("window-size", not "--window-size").
+    def merged_browser_options
+      default_browser_options.merge(normalized_browser_options)
+    end
+
     private
 
     def resolve_browser(overrides, base_config)
@@ -200,10 +257,10 @@ module FerrumMCP
       end
     end
 
-    # Merge session-specific browser options with base options
-    def merged_browser_options
-      base_options = default_browser_options
-      base_options.merge(@browser_options)
+    def normalized_browser_options
+      @browser_options.to_h.transform_keys do |key|
+        key.to_s.sub(/\A-+/, '')
+      end
     end
 
     def default_browser_options
@@ -215,6 +272,7 @@ module FerrumMCP
       }
 
       options['disable-setuid-sandbox'] = nil if ENV['CI']
+      options['user-data-dir'] = user_profile.path if user_profile
 
       # Add BotBrowser profile if configured
       if using_botbrowser? && botbrowser_profile && File.exist?(botbrowser_profile)

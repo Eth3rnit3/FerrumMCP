@@ -37,9 +37,22 @@ RSpec.configure do |config|
   # to ensure consistent test environment
   config.before do
     preserved_keys = %w[BROWSER_HEADLESS BROWSER_TIMEOUT LOG_LEVEL COVERAGE CI]
-    ENV.keys.grep(/^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_|API_KEY)/).each do |key|
+    volatile = /^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_|API_KEY|LOG_FILE|TRUST_PROXY|
+                  ALLOWED_HOSTS|BLOCKED_HOSTS|UPLOAD_ALLOWED_DIRS)/x
+    ENV.keys.grep(volatile).each do |key|
       ENV.delete(key) unless preserved_keys.include?(key)
     end
+  end
+
+  # Specs under tools/ and integration/ (plus the CLI process specs and the
+  # multi-browser suite) drive a real Chrome; everything else runs without it.
+  #   rake test:unit        -> rspec --tag ~integration
+  #   rake test:integration -> rspec --tag integration
+  config.define_derived_metadata(file_path: %r{/spec/(ferrum_mcp/tools|integration)/}) do |metadata|
+    metadata[:integration] = true
+  end
+  config.define_derived_metadata(file_path: %r{/spec/ferrum_mcp/(multi_browser|server_options)_spec\.rb}) do |metadata|
+    metadata[:integration] = true
   end
 
   # Start a test HTTP server for testing
@@ -52,8 +65,12 @@ RSpec.configure do |config|
   end
 end
 
+def test_server_port
+  ENV.fetch('TEST_SERVER_PORT', '9999').to_i
+end
+
 def start_test_server
-  port = 9999
+  port = test_server_port
 
   server = WEBrick::HTTPServer.new(
     Port: port,
@@ -135,7 +152,7 @@ def mount_fixtures(server, dir, url_prefix)
 end
 
 def test_url(path = '/test')
-  "http://localhost:9999#{path}"
+  "http://localhost:#{test_server_port}#{path}"
 end
 
 def test_base_config

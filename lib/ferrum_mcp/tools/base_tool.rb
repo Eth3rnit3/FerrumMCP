@@ -2,65 +2,99 @@
 
 module FerrumMCP
   module Tools
-    # Base class for all MCP tools
+    # Base class for tools that operate on a browser session.
+    #
+    # Subclasses declare their interface with the Definition DSL and implement
+    # #perform(params). Params arrive with symbol keys and defaults applied.
+    #
+    # Selectors accepted everywhere an element is looked up:
+    #   - CSS:            "#login button"
+    #   - XPath:          "xpath://button[@type='submit']" or "//button[...]"
+    #   - Snapshot ref:   "ref:e12" (from the snapshot tool)
     class BaseTool
-      attr_reader :browser, :logger
+      extend Definition
+
+      requires_session true
+
+      REF_SELECTOR = /\Aref:(e\d+)\z/
+      REF_ATTRIBUTE = 'data-fmcp-ref'
+      POLL_INTERVAL = 0.1
+
+      attr_reader :logger
 
       def initialize(browser_manager)
         @browser_manager = browser_manager
-        @browser = browser_manager.browser
         @logger = browser_manager.logger
       end
 
-      def execute(params)
-        raise NotImplementedError, 'Subclasses must implement #execute'
+      # Entry point used by the server and the specs.
+      def execute(raw_params)
+        perform(self.class.normalize_params(raw_params))
       end
 
-      def self.tool_name
-        raise NotImplementedError, 'Subclasses must implement .tool_name'
-      end
-
-      def self.description
-        raise NotImplementedError, 'Subclasses must implement .description'
-      end
-
-      def self.input_schema
-        raise NotImplementedError, 'Subclasses must implement .input_schema'
+      def perform(_params)
+        raise NotImplementedError, 'Subclasses must implement #perform'
       end
 
       protected
 
+      # Ferrum::Browser of the session
+      def browser
+        @browser_manager.browser
+      end
+
+      # Current tab (Ferrum::Page). Tools act on the page, not the browser, so
+      # tab switching works.
+      def page
+        @browser_manager.page
+      end
+
       def ensure_browser_active
         raise BrowserError, 'Browser is not active' unless @browser_manager.active?
-
-        @browser = @browser_manager.browser
       end
 
-      # Helper to access params consistently (supports both string and symbol keys)
-      def param(params, key)
-        params[key.to_s] || params[key.to_sym]
+      # Resolve a selector string into [:css, selector] or [:xpath, expression]
+      def resolve_selector(selector)
+        selector = selector.to_s.strip
+        if (match = REF_SELECTOR.match(selector))
+          [:css, %([#{REF_ATTRIBUTE}="#{match[1]}"])]
+        elsif selector.start_with?('xpath:')
+          [:xpath, selector.delete_prefix('xpath:')]
+        elsif selector.start_with?('//', '(//')
+          [:xpath, selector]
+        else
+          [:css, selector]
+        end
       end
 
-      # Find element with improved timeout handling
-      # Uses shorter polling intervals for better responsiveness
-      def find_element(selector, timeout: 5)
-        ensure_browser_active
-        deadline = Time.now + timeout
+      # Find the first element matching the selector, polling until timeout.
+      def find_element(selector, timeout: 5, within: page)
+        deadline = monotonic_now + timeout.to_f
 
         loop do
-          element = browser.at_css(selector)
+          element = first_match(selector, within)
           return element if element
 
-          raise ToolError, "Element not found: #{selector}" if Time.now > deadline
+          raise ToolError, "Element not found: #{selector}" if monotonic_now > deadline
 
-          # Use shorter sleep for better responsiveness (0.1s instead of 0.5s)
-          sleep 0.1
+          sleep POLL_INTERVAL
         end
       rescue Ferrum::NodeNotFoundError
         raise ToolError, "Element not found: #{selector}"
       end
 
-      # Retry logic for handling stale/moving elements
+      # All elements matching the selector (no waiting)
+      def find_elements(selector, within: page)
+        kind, expression = resolve_selector(selector)
+        kind == :xpath ? within.xpath(expression) : within.css(expression)
+      end
+
+      def first_match(selector, within = page)
+        kind, expression = resolve_selector(selector)
+        kind == :xpath ? within.at_xpath(expression) : within.at_css(expression)
+      end
+
+      # Retry logic for stale/moving elements
       def with_retry(retries: 3)
         attempts = 0
         begin
@@ -70,32 +104,39 @@ module FerrumMCP
           raise ToolError, "Element became stale after #{retries} retries" unless attempts < retries
 
           logger.debug "Retry #{attempts}/#{retries} due to: #{e.class}"
-          sleep 0.1
+          sleep POLL_INTERVAL
           retry
         end
       end
 
-      # Check if element is actually visible (has dimensions and not hidden)
+      # Visible = rendered with a size and not hidden through CSS
       def element_visible?(element)
         return false unless element
 
-        # Check both CSS visibility and actual rendered dimensions
-        script = <<~JS
+        page.evaluate(<<~JS, element)
           (function(el) {
             if (!el) return false;
             const rect = el.getBoundingClientRect();
             const style = window.getComputedStyle(el);
-            return rect.width > 0 &&
-                   rect.height > 0 &&
-                   style.visibility !== 'hidden' &&
-                   style.display !== 'none';
+            return rect.width > 0 && rect.height > 0 &&
+                   style.visibility !== 'hidden' && style.display !== 'none';
           })(arguments[0])
         JS
-
-        browser.evaluate(script, element)
       rescue StandardError => e
         logger.debug "Error checking element visibility: #{e.message}"
         false
+      end
+
+      # Escape a string for use inside an XPath expression
+      def xpath_literal(text)
+        return "'#{text}'" unless text.include?("'")
+
+        parts = text.split("'", -1).map { |part| "'#{part}'" }
+        "concat(#{parts.join(%(, "'", ))})"
+      end
+
+      def monotonic_now
+        Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
 
       def success_response(data = {})

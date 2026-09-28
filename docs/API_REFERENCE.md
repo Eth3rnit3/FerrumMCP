@@ -22,9 +22,13 @@ Comprehensive documentation for all FerrumMCP browser automation tools.
   - [press_key](#press_key)
   - [hover](#hover)
   - [drag_and_drop](#drag_and_drop)
+  - [scroll](#scroll)
+  - [select_option](#select_option)
+  - [upload_file](#upload_file)
   - [accept_cookies](#accept_cookies)
   - [solve_captcha](#solve_captcha)
 - [Extraction](#extraction)
+  - [snapshot](#snapshot)
   - [get_text](#get_text)
   - [get_html](#get_html)
   - [screenshot](#screenshot)
@@ -39,16 +43,22 @@ Comprehensive documentation for all FerrumMCP browser automation tools.
   - [clear_cookies](#clear_cookies)
   - [get_attribute](#get_attribute)
   - [query_shadow_dom](#query_shadow_dom)
-- [Waiting (Currently Disabled)](#waiting-currently-disabled)
-  - [wait_for_element](#wait_for_element)
-  - [wait_for_navigation](#wait_for_navigation)
-  - [wait](#wait)
+- [Waiting](#waiting)
+  - [wait_for_selector](#wait_for_selector)
+  - [wait_for_text](#wait_for_text)
+  - [wait_for_network_idle](#wait_for_network_idle)
+- [Tabs & Viewport](#tabs--viewport)
+  - [list_tabs](#list_tabs)
+  - [new_tab](#new_tab)
+  - [switch_tab](#switch_tab)
+  - [close_tab](#close_tab)
+  - [set_viewport](#set_viewport)
 
 ---
 
 ## Overview
 
-FerrumMCP provides 27+ browser automation tools through the Model Context Protocol (MCP). All tools return responses in a standardized JSON format with a `success` boolean and either `data` or `error` fields.
+FerrumMCP provides 40 browser automation tools through the Model Context Protocol (MCP). All tools return responses in a standardized JSON format with a `success` boolean and either `data` or `error` fields.
 
 ## Important Notes
 
@@ -57,7 +67,8 @@ FerrumMCP provides 27+ browser automation tools through the Model Context Protoc
 3. **Session Lifecycle**: Sessions auto-close after 30 minutes of inactivity or can be manually closed with `close_session`
 4. **Multiple Sessions**: You can run multiple concurrent browser sessions with different configurations
 5. **Screenshot Format**: The `screenshot` tool returns base64-encoded image data
-6. **Selector Support**: Most tools support both CSS selectors and XPath (use `xpath:` prefix for XPath)
+6. **Selector Support**: Every element-based tool accepts a CSS selector, an XPath (`xpath:` prefix or starting with `//`) or a snapshot ref (`ref:e12`, see [snapshot](#snapshot))
+7. **Tabs**: tools act on the session's current tab; use [new_tab](#new_tab) / [switch_tab](#switch_tab) to change it
 
 ---
 
@@ -76,9 +87,9 @@ Create a new browser session with custom options. Returns a `session_id` to use 
 | bot_profile_id | string | No | BotBrowser profile ID from `ferrum://bot-profiles` resource |
 | browser_path | string | No | Path to browser executable (legacy) |
 | botbrowser_profile | string | No | Path to BotBrowser profile (legacy) |
-| headless | boolean | No | Run in headless mode (default: false) |
+| headless | boolean | No | Run in headless mode (default: `BROWSER_HEADLESS`) |
 | timeout | number | No | Browser timeout in seconds (default: 60) |
-| browser_options | object | No | Additional browser options (e.g., `{"--window-size": "1920,1080"}`) |
+| browser_options | object | No | Extra Chrome flags without the leading dashes (e.g., `{"window-size": "1920,1080", "lang": "fr-FR"}`) |
 | metadata | object | No | Custom metadata for this session |
 
 **Example Request:**
@@ -90,7 +101,7 @@ Create a new browser session with custom options. Returns a `session_id` to use 
     "headless": true,
     "timeout": 60,
     "browser_options": {
-      "--window-size": "1920,1080"
+      "window-size": "1920,1080"
     },
     "metadata": {
       "user": "john",
@@ -110,7 +121,7 @@ Create a new browser session with custom options. Returns a `session_id` to use 
     "headless": true,
     "timeout": 60,
     "browser_options": {
-      "--window-size": "1920,1080"
+      "window-size": "1920,1080"
     }
   }
 }
@@ -255,6 +266,8 @@ Navigate to a specific URL in the browser.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | url | string | Yes | URL to navigate to (must include http:// or https://) |
+| wait_for_idle | boolean | No | Wait for the network to settle after navigation (default: true) |
+| timeout | number | No | Seconds to wait for network idle (default: 30) |
 | session_id | string | Yes | Session ID to use |
 
 **Example Request:**
@@ -280,7 +293,8 @@ Navigate to a specific URL in the browser.
 
 **Notes:**
 - URL must start with `http://` or `https://`
-- Automatically waits for network to be idle after navigation
+- Automatically waits for network to be idle after navigation (disable with `wait_for_idle: false` for pages that stream forever)
+- Refused when the host is denied by `ALLOWED_HOSTS` / `BLOCKED_HOSTS` (see the Configuration Guide)
 - Throws timeout error if navigation takes longer than browser timeout
 
 ---
@@ -403,7 +417,7 @@ Click on an element using a CSS selector or XPath.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| selector | string | Yes | CSS selector or XPath (use `xpath:` prefix for XPath) |
+| selector | string | Yes | CSS selector, XPath (`xpath:` prefix) or snapshot ref (`ref:e12`) |
 | wait | number | No | Seconds to wait for element (default: 5) |
 | force | boolean | No | Force click even if hidden/not visible (default: false) |
 | session_id | string | Yes | Session ID to use |
@@ -453,8 +467,9 @@ Fill one or more form fields with values.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| selector | string | Yes | CSS selector of the field |
-| value | string | Yes | Value to fill |
+| selector | string | Yes | CSS selector, XPath or snapshot ref of the field |
+| value | string | Yes | Value to type |
+| clear | boolean | No | Clear the field before typing (default: false) |
 
 **Example Request:**
 
@@ -631,6 +646,92 @@ Drag an element and drop it onto another element or coordinates.
 
 ---
 
+### scroll
+
+Scroll the page or a scrollable element, or bring an element into view.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| selector | string | No | Element to scroll into view, or the scrollable container when `direction` is given |
+| direction | string | No | `up`, `down`, `left`, `right`, `top`, `bottom` |
+| amount | number | No | Pixels for up/down/left/right (default: 500) |
+| x | number | No | Absolute horizontal scroll position |
+| y | number | No | Absolute vertical scroll position |
+| session_id | string | Yes | Session ID to use |
+
+**Example Request:**
+
+```json
+{ "name": "scroll", "arguments": { "direction": "down", "amount": 800, "session_id": "uuid-1234" } }
+```
+
+**Example Response:**
+
+```json
+{ "x": 0, "y": 800, "target": "window" }
+```
+
+**Notes:**
+- `selector` alone scrolls that element into the middle of the viewport
+- `selector` + `direction` scrolls inside that container (infinite lists, modals)
+
+---
+
+### select_option
+
+Select option(s) in a `<select>` element and fire `input`/`change` events.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| selector | string | Yes | Selector of the `<select>` |
+| value | string | No | Option value |
+| label | string | No | Option visible text |
+| index | integer | No | Zero-based option index |
+| values | array | No | Several option values (multiple selects) |
+| session_id | string | Yes | Session ID to use |
+
+**Example Request:**
+
+```json
+{ "name": "select_option", "arguments": { "selector": "#plan", "label": "Pro plan", "session_id": "uuid-1234" } }
+```
+
+**Example Response:**
+
+```json
+{ "selector": "#plan", "selected": [{ "value": "pro", "label": "Pro plan" }] }
+```
+
+---
+
+### upload_file
+
+Attach files from the **server's** filesystem to an `<input type="file">`.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| selector | string | Yes | Selector of the file input |
+| paths | array | Yes | Absolute paths of the files |
+| session_id | string | Yes | Session ID to use |
+
+**Example Request:**
+
+```json
+{ "name": "upload_file", "arguments": { "selector": "#avatar", "paths": ["/tmp/avatar.png"], "session_id": "uuid-1234" } }
+```
+
+**Notes:**
+- Files must live under one of `UPLOAD_ALLOWED_DIRS` (default: current directory and the temp dir); symlinks are resolved
+- Missing files are rejected before touching the browser
+
+---
+
 ### accept_cookies
 
 Automatically detect and accept cookie consent banners.
@@ -736,6 +837,50 @@ Automatically detect and solve audio CAPTCHA challenges using Whisper speech rec
 
 ## Extraction
 
+### snapshot
+
+Compact, agent-friendly view of the page: interactive elements (links, buttons, inputs, selects, custom roles) and headings, each with a **stable ref** that every other tool accepts as selector (`ref:e12`). Far cheaper than `get_html` for deciding what to do next.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| mode | string | No | `interactive` (default) or `full` (adds images, labels, paragraphs, alerts) |
+| selector | string | No | Restrict the snapshot to a subtree |
+| include_hidden | boolean | No | Include hidden elements (default: false) |
+| max_elements | integer | No | Maximum number of elements (default: 200) |
+| format | string | No | `text` (default) or `json` |
+| session_id | string | Yes | Session ID to use |
+
+**Example Request:**
+
+```json
+{ "name": "snapshot", "arguments": { "session_id": "uuid-1234" } }
+```
+
+**Example Response (text):**
+
+```json
+{
+  "url": "https://example.com/signup",
+  "title": "Sign up",
+  "count": 6,
+  "total": 6,
+  "truncated": false,
+  "snapshot": "[e1] heading(1) \"Create your account\"\n[e2] textbox \"Email address\" type=email placeholder=\"you@example.com\"\n[e3] checkbox \"newsletter\" checked\n[e4] combobox \"plan\"\n[e5] button \"Create account\"\n[e6] link \"Documentation\" href=/docs"
+}
+```
+
+**Example Response (json):** `elements` is an array of `{ ref, role, tag, name, selector, href?, type?, placeholder?, value?, checked?, disabled?, level? }`.
+
+**Notes:**
+- Refs are stored on the elements (`data-fmcp-ref`) and stay stable across snapshots until the page navigates
+- Typical loop: `snapshot` → `click ref:e5` → `wait_for_text` → `snapshot`
+- Names follow accessibility rules: `aria-label`, `<label for>`, placeholder, name, then visible text
+- Radio buttons also show their `value`, so unlabeled buttons of one group stay distinguishable
+
+---
+
 ### get_text
 
 Extract text content from one or more elements.
@@ -744,8 +889,10 @@ Extract text content from one or more elements.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| selector | string | Yes | CSS selector or XPath (use `xpath:` prefix) |
+| selector | string | Yes | CSS selector, XPath (`xpath:` prefix) or snapshot ref |
 | multiple | boolean | No | Extract from all matching elements (default: false) |
+| wait | number | No | Seconds to wait for the element (default: 5) |
+| raw | boolean | No | Return the text exactly as in the DOM (default: false, whitespace is collapsed and trimmed) |
 | session_id | string | Yes | Session ID to use |
 
 **Example Request (Single Element):**
@@ -809,7 +956,8 @@ Get HTML content of the page or a specific element.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| selector | string | No | CSS selector to get HTML of specific element |
+| selector | string | No | Selector of the element to get the outerHTML of |
+| max_length | integer | No | Truncate the HTML to this many characters (response has `truncated: true`) |
 | session_id | string | Yes | Session ID to use |
 
 **Example Request (Full Page):**
@@ -1040,6 +1188,134 @@ Find elements by their text content using XPath.
 
 ---
 
+## Waiting
+
+### wait_for_selector
+
+Wait until an element reaches a state.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| selector | string | Yes | CSS selector, XPath or snapshot ref |
+| state | string | No | `visible` (default), `hidden`, `attached`, `detached` |
+| timeout | number | No | Maximum seconds to wait (default: 10) |
+| session_id | string | Yes | Session ID to use |
+
+**Example Response:**
+
+```json
+{ "found": true, "state": "visible", "selector": "#results", "elapsed_ms": 640 }
+```
+
+On timeout the tool fails with `Timed out after 10s waiting for #results to be visible`.
+
+---
+
+### wait_for_text
+
+Wait until text is visible on the page (optionally inside an element).
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| text | string | Yes | Text to wait for |
+| selector | string | No | CSS selector of the element to search in (default: body) |
+| exact | boolean | No | Match the whole text exactly (default: substring) |
+| timeout | number | No | Maximum seconds to wait (default: 10) |
+| session_id | string | Yes | Session ID to use |
+
+---
+
+### wait_for_network_idle
+
+Wait until the page has no pending requests (after a click that triggers XHR/fetch, for instance).
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| timeout | number | No | Maximum seconds to wait (default: 30) |
+| connections | integer | No | Pending connections tolerated as idle (default: 0) |
+| session_id | string | Yes | Session ID to use |
+
+**Example Response:**
+
+```json
+{ "idle": true, "elapsed_ms": 120, "url": "https://example.com/results" }
+```
+
+---
+
+## Tabs & Viewport
+
+Tools operate on the session's **current tab**. Links with `target="_blank"` open new tabs that you can activate with `switch_tab`.
+
+### list_tabs
+
+**Example Response:**
+
+```json
+{
+  "count": 2,
+  "tabs": [
+    { "index": 0, "tab_id": "A1B2...", "url": "https://example.com/", "title": "Example", "current": false },
+    { "index": 1, "tab_id": "C3D4...", "url": "https://example.com/help", "title": "Help", "current": true }
+  ]
+}
+```
+
+---
+
+### new_tab
+
+Open a new tab (optionally at a URL) and make it current.
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| url | string | No | URL to open (subject to the navigation policy) |
+| session_id | string | Yes | Session ID to use |
+
+---
+
+### switch_tab
+
+Make another tab current, by `tab_id` (from `list_tabs`) or zero-based `index`.
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| tab_id | string | No | Tab to activate |
+| index | integer | No | Zero-based index (alternative to tab_id) |
+| session_id | string | Yes | Session ID to use |
+
+---
+
+### close_tab
+
+Close a tab (the current one by default). The last remaining tab cannot be closed; closing the current tab activates the first remaining one.
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| tab_id | string | No | Tab to close (default: current) |
+| index | integer | No | Zero-based index (alternative to tab_id) |
+| session_id | string | Yes | Session ID to use |
+
+---
+
+### set_viewport
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| width | integer | Yes | Viewport width in pixels |
+| height | integer | Yes | Viewport height in pixels |
+| scale_factor | number | No | Device scale factor (0 keeps the default) |
+| mobile | boolean | No | Emulate a mobile device (default: false) |
+| session_id | string | Yes | Session ID to use |
+
+---
+
 ## Advanced
 
 ### execute_script
@@ -1179,6 +1455,7 @@ Set a cookie in the browser.
 | path | string | No | Cookie path (default: /) |
 | secure | boolean | No | Secure flag (default: false) |
 | httponly | boolean | No | HttpOnly flag (default: false) |
+| expires | integer | No | Expiry as a Unix timestamp in seconds |
 | session_id | string | Yes | Session ID to use |
 
 **Example Request:**
@@ -1387,7 +1664,7 @@ All tools return responses in this standard format:
 1. **Missing session_id**: "session_id is required. Create a session first using create_session tool."
 2. **Invalid session**: "Session not found: {session_id}"
 3. **Element not found**: "Element not found: {selector}"
-4. **Timeout errors**: "Navigation timed out" / "Timeout waiting for element"
+4. **Timeout errors**: "Navigation timed out" / "Timed out after 10s waiting for #x to be visible"
 5. **JavaScript errors**: "Failed to execute script: {error}"
 
 ---
@@ -1397,10 +1674,12 @@ All tools return responses in this standard format:
 1. **Always create a session first**: Use `create_session` before any browser operations
 2. **Use resource discovery**: Query `ferrum://browsers` and `ferrum://bot-profiles` to see available configurations
 3. **Handle sessions properly**: Close sessions when done to free resources
-4. **Use appropriate selectors**: Prefer CSS selectors for performance, XPath for complex queries
-5. **Set timeouts wisely**: Increase timeout for slow-loading pages
-6. **Force clicks sparingly**: Only use `force: true` when necessary, as it bypasses visibility checks
-7. **Screenshot optimization**: Use `jpeg` format for smaller file sizes when quality is not critical
+4. **Snapshot before acting**: call `snapshot` and use the returned refs (`ref:e12`) instead of guessing selectors
+5. **Wait explicitly**: use `wait_for_selector` / `wait_for_text` / `wait_for_network_idle` rather than fixed delays
+6. **Use appropriate selectors**: Prefer CSS selectors for performance, XPath for complex queries
+7. **Set timeouts wisely**: Increase timeout for slow-loading pages
+8. **Force clicks sparingly**: Only use `force: true` when necessary, as it bypasses visibility checks
+9. **Screenshot optimization**: Use `jpeg` format for smaller file sizes when quality is not critical
 
 ---
 

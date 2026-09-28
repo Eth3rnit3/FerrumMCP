@@ -2,65 +2,41 @@
 
 module FerrumMCP
   module Tools
-    # Tool to extract text from elements
+    # Extract text from elements
     class GetTextTool < BaseTool
-      def self.tool_name
-        'get_text'
-      end
+      tool_name 'get_text'
+      description 'Extract text content from one or more elements (CSS selector, XPath or snapshot ref)'
 
-      def self.description
-        'Extract text content from one or more elements'
-      end
+      param :selector, type: :string, required: true, description: 'Selector of the element(s) to extract text from'
+      param :multiple, type: :boolean, default: false,
+                       description: 'Extract from all matching elements (default: false)'
+      param :wait, type: :number, default: 5, description: 'Seconds to wait for the element (default: 5)'
+      param :raw, type: :boolean, default: false,
+                  description: 'Return text exactly as in the DOM instead of collapsing whitespace (default: false)'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            selector: {
-              type: 'string',
-              description: 'CSS selector or XPath of element(s) to extract text from (use xpath: prefix for XPath)'
-            },
-            multiple: {
-              type: 'boolean',
-              description: 'Extract from all matching elements (default: false)',
-              default: false
-            },
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            }
-          },
-          required: %w[selector session_id]
-        }
-      end
-
-      def execute(params)
+      def perform(params)
         ensure_browser_active
-        selector = param(params, :selector)
-        multiple = param(params, :multiple) || false
-
+        selector = params[:selector]
         logger.info "Extracting text from: #{selector}"
 
-        # Support both CSS and XPath selectors
-        if selector.start_with?('xpath:', '//')
-          xpath = selector.sub(/^xpath:/, '')
-          logger.debug "Using XPath: #{xpath}"
-          elements = browser.xpath(xpath)
-          raise ToolError, "Element not found with XPath: #{xpath}" if elements.empty?
-        else
-          elements = browser.css(selector)
-          raise ToolError, "Element not found: #{selector}" if elements.empty?
-        end
+        find_element(selector, timeout: params[:wait])
+        elements = find_elements(selector)
 
-        if multiple
-          texts = elements.map(&:text)
+        texts = elements.map { |el| params[:raw] ? el.text : normalize_whitespace(el.text) }
+        if params[:multiple]
           success_response(texts: texts, count: texts.length)
         else
-          success_response(text: elements.first.text)
+          success_response(text: texts.first)
         end
       rescue StandardError => e
         logger.error "Get text failed: #{e.message}"
         error_response("Failed to get text: #{e.message}")
+      end
+
+      private
+
+      def normalize_whitespace(text)
+        text.to_s.gsub(/[[:space:]]+/, ' ').strip
       end
     end
   end

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Dockerfile with BotBrowser support (Debian-based for glibc compatibility)
 #
 # This Dockerfile uses Debian instead of Alpine for full BotBrowser compatibility.
@@ -5,12 +6,19 @@
 #
 # Build example:
 #   docker build -f Dockerfile.with-botbrowser -t ferrum-mcp:botbrowser .
+#
+# BotBrowser version: the latest upstream release is used by default (old
+# releases are removed upstream, so a hard-coded URL eventually 404s).
+# Pin one with:  --build-arg BOTBROWSER_VERSION=155.0.8059.5
+# In CI, pass a token to avoid GitHub API rate limits:
+#   --secret id=github_token,env=GITHUB_TOKEN
 
-# Use Ruby 3.2 with Debian Slim for glibc compatibility
-FROM ruby:3.2-slim
+# Use Ruby 3.3 with Debian Slim for glibc compatibility
+FROM ruby:3.3-slim
 
 # Build arguments
 ARG TARGETARCH
+ARG BOTBROWSER_VERSION=latest
 
 # Install base dependencies first (better layer caching)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -58,16 +66,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd -g 1000 ferrum && \
     useradd -u 1000 -g ferrum -m ferrum
 
-# Download BotBrowser (separate step for better caching and retry)
-# Using botswin/BotBrowser releases (latest: 143.0.7499.170)
-RUN if [ "$TARGETARCH" = "amd64" ]; then \
-        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/143.0.7499.170/botbrowser_20251225_143.0.7499.170_x86_64.deb"; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-        DOWNLOAD_URL="https://github.com/botswin/BotBrowser/releases/download/143.0.7499.170/botbrowser_20251225_143.0.7499.170_arm64.deb"; \
+# Download BotBrowser: resolve the .deb asset of the requested release
+# (latest by default) through the GitHub API.
+RUN --mount=type=secret,id=github_token,required=false \
+    set -eu; \
+    case "$TARGETARCH" in \
+        amd64) ASSET_PATTERN='_(x64|x86_64|amd64)\.deb' ;; \
+        arm64) ASSET_PATTERN='_arm64\.deb' ;; \
+        *) echo "Unsupported architecture: $TARGETARCH"; exit 1 ;; \
+    esac; \
+    if [ "$BOTBROWSER_VERSION" = "latest" ]; then \
+        API_URL="https://api.github.com/repos/botswin/BotBrowser/releases/latest"; \
     else \
-        echo "Unsupported architecture: $TARGETARCH" && exit 1; \
-    fi && \
-    echo "Downloading BotBrowser from: $DOWNLOAD_URL" && \
+        API_URL="https://api.github.com/repos/botswin/BotBrowser/releases/tags/$BOTBROWSER_VERSION"; \
+    fi; \
+    if [ -s /run/secrets/github_token ]; then \
+        RELEASE_JSON=$(curl -fsSL --retry 3 -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $(cat /run/secrets/github_token)" "$API_URL"); \
+    else \
+        RELEASE_JSON=$(curl -fsSL --retry 3 -H "Accept: application/vnd.github+json" "$API_URL"); \
+    fi; \
+    DOWNLOAD_URL=$(printf '%s' "$RELEASE_JSON" | grep -oE '"browser_download_url": *"[^"]+"' \
+        | sed -E 's/.*"(https[^"]+)"/\1/' | grep -E "$ASSET_PATTERN" | head -1); \
+    if [ -z "$DOWNLOAD_URL" ]; then \
+        echo "No BotBrowser .deb for $TARGETARCH in release $BOTBROWSER_VERSION"; \
+        printf '%s' "$RELEASE_JSON" | grep -oE '"name": *"[^"]+"' | head -20; \
+        exit 1; \
+    fi; \
+    echo "Downloading BotBrowser from: $DOWNLOAD_URL"; \
     wget --timeout=120 --tries=3 -O /tmp/botbrowser.deb "$DOWNLOAD_URL"
 
 # Install BotBrowser (separate step)

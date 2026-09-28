@@ -4,39 +4,17 @@ module FerrumMCP
   module Tools
     # Close a specific session
     class CloseSessionTool < SessionTool
-      def self.tool_name
-        'close_session'
-      end
+      tool_name 'close_session'
+      description 'Close a specific browser session by its ID. The browser will be stopped and the session removed.'
 
-      def self.description
-        'Close a specific browser session by its ID. The browser will be stopped and the session will be removed.'
-      end
+      param :session_id, type: :string, required: true, description: 'The ID of the session to close'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            session_id: {
-              type: 'string',
-              description: 'The ID of the session to close'
-            }
-          },
-          required: ['session_id']
-        }
-      end
+      def perform(params)
+        session_id = params[:session_id]
+        return error_response('session_id is required') if session_id.to_s.empty?
 
-      def execute(params)
-        session_id = params[:session_id] || params['session_id']
-
-        return error_response('session_id is required') unless session_id
-
-        success = session_manager.close_session(session_id)
-
-        if success
-          success_response(
-            session_id: session_id,
-            message: 'Session closed successfully'
-          )
+        if session_manager.close_session(session_id)
+          success_response(session_id: session_id, message: 'Session closed successfully')
         else
           error_response("Session not found: #{session_id}")
         end

@@ -182,12 +182,26 @@ RSpec.describe FerrumMCP::Transport::ApiKeyAuthenticator do
   end
 
   describe 'X-Forwarded-For handling' do
-    it 'logs the first IP from X-Forwarded-For header' do
+    it 'logs the socket address and ignores X-Forwarded-For by default' do
       header 'Authorization', 'Bearer invalid-key'
       header 'X-Forwarded-For', '203.0.113.1, 198.51.100.1'
       get '/mcp'
 
-      expect(logger).to have_received(:warn).with(/IP: 203.0.113.1/)
+      expect(logger).to have_received(:warn).with(/IP: 127.0.0.1/)
+    end
+
+    context 'when trust_proxy is enabled' do
+      let(:middleware) do
+        described_class.new(inner_app, api_keys: api_keys, logger: logger, skip_paths: skip_paths, trust_proxy: true)
+      end
+
+      it 'logs the first IP from X-Forwarded-For header' do
+        header 'Authorization', 'Bearer invalid-key'
+        header 'X-Forwarded-For', '203.0.113.1, 198.51.100.1'
+        get '/mcp'
+
+        expect(logger).to have_received(:warn).with(/IP: 203.0.113.1/)
+      end
     end
   end
 end

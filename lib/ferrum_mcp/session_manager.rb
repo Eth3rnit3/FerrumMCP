@@ -62,17 +62,15 @@ module FerrumMCP
     # Close a specific session
     # @param session_id [String] Session ID
     # @return [Boolean] Success
-    def close_session(session_id)
-      @mutex.synchronize do
-        session = @sessions[session_id]
-        return false unless session
+    def close_session(session_id) # rubocop:disable Naming/PredicateMethod
+      # Remove under the global lock, stop outside of it: stopping Chrome can
+      # take seconds and must not block every other session meanwhile.
+      session = @mutex.synchronize { @sessions.delete(session_id) }
+      return false unless session
 
-        logger.info "Closing session #{session_id}"
-        session.stop
-        @sessions.delete(session_id)
-
-        true
-      end
+      logger.info "Closing session #{session_id}"
+      session.close
+      true
     end
 
     # List all active sessions
@@ -91,11 +89,13 @@ module FerrumMCP
 
     # Close all sessions
     def close_all_sessions
-      @mutex.synchronize do
+      sessions = @mutex.synchronize do
         logger.info "Closing all #{@sessions.size} sessions"
-        @sessions.each_value(&:stop)
+        removed = @sessions.values
         @sessions.clear
+        removed
       end
+      sessions.each(&:close)
     end
 
     # Execute a block with a session (thread-safe)
@@ -107,8 +107,8 @@ module FerrumMCP
       session = get_session(session_id)
       raise SessionError, "Session not found: #{session_id}" unless session
 
-      # Start browser if not active
-      session.start unless session.active?
+      # Start the browser if needed (or restart it if its process died)
+      session.ensure_started
 
       # Execute with thread-safe access
       session.with_browser(&)
