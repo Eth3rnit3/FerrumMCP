@@ -17,12 +17,18 @@ See `.env.example` for a complete example configuration.
 | `MCP_SERVER_HOST` | HTTP server host | `0.0.0.0` |
 | `MCP_SERVER_PORT` | HTTP server port | `3000` |
 | `LOG_LEVEL` | Logging level (debug/info/warn/error) | `info` |
+| `LOG_FILE` | Log destination: a file path or `stderr` | `./logs/ferrum_mcp.log` |
+| `TRUST_PROXY` | Use `X-Forwarded-For` for rate limiting and audit logs (only behind a trusted proxy) | `false` |
+
+**Logging**: logs never go to STDOUT because the stdio transport uses it for the protocol. The default file lives
+under the current working directory (never inside the installed gem); when that directory is not writable the
+server falls back to the system temp directory. Use `LOG_FILE=stderr` in containers.
 
 ### Browser Defaults
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `BROWSER_HEADLESS` | Run browser in headless mode | `true` |
+| `BROWSER_HEADLESS` | Run browser in headless mode | `false` |
 | `BROWSER_TIMEOUT` | Browser timeout in seconds | `60` |
 
 ### Session Management
@@ -42,6 +48,33 @@ See `.env.example` for a complete example configuration.
 | `RATE_LIMIT_WINDOW` | Time window in seconds | `60` |
 
 **Note**: Rate limiting is applied per client IP address. When exceeded, HTTP 429 (Too Many Requests) is returned with a `Retry-After` header.
+The client address is the socket peer unless `TRUST_PROXY=true`, in which case the first `X-Forwarded-For` entry is used.
+Never enable `TRUST_PROXY` on a server reachable directly by clients: they could rotate the header to escape the limit.
+
+### Navigation Policy
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ALLOWED_HOSTS` | Comma-separated hosts that may be visited (only these when set) | _(unset)_ |
+| `BLOCKED_HOSTS` | Comma-separated hosts that may never be visited (wins over the allow list) | _(unset)_ |
+
+Entries accept an exact host (`example.com`), a wildcard suffix (`*.example.com`, which also matches
+`example.com`) or a CIDR range for IP literals (`10.0.0.0/8`). The policy is enforced by `navigate` and
+`new_tab` before the browser is touched. It checks the URL as written and does not resolve DNS, so treat it
+as a guard rail for exposed HTTP deployments rather than a full SSRF defense.
+
+```bash
+BLOCKED_HOSTS=localhost,127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,*.internal
+```
+
+### File Uploads
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `UPLOAD_ALLOWED_DIRS` | Comma-separated directories `upload_file` may read from | current directory, temp dir |
+
+The `upload_file` tool attaches files from the **server's** filesystem. Paths are resolved (symlinks included)
+and must live under one of the allowed directories.
 
 ## Multi-Browser Configuration
 

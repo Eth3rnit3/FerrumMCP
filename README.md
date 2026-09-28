@@ -19,7 +19,7 @@
 |---------------|-------------|
 | [**Getting Started**](docs/GETTING_STARTED.md) | Installation, setup, and first steps |
 | [**Docker Deployment**](docs/DOCKER.md) | Complete Docker guide with Claude Desktop integration |
-| [**API Reference**](docs/API_REFERENCE.md) | Complete documentation of all 27+ tools |
+| [**API Reference**](docs/API_REFERENCE.md) | Complete documentation of all 41 tools |
 | [**Configuration**](docs/CONFIGURATION.md) | Environment variables and advanced configuration |
 | [**Troubleshooting**](docs/TROUBLESHOOTING.md) | Common issues and solutions |
 | [**Deployment**](docs/DEPLOYMENT.md) | Production deployment guide |
@@ -67,6 +67,12 @@ FerrumMCP is a **browser automation server** that implements the **Model Context
 - URL navigation with network idle detection
 - Browser history (back/forward)
 - Page refresh
+- Tabs (open, list, switch, close) and viewport control
+- Optional host allow/block lists
+
+✅ **Agent-friendly page snapshot**
+- `snapshot` lists interactive elements with stable refs (`ref:e12`) usable by every other tool
+- Explicit waits: `wait_for_selector`, `wait_for_text`, `wait_for_network_idle`
 
 ✅ **Interaction**
 - Click, hover, drag-and-drop
@@ -188,7 +194,7 @@ ruby bin/ferrum-mcp
 
 ## Tools & Capabilities
 
-FerrumMCP provides **27+ browser automation tools** organized into 6 categories:
+FerrumMCP provides **41 browser automation tools** organized into 8 categories:
 
 ### 1. Session Management (4 tools)
 - `create_session` - Create browser sessions with custom config
@@ -202,16 +208,20 @@ FerrumMCP provides **27+ browser automation tools** organized into 6 categories:
 - `go_forward` - Browser forward button
 - `refresh` - Reload current page
 
-### 3. Interaction (7 tools)
-- `click` - Click elements
+### 3. Interaction (10 tools)
+- `click` - Click elements (CSS, XPath or snapshot ref)
 - `fill_form` - Fill form fields
 - `press_key` - Keyboard input
 - `hover` - Mouse hover
 - `drag_and_drop` - Drag elements
+- `scroll` - Scroll the page, a container, or an element into view
+- `select_option` - Pick options in `<select>` elements
+- `upload_file` - Attach files to file inputs
 - `accept_cookies` - **Smart cookie banner detection** (8 strategies)
 - `solve_captcha` - **AI-powered CAPTCHA solving** (⚠️ experimental, under development)
 
-### 4. Extraction (6 tools)
+### 4. Extraction (7 tools)
+- `snapshot` - **Compact page snapshot with stable element refs**
 - `get_text` - Extract text content
 - `get_html` - Get HTML content
 - `screenshot` - Capture screenshots
@@ -219,7 +229,16 @@ FerrumMCP provides **27+ browser automation tools** organized into 6 categories:
 - `get_url` - Get current URL
 - `find_by_text` - XPath text search
 
-### 5. Advanced (9 tools)
+### 5. Waiting (3 tools)
+- `wait_for_selector` - Wait for an element to be visible/hidden/attached/detached
+- `wait_for_text` - Wait for text to appear
+- `wait_for_network_idle` - Wait for pending requests to finish
+
+### 6. Tabs & Viewport (5 tools)
+- `list_tabs`, `new_tab`, `switch_tab`, `close_tab` - Tab management
+- `set_viewport` - Viewport size and mobile emulation
+
+### 7. Advanced (7 tools)
 - `execute_script` - Run JavaScript
 - `evaluate_js` - Evaluate JavaScript with return value
 - `get_cookies` - Get browser cookies
@@ -228,7 +247,7 @@ FerrumMCP provides **27+ browser automation tools** organized into 6 categories:
 - `get_attribute` - Get element attributes
 - `query_shadow_dom` - Interact with Shadow DOM
 
-### 6. MCP Resources (7 resources)
+### 8. MCP Resources (7 resources)
 - `ferrum://browsers` - Discover configured browsers
 - `ferrum://user-profiles` - Discover Chrome profiles
 - `ferrum://bot-profiles` - Discover BotBrowser profiles

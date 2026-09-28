@@ -8,53 +8,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Comprehensive documentation structure in `docs/` directory
-- API reference with all 27+ tools documented
-- Configuration guide for multi-browser and multi-profile setups
-- Getting started guide with detailed setup instructions
-- CHANGELOG.md for version tracking
-- SECURITY.md with responsible disclosure policy
-- CONTRIBUTING.md with contribution guidelines
-- GitHub issue and PR templates
-- Gemspec for RubyGems packaging
-- CLI command structure with `ServerRunner` and `CommandHandler` classes
-- Comprehensive help text with usage examples
-- `wait_for_selector` tool for explicit element waiting
-- `wait_for_text` tool for text-based waiting
+- **Snapshot tool** (`snapshot`): compact, LLM-friendly list of interactive elements and headings with stable
+  refs (`e12`). Every element-based tool accepts `ref:e12` as a selector.
+- **Waiting tools**: `wait_for_selector` (visible/hidden/attached/detached), `wait_for_text`,
+  `wait_for_network_idle`.
+- **Page tools**: `scroll`, `select_option`, `upload_file`, `set_viewport`.
+- **Tab tools**: `list_tabs`, `new_tab`, `switch_tab`, `close_tab`. Tools act on the session's current tab.
+- XPath (`xpath:` prefix or `//`) accepted by every element-based tool, not only `click`/`get_text`.
+- `LOG_FILE` (path or `stderr`) to choose the log destination.
+- `TRUST_PROXY` to opt in to `X-Forwarded-For` for rate limiting and audit logs.
+- `ALLOWED_HOSTS` / `BLOCKED_HOSTS` navigation policy (exact hosts, `*.suffix`, CIDR).
+- `UPLOAD_ALLOWED_DIRS` restricting where `upload_file` may read from.
+- `fill_form` field option `clear`, `get_html` option `max_length`, `get_text` option `wait`,
+  `navigate` options `wait_for_idle` / `timeout`, `set_cookie` option `expires`.
+- `rake test:unit` (no Chrome) and `rake test:integration`.
+- Unit specs for `BrowserManager`, `SessionManager` concurrency, the CLI runner, logging and the rate limiter.
 
 ### Changed
-- README.md restructured as table of contents
-- Documentation reorganized into dedicated `docs/` folder
-- **CLI architecture refactored** with clear separation of concerns
-  - Created `ServerRunner` class for server lifecycle management
-  - Created `CommandHandler` class for command dispatching
-  - Simplified `bin/ferrum-mcp` to minimal entry point (reduced from ~131 to ~67 lines)
-  - Removed `server.rb` to eliminate duplication
-  - Updated command format: `ferrum-mcp [COMMAND] [OPTIONS]` (e.g., `ferrum-mcp help`, `ferrum-mcp version`, `ferrum-mcp start`)
-- Test infrastructure improved with `SessionManager` integration
-  - All tool tests now use `SessionManager#with_session` pattern
-  - Consistent session management across test suite
-  - Better test isolation and cleanup
-- Updated `server_options_spec.rb` to match new CLI structure
+- **Tool DSL**: tools declare `tool_name`, `description` and `param`s; the JSON schema is generated,
+  `session_id` is injected automatically and params reach `#perform` with symbol keys and defaults applied.
+- `BrowserManager` detects a dead Chrome process and the session restarts it on the next call.
+- Cookies are read through Ferrum's cookie accessors (structured `domain`, `path`, `expires`, flags).
+- Screenshot resizing is optional: without libvips the image is returned untouched.
+- `LOG_LEVEL` defaults to `info` everywhere (Configuration used to default to `debug`).
+- Ruby: Gemfile requires `>= 3.2`, Docker images build on Ruby 3.3.
+- `test/` debug scripts removed, `scripts/` moved to `examples/`.
+- RuboCop metric exclusions narrowed to the two heuristic tools (`accept_cookies`, `solve_captcha`).
 
 ### Fixed
-- BaseTool `find_element` now uses Ferrum's native wait instead of manual polling with sleep
-- Navigation tools properly wait for network idle after page transitions
-- XSS protection in HoverTool using proper JavaScript escaping with `inspect`
-- XPath injection protection in FindByTextTool with proper quote escaping
-- Stale element retry logic in ClickTool and FillFormTool
-- EvaluateJSTool now properly returns JavaScript evaluation results
-- BrowserManager crash detection and graceful error handling
-- PressKey tool no longer duplicates characters when pressing special keys
-- ClickTool supports force clicking hidden elements with `force: true` parameter
-- DragAndDropTool supports both target elements and coordinates
-- GetTextTool supports XPath selectors with `xpath:` prefix
-- QueryShadowDOMTool for interacting with Shadow DOM elements (click, get_text, get_html, get_attribute)
+- Session `browser_options` never reached Ferrum (private method behind a `respond_to?` check) and keys
+  written with a leading `--` produced `----flag`. Keys are now normalized.
+- `user_profile_id` was resolved but never mapped to `user-data-dir`.
+- `StdioServer` duplicated the MCP transport read loop.
+- Shutdown called the deprecated `stop_browser`, never stopped the cleanup thread and exited from
+  inside a signal trap. Signals now interrupt the main loop, which runs the shutdown sequence.
+- Logs were written inside the installed gem directory.
+- The CLI required `bundler/setup`, breaking `gem install ferrum-mcp && ferrum-mcp start`.
+- `close_session` stopped Chrome while holding the global lock, blocking every other session; a closed
+  session could be resurrected by a concurrent call.
+- Rate limiter trusted `X-Forwarded-For` unconditionally (trivially bypassable).
+- `drag_and_drop` reported wrong coordinates for elements found through XPath.
 
-### Security
-- Documented security model and trust assumptions
-- Added session limit recommendations
-- Implemented XSS and XPath injection protections in multiple tools
+### Removed
+- Deprecated `Server#start_browser` / `Server#stop_browser`.
+- `wait_for_selector` / `wait_for_text` were listed here before they existed; they now do.
 
 ## [0.1.0] - 2024-11-22
 
