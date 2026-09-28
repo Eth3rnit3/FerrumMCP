@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'open3'
+
 module FerrumMCP
   # Manages Ferrum browser lifecycle with BotBrowser integration
   class BrowserManager
@@ -10,6 +12,28 @@ module FerrumMCP
     # - enable-automation shows the infobar and marks the browser as automated
     # Ferrum can only add flags, so its defaults are passed explicitly.
     DROPPED_FERRUM_DEFAULTS = %w[disable-web-security enable-automation].freeze
+
+    # Headless Chrome announces itself as "HeadlessChrome/x" (rejected outright
+    # by Cloudflare) and reports an 800x600 screen smaller than its window.
+    # Flags, unlike CDP overrides, also apply to out-of-process frames.
+    HEADLESS_SCREEN = '{1920x1080}'
+    UA_PLATFORMS = {
+      mac: 'Macintosh; Intel Mac OS X 10_15_7',
+      windows: 'Windows NT 10.0; Win64; x64',
+      linux: 'X11; Linux x86_64'
+    }.freeze
+
+    # Major version of the Chrome binary, nil when it cannot be determined
+    def self.chrome_major_version(path)
+      @chrome_versions ||= {}
+      return @chrome_versions[path] if @chrome_versions.key?(path)
+
+      binary = path || Ferrum::Browser::Options::Chrome.instance.detect_path
+      output, = Open3.capture2(binary.to_s, '--version')
+      @chrome_versions[path] = output[/(\d+)\.\d+\.\d+/, 1]&.to_i
+    rescue StandardError
+      @chrome_versions[path] = nil
+    end
 
     attr_reader :browser, :config, :logger
 
@@ -125,7 +149,7 @@ module FerrumMCP
     # Browser flags come from the session configuration (defaults merged with
     # session-specific options, keys without leading dashes).
     def computed_browser_options
-      options = ferrum_default_options.merge(config.merged_browser_options)
+      options = ferrum_default_options.merge(headless_disguise_options).merge(config.merged_browser_options)
       logger.info "Using BotBrowser profile: #{options['bot-profile']}" if options['bot-profile']
       logger.info "Using user profile: #{options['user-data-dir']}" if options['user-data-dir']
       options
@@ -137,6 +161,20 @@ module FerrumMCP
       defaults = defaults.except('headless', 'disable-gpu') unless config.headless
       defaults = defaults.merge('use-angle' => 'metal') if Ferrum::Utils::Platform.mac_arm?
       defaults
+    end
+
+    # BotBrowser profiles manage their own user agent and screen.
+    def headless_disguise_options
+      return {} unless config.headless && !config.using_botbrowser?
+
+      options = { 'screen-info' => HEADLESS_SCREEN }
+      major = self.class.chrome_major_version(config.browser_path)
+      platform = UA_PLATFORMS[Ferrum::Utils::Platform.name]
+      if major && platform
+        options['user-agent'] =
+          "Mozilla/5.0 (#{platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/#{major}.0.0.0 Safari/537.36"
+      end
+      options
     end
   end
 end
