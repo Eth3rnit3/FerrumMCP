@@ -29,16 +29,22 @@ module FerrumMCP
         exit 1
       end
 
+      # Runs the server until STDIN closes (stdio) or a signal arrives (http).
+      # Shutdown always happens here, on the main thread, never inside a trap.
       def start
         validate!
         setup_servers
         setup_signal_handlers
         log_startup_info
         run
+      rescue SignalException
+        config.logger.info 'Signal received, shutting down'
       rescue StandardError => e
         config.logger.error "ERROR: #{e.message}"
         config.logger.error e.backtrace.join("\n")
         exit 1
+      ensure
+        shutdown
       end
 
       private
@@ -59,16 +65,23 @@ module FerrumMCP
         end
       end
 
+      # Trap handlers must not log or take locks (Ruby forbids Mutex use in
+      # trap context), so they only interrupt the main thread; #start does the
+      # actual shutdown.
       def setup_signal_handlers
-        trap('INT') { shutdown }
-        trap('TERM') { shutdown }
+        %w[INT TERM].each do |signal|
+          trap(signal) { raise Interrupt, signal }
+        end
       end
 
       def shutdown
+        return if @shutdown_done
+
+        @shutdown_done = true
         config.logger.info 'Shutting down...'
-        transport_server.stop
-        mcp_server.stop_browser
-        exit 0
+        transport_server&.stop
+        mcp_server&.shutdown
+        config.logger.info 'Shutdown complete'
       end
 
       def log_startup_info
@@ -158,7 +171,7 @@ module FerrumMCP
 
       def run
         transport_server.start
-        # Keep main thread alive for HTTP (stdio blocks automatically)
+        # Keep main thread alive for HTTP (stdio blocks until STDIN closes)
         sleep if @options[:transport] == 'http'
       end
     end
