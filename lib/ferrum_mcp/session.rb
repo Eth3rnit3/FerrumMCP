@@ -157,6 +157,13 @@ module FerrumMCP
       @base_config.logger
     end
 
+    # Browser flags handed to Ferrum: defaults merged with session-specific
+    # options. Ferrum prefixes every key with "--" itself, so keys are stored
+    # without dashes ("window-size", not "--window-size").
+    def merged_browser_options
+      default_browser_options.merge(normalized_browser_options)
+    end
+
     private
 
     def resolve_browser(overrides, base_config)
@@ -200,10 +207,10 @@ module FerrumMCP
       end
     end
 
-    # Merge session-specific browser options with base options
-    def merged_browser_options
-      base_options = default_browser_options
-      base_options.merge(@browser_options)
+    def normalized_browser_options
+      @browser_options.to_h.transform_keys do |key|
+        key.to_s.sub(/\A-+/, '')
+      end
     end
 
     def default_browser_options
@@ -215,6 +222,7 @@ module FerrumMCP
       }
 
       options['disable-setuid-sandbox'] = nil if ENV['CI']
+      options['user-data-dir'] = user_profile.path if user_profile
 
       # Add BotBrowser profile if configured
       if using_botbrowser? && botbrowser_profile && File.exist?(botbrowser_profile)

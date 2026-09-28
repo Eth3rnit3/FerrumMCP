@@ -62,39 +62,12 @@ module FerrumMCP
 
     private
 
-    # Compute browser options, merging defaults with session-specific options
+    # Browser flags come from the session configuration (defaults merged with
+    # session-specific options, keys without leading dashes).
     def computed_browser_options
-      # Use merged options if config supports it (SessionConfiguration)
-      options = if config.respond_to?(:merged_browser_options)
-                  config.merged_browser_options
-                else
-                  browser_options
-                end
-
-      # Log BotBrowser profile usage
-      if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)
-        logger.info "Using BotBrowser profile: #{config.botbrowser_profile}"
-      end
-
-      options
-    end
-
-    def browser_options
-      options = {
-        'no-sandbox' => nil,
-        'disable-dev-shm-usage' => nil,
-        'disable-blink-features' => 'AutomationControlled',
-        'disable-gpu' => nil
-      }
-
-      # Additional options for CI environments
-      options['disable-setuid-sandbox'] = nil if ENV['CI']
-
-      # Add BotBrowser profile if configured
-      if config.using_botbrowser? && config.botbrowser_profile && File.exist?(config.botbrowser_profile)
-        options['bot-profile'] = config.botbrowser_profile
-      end
-
+      options = config.merged_browser_options
+      logger.info "Using BotBrowser profile: #{options['bot-profile']}" if options['bot-profile']
+      logger.info "Using user profile: #{options['user-data-dir']}" if options['user-data-dir']
       options
     end
   end
