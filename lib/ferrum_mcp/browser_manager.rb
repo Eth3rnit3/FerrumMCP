@@ -96,6 +96,7 @@ module FerrumMCP
       # Only set browser_path if explicitly configured
       browser_options_hash[:browser_path] = config.browser_path if config.browser_path
 
+      FerrumPatches.apply!
       @browser = Ferrum::Browser.new(**browser_options_hash)
 
       logger.info 'Browser started successfully'
