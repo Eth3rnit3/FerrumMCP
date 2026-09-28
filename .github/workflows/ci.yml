@@ -9,7 +9,41 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR cancels the run still going for the previous commit
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Docker images only need rebuilding when something that goes into them changed
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check paths that affect the Docker images
+        id: filter
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "No usable base commit, assuming Docker inputs changed"
+            echo "docker=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BASE" "$GITHUB_SHA")
+          echo "Changed files:"; echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^(Dockerfile|\.dockerignore|Gemfile|lib/|bin/|\.github/scripts/|\.github/workflows/(ci|docker-publish)\.yml)'; then
+            echo "docker=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docker=false" >> "$GITHUB_OUTPUT"
+          fi
+
   rubocop:
     name: RuboCop
     runs-on: ubuntu-latest
@@ -127,6 +161,9 @@ jobs:
   docker:
     name: Docker Image (build + smoke test)
     runs-on: ubuntu-latest
+    needs: changes
+    # Pull requests only: on main, docker-publish.yml builds (and publishes) the images
+    if: github.event_name == 'pull_request' && needs.changes.outputs.docker == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -169,6 +206,9 @@ jobs:
   docker-botbrowser:
     name: Docker BotBrowser Image (build)
     runs-on: ubuntu-latest
+    needs: changes
+    # Pull requests only: on main, docker-publish.yml builds (and publishes) the images
+    if: github.event_name == 'pull_request' && needs.changes.outputs.docker == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -207,20 +247,22 @@ jobs:
   all-checks:
     name: All Checks Passed
     runs-on: ubuntu-latest
-    needs: [rubocop, zeitwerk, test, docker, docker-botbrowser]
+    needs: [changes, rubocop, zeitwerk, test, docker, docker-botbrowser]
     if: always()
     steps:
       - name: Check all jobs
         run: |
-          if [[ "${{ needs.rubocop.result }}" == "success" && \
+          if [[ "${{ needs.changes.result }}" == "success" && \
+                "${{ needs.rubocop.result }}" == "success" && \
                 "${{ needs.zeitwerk.result }}" == "success" && \
                 "${{ needs.test.result }}" == "success" && \
-                "${{ needs.docker.result }}" == "success" && \
-                "${{ needs.docker-botbrowser.result }}" == "success" ]]; then
+                "${{ needs.docker.result }}" =~ ^(success|skipped)$ && \
+                "${{ needs.docker-botbrowser.result }}" =~ ^(success|skipped)$ ]]; then
             echo "✅ All checks passed!"
             exit 0
           else
             echo "❌ Some checks failed:"
+            echo "  Change detection: ${{ needs.changes.result }}"
             echo "  RuboCop: ${{ needs.rubocop.result }}"
             echo "  Zeitwerk: ${{ needs.zeitwerk.result }}"
             echo "  Tests: ${{ needs.test.result }}"

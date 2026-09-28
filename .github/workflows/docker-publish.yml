@@ -7,17 +7,62 @@ on:
       - master
     tags:
       - 'v*.*.*'
+    # Only for branch pushes (GitHub ignores path filters on tag pushes):
+    # skip the build when nothing that goes into the images changed
+    paths:
+      - 'Dockerfile'
+      - 'Dockerfile.with-botbrowser'
+      - '.dockerignore'
+      - 'Gemfile'
+      - 'Gemfile.lock'
+      - 'lib/**'
+      - 'bin/**'
+      - '.github/workflows/docker-publish.yml'
   workflow_dispatch:
+
+# Never run two publishes of the same ref at once; a newer main push
+# supersedes an older one, release tags always run to completion
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type == 'branch' }}
 
 env:
   DOCKER_USERNAME: eth3rnit3
   DOCKER_IMAGE: eth3rnit3/ferrum-mcp
 
 jobs:
+  # A release tag points at a commit that main usually built already: reuse
+  # those per-architecture images instead of rebuilding them (BotBrowser ARM64
+  # alone takes ~30 min under QEMU).
+  check-existing:
+    name: Reuse images already built for this commit
+    runs-on: ubuntu-latest
+    outputs:
+      standard: ${{ steps.check.outputs.standard }}
+      botbrowser: ${{ steps.check.outputs.botbrowser }}
+    steps:
+      - name: Look up per-architecture images on Docker Hub
+        id: check
+        run: |
+          exists() { curl -fsS -o /dev/null "https://hub.docker.com/v2/repositories/${{ env.DOCKER_IMAGE }}/tags/$1"; }
+          SHA="${{ github.sha }}"
+          if [ "${{ github.ref_type }}" = "tag" ] && exists "amd64-$SHA" && exists "arm64-$SHA"; then
+            echo "standard=true" >> "$GITHUB_OUTPUT"; echo "Reusing standard images for $SHA"
+          else
+            echo "standard=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "${{ github.ref_type }}" = "tag" ] && exists "botbrowser-amd64-$SHA" && exists "botbrowser-arm64-$SHA"; then
+            echo "botbrowser=true" >> "$GITHUB_OUTPUT"; echo "Reusing BotBrowser images for $SHA"
+          else
+            echo "botbrowser=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # Build AMD64 and ARM64 images separately to avoid QEMU timeout issues
   build-standard-amd64:
     name: Build Standard Image (AMD64)
     runs-on: ubuntu-latest
+    needs: check-existing
+    if: needs.check-existing.outputs.standard != 'true'
     permissions:
       contents: read
       packages: write
@@ -50,6 +95,8 @@ jobs:
   build-standard-arm64:
     name: Build Standard Image (ARM64)
     runs-on: ubuntu-latest
+    needs: check-existing
+    if: needs.check-existing.outputs.standard != 'true'
     permissions:
       contents: read
       packages: write
@@ -88,8 +135,9 @@ jobs:
   create-standard-manifest:
     name: Create Standard Multi-arch Manifest
     runs-on: ubuntu-latest
-    needs: [build-standard-amd64, build-standard-arm64]
-    if: github.event_name != 'pull_request'
+    needs: [check-existing, build-standard-amd64, build-standard-arm64]
+    # Runs after the builds, or right away when they were skipped (images reused)
+    if: github.event_name != 'pull_request' && !failure() && !cancelled()
     permissions:
       contents: read
       packages: write
@@ -135,6 +183,8 @@ jobs:
   build-botbrowser-amd64:
     name: Build BotBrowser Image (AMD64)
     runs-on: ubuntu-latest
+    needs: check-existing
+    if: needs.check-existing.outputs.botbrowser != 'true'
     permissions:
       contents: read
       packages: write
@@ -169,6 +219,8 @@ jobs:
   build-botbrowser-arm64:
     name: Build BotBrowser Image (ARM64)
     runs-on: ubuntu-latest
+    needs: check-existing
+    if: needs.check-existing.outputs.botbrowser != 'true'
     permissions:
       contents: read
       packages: write
@@ -209,8 +261,8 @@ jobs:
   create-botbrowser-manifest:
     name: Create BotBrowser Multi-arch Manifest
     runs-on: ubuntu-latest
-    needs: [build-botbrowser-amd64, build-botbrowser-arm64]
-    if: github.event_name != 'pull_request'
+    needs: [check-existing, build-botbrowser-amd64, build-botbrowser-arm64]
+    if: github.event_name != 'pull_request' && !failure() && !cancelled()
     permissions:
       contents: read
       packages: write
