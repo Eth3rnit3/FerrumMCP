@@ -93,6 +93,25 @@ def start_test_server
     res.body = header + samples
   end
 
+  # A page that registers a service worker (served from the same origin)
+  server.mount_proc '/sw/page' do |_req, res|
+    res['Content-Type'] = 'text/html'
+    res.body = <<~HTML
+      <!DOCTYPE html><html><body><script>
+        window.swState = 'pending';
+        navigator.serviceWorker.register('/sw/worker.js')
+          .then(() => navigator.serviceWorker.ready)
+          .then(() => { window.swState = 'active'; })
+          .catch((e) => { window.swState = 'error: ' + e.message; });
+      </script></body></html>
+    HTML
+  end
+  server.mount_proc '/sw/worker.js' do |_req, res|
+    res['Content-Type'] = 'application/javascript'
+    res.body = "self.addEventListener('install', () => self.skipWaiting());\n" \
+               "self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));\n"
+  end
+
   # Keep the default test page for backward compatibility
   server.mount_proc '/test' do |_req, res|
     res.status = 200
