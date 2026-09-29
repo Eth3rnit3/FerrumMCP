@@ -120,7 +120,7 @@ RSpec.describe FerrumMCP::BrowserManager do
     describe '.cpu_architecture' do
       # An x86 Ruby under Rosetta reports x86_64 while Chrome runs arm64
       it "reads the Mac's hardware, not Ruby's build" do
-        allow(Ferrum::Utils::Platform).to receive(:name).and_return(:mac)
+        allow(described_class).to receive(:platform).and_return(:mac)
         allow(Open3).to receive(:capture2).with('sysctl', '-n', 'hw.optional.arm64').and_return(["1\n", nil])
         stub_const('RbConfig::CONFIG', RbConfig::CONFIG.merge('host_cpu' => 'x86_64'))
 
@@ -128,7 +128,7 @@ RSpec.describe FerrumMCP::BrowserManager do
       end
 
       it 'reads the Linux machine type' do
-        allow(Ferrum::Utils::Platform).to receive(:name).and_return(:linux)
+        allow(described_class).to receive(:platform).and_return(:linux)
         allow(Etc).to receive(:uname).and_return(machine: 'x86_64')
 
         expect(described_class.cpu_architecture).to eq('x86')
@@ -137,14 +137,14 @@ RSpec.describe FerrumMCP::BrowserManager do
 
     describe '.os_version' do
       it 'formats the OS version as major.minor.bugfix' do
-        allow(Ferrum::Utils::Platform).to receive(:name).and_return(:linux)
+        allow(described_class).to receive(:platform).and_return(:linux)
         allow(Etc).to receive(:uname).and_return(release: '6.8.0-45-generic')
 
         expect(described_class.os_version).to eq('6.8.0')
       end
 
       it 'pads a short version' do
-        allow(Ferrum::Utils::Platform).to receive(:name).and_return(:mac)
+        allow(described_class).to receive(:platform).and_return(:mac)
         allow(Open3).to receive(:capture2).with('sw_vers', '-productVersion').and_return(["27.0\n", nil])
 
         expect(described_class.os_version).to eq('27.0.0')

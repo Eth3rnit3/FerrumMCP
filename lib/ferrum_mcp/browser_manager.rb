@@ -50,10 +50,20 @@ module FerrumMCP
       @chrome_versions[path] = nil
     end
 
+    # :mac, :windows or :linux. Not Ferrum::Utils::Platform.name, renamed to
+    # platform_name in Ferrum 0.17.2 (Module#name answered in its place).
+    def self.platform
+      case RbConfig::CONFIG['host_os']
+      when /darwin|mac os/ then :mac
+      when /mswin|mingw|cygwin/ then :windows
+      else :linux
+      end
+    end
+
     # OS version as Chrome reports it in the client hints ("major.minor.bugfix").
     # Windows reports an API contract version Ruby cannot read: left empty.
     def self.os_version
-      raw = case Ferrum::Utils::Platform.name
+      raw = case platform
             when :mac then Open3.capture2('sw_vers', '-productVersion').first
             when :linux then Etc.uname[:release]
             end
@@ -66,7 +76,7 @@ module FerrumMCP
     # CPU architecture as Chrome reports it ("arm" or "x86"). The machine's,
     # not Ruby's: an x86 Ruby under Rosetta still runs the arm64 Chrome.
     def self.cpu_architecture
-      arm = case Ferrum::Utils::Platform.name
+      arm = case platform
             when :mac then Open3.capture2('sysctl', '-n', 'hw.optional.arm64').first.strip == '1'
             when :linux then Etc.uname[:machine].match?(/arm|aarch64/)
             else RbConfig::CONFIG['host_cpu'].match?(/arm|aarch64/)
@@ -228,7 +238,7 @@ module FerrumMCP
     def user_agent_override
       return unless masked_user_agent && !config.merged_browser_options.key?('user-agent')
 
-      platform = Ferrum::Utils::Platform.name
+      platform = self.class.platform
       {
         userAgent: masked_user_agent,
         userAgentMetadata: {
@@ -245,7 +255,7 @@ module FerrumMCP
       return unless disguise_headless?
 
       version = self.class.chrome_version(config.browser_path)
-      platform = UA_PLATFORMS[Ferrum::Utils::Platform.name]
+      platform = UA_PLATFORMS[self.class.platform]
       return unless version && platform
 
       "Mozilla/5.0 (#{platform}) AppleWebKit/537.36 (KHTML, like Gecko) " \
