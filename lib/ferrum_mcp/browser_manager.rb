@@ -63,6 +63,19 @@ module FerrumMCP
       ''
     end
 
+    # CPU architecture as Chrome reports it ("arm" or "x86"). The machine's,
+    # not Ruby's: an x86 Ruby under Rosetta still runs the arm64 Chrome.
+    def self.cpu_architecture
+      arm = case Ferrum::Utils::Platform.name
+            when :mac then Open3.capture2('sysctl', '-n', 'hw.optional.arm64').first.strip == '1'
+            when :linux then Etc.uname[:machine].match?(/arm|aarch64/)
+            else RbConfig::CONFIG['host_cpu'].match?(/arm|aarch64/)
+            end
+      arm ? 'arm' : 'x86'
+    rescue StandardError
+      RbConfig::CONFIG['host_cpu'].match?(/arm|aarch64/) ? 'arm' : 'x86'
+    end
+
     attr_reader :browser, :config, :logger
 
     def initialize(config)
@@ -219,7 +232,7 @@ module FerrumMCP
         userAgent: masked_user_agent,
         userAgentMetadata: {
           platform: UA_METADATA_PLATFORMS[platform], platformVersion: self.class.os_version,
-          architecture: RbConfig::CONFIG['host_cpu'].match?(/arm|aarch64/) ? 'arm' : 'x86',
+          architecture: self.class.cpu_architecture,
           bitness: '64', model: '', mobile: false, wow64: false,
           fullVersion: self.class.chrome_version(config.browser_path)
         }
