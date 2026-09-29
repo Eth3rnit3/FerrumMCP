@@ -103,9 +103,15 @@ module FerrumMCP
         command('Runtime.evaluate', contextId: world, expression: <<~JS)
           document.dispatchEvent(new CustomEvent('#{@context_lookup_name}', { detail: '#{frame_id}' }))
         JS
-        # A document without the listener only has the isolated world: the DOM
-        # is there, not the page's globals.
-        answer.pop(timeout: CONTEXT_LOOKUP_TIMEOUT) || world
+        # A document without the listener (no scripts allowed) only has the
+        # isolated world: the DOM is there, not the page's globals.
+        answer.pop(timeout: CONTEXT_LOOKUP_TIMEOUT) || begin
+          @options.to_h[:mcp_logger]&.warn(
+            "Frame #{frame_id}: main world unreachable, JavaScript runs in an isolated world " \
+            '(the DOM is visible, not the page globals)'
+          )
+          world
+        end
       ensure
         @context_lookups&.delete(frame_id)
       end

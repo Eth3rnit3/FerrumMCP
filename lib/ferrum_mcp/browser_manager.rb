@@ -129,6 +129,7 @@ module FerrumMCP
       }
       override = user_agent_override
       browser_options_hash[:user_agent_override] = override if override
+      browser_options_hash[:mcp_logger] = logger # FerrumPatches warnings
 
       # Only set browser_path if explicitly configured
       browser_options_hash[:browser_path] = config.browser_path if config.browser_path
