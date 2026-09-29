@@ -55,6 +55,30 @@ RSpec.describe 'Runtime domain leak' do
     expect(titles.last).not_to eq('CDP console probe')
   end
 
+  # Chrome never reports the New Tab page's iframes detached: they stayed in
+  # page.frames and code looking for a frame could pick a dead one.
+  it "forgets the startup tab's iframes once the page navigates" do
+    frames = session_manager.with_session(sid) do |bm|
+      bm.page.go_to(test_url('/test'))
+      bm.page.frames.map(&:id)
+    end
+
+    expect(frames).to eq(session_manager.with_session(sid) { |bm| [bm.page.main_frame.id] })
+  end
+
+  # The main-world lookup needs a script in the frame; without one the
+  # evaluation falls back to an isolated world, where page globals are missing.
+  it 'warns when a frame only offers an isolated world' do
+    session_manager.with_session(sid) do |bm|
+      allow(bm.logger).to receive(:warn)
+      bm.page.go_to(test_url('/fixtures/stealth/sandboxed_frame'))
+      frame = bm.page.frames.find { |f| f.id != bm.page.main_frame.id }
+
+      expect(frame.evaluate("document.getElementById('inner').textContent")).to eq('no scripts here')
+      expect(bm.logger).to have_received(:warn).with(/isolated world/)
+    end
+  end
+
   # Ferrum builds a popup's page when the code first asks for it, once its
   # iframes are loaded. Runtime.enable used to report them; Page.frameAttached
   # only reports frames attached later.
