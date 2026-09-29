@@ -36,10 +36,13 @@ puts "ok  tools/list (#{tools.size} tools)"
 
 session_id = call_tool.call('create_session', { headless: true })['session_id']
 call_tool.call('navigate', { session_id: session_id, url: 'https://example.com' })
-snapshot = call_tool.call('snapshot', { session_id: session_id })['snapshot']
-abort "unexpected snapshot:\n#{snapshot}" unless snapshot.include?('Example Domain')
-text = call_tool.call('get_text', { session_id: session_id, selector: 'h1' })['text']
-abort "unexpected h1 text: #{text.inspect}" unless text == 'Example Domain'
+# example.com dropped its <h1> in 2026; only its title and a link are checked
+snapshot = call_tool.call('snapshot', { session_id: session_id })
+unless snapshot['title'] == 'Example Domain' && snapshot['snapshot'].include?('link ')
+  abort "unexpected snapshot:\n#{snapshot.inspect}"
+end
+text = call_tool.call('get_text', { session_id: session_id, selector: 'body' })['text']
+abort "unexpected body text: #{text.inspect}" unless text.to_s.include?('domain')
 image = call_tool.call('screenshot', { session_id: session_id })
 abort 'screenshot is not an image' unless image['type'] == 'image'
 call_tool.call('close_session', { session_id: session_id })
