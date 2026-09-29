@@ -117,6 +117,24 @@ RSpec.describe FerrumMCP::BrowserManager do
       expect(launch_kwargs).not_to have_key(:user_agent_override)
     end
 
+    describe '.cpu_architecture' do
+      # An x86 Ruby under Rosetta reports x86_64 while Chrome runs arm64
+      it "reads the Mac's hardware, not Ruby's build" do
+        allow(Ferrum::Utils::Platform).to receive(:name).and_return(:mac)
+        allow(Open3).to receive(:capture2).with('sysctl', '-n', 'hw.optional.arm64').and_return(["1\n", nil])
+        stub_const('RbConfig::CONFIG', RbConfig::CONFIG.merge('host_cpu' => 'x86_64'))
+
+        expect(described_class.cpu_architecture).to eq('arm')
+      end
+
+      it 'reads the Linux machine type' do
+        allow(Ferrum::Utils::Platform).to receive(:name).and_return(:linux)
+        allow(Etc).to receive(:uname).and_return(machine: 'x86_64')
+
+        expect(described_class.cpu_architecture).to eq('x86')
+      end
+    end
+
     describe '.os_version' do
       it 'formats the OS version as major.minor.bugfix' do
         allow(Ferrum::Utils::Platform).to receive(:name).and_return(:linux)
