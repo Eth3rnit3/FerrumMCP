@@ -123,7 +123,7 @@ module FerrumMCP
 
         @context_lookup_name = "_#{SecureRandom.alphanumeric(12)}"
         @context_lookups = Concurrent::Map.new
-        register_main_frame
+        register_frames
         on('Runtime.bindingCalled') do |params|
           next unless params['name'] == @context_lookup_name
 
@@ -158,13 +158,29 @@ module FerrumMCP
         JS
       end
 
-      # Ferrum registered the main frame from Runtime.executionContextCreated.
-      # Child frames come from Page.frameAttached; registering the current
-      # ones would include out-of-process iframes (New Tab page) that never
-      # report their loading state here, and navigations would wait for them.
-      def register_main_frame
-        @main_frame.id ||= command('Page.getFrameTree').dig('frameTree', 'frame', 'id')
+      # Ferrum registered the frames already there (a popup's iframes, loaded
+      # before the code picks the popup up) from Runtime.executionContextCreated.
+      # They are registered as loaded: navigations wait for every frame to stop
+      # loading. Out-of-process iframes (New Tab page, Turnstile) are separate
+      # targets whose loading this page never hears about; Ferrum left them out.
+      def register_frames
+        tree = command('Page.getFrameTree')['frameTree']
+        @main_frame.id ||= tree.dig('frame', 'id')
         @frames.put_if_absent(@main_frame.id, @main_frame)
+        out_of_process = out_of_process_frame_ids
+        FrameTree.flatten(tree).drop(1).each do |info|
+          next if out_of_process.include?(info['id'])
+
+          frame = Ferrum::Frame.new(info['id'], self, info['parentId'])
+          frame.name = info['name']
+          frame.state = :stopped_loading
+          @frames.put_if_absent(info['id'], frame)
+        end
+      end
+
+      # An out-of-process iframe is a target whose id is its frame id.
+      def out_of_process_frame_ids
+        command('Target.getTargets')['targetInfos'].filter_map { |t| t['targetId'] if t['type'] == 'iframe' }
       end
 
       def forget_execution_context(context_id)
