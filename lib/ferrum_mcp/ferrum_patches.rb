@@ -129,8 +129,17 @@ module FerrumMCP
 
           @context_lookups[params['payload']]&.push(params['executionContextId'])
         end
-        # A new document gets a new context: forget the old one.
-        on('Page.frameNavigated') { |params| @frames[params.dig('frame', 'id')]&.execution_id = nil }
+        on('Page.frameNavigated') { |params| forget_document(params['frame']) }
+      end
+
+      # A new document gets a new context. A new top document also drops every
+      # child frame: Chrome does not always report the old ones detached (New
+      # Tab page iframes), and they come back through Page.frameAttached.
+      def forget_document(frame)
+        @frames[frame['id']]&.execution_id = nil
+        return if frame['parentId']
+
+        @frames.each_key { |id| @frames.delete(id) unless id == frame['id'] }
       end
 
       # Runs the listener in every current document, then drops the script so
