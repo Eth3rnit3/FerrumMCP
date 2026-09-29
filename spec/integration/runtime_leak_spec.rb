@@ -54,4 +54,22 @@ RSpec.describe 'Runtime domain leak' do
     expect(titles.first).to eq('CDP console probe')
     expect(titles.last).not_to eq('CDP console probe')
   end
+
+  # Ferrum builds a popup's page when the code first asks for it, once its
+  # iframes are loaded. Runtime.enable used to report them; Page.frameAttached
+  # only reports frames attached later.
+  it 'sees the iframes a popup had before Ferrum picked it up' do
+    value = session_manager.with_session(sid) do |bm|
+      bm.page.go_to(test_url('/fixtures/stealth/popup_opener'))
+      bm.page.at_css('#open').click
+      deadline = Time.now + 5
+      sleep 0.2 until bm.pages.size > 1 || Time.now > deadline
+      sleep 1
+      popup = bm.pages.find { |page| page != bm.page }
+      frame = popup.frames.find { |f| f.id != popup.main_frame.id }
+      frame&.evaluate("document.getElementById('inner').textContent + ':' + window.frameGlobal")
+    end
+
+    expect(value).to eq('in popup frame:popup-frame')
+  end
 end
