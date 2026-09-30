@@ -3,6 +3,22 @@
 require 'spec_helper'
 
 RSpec.describe FerrumMCP::Captcha::Detector do
+  describe '.iframes' do
+    let(:page) { instance_double(Ferrum::Page) }
+
+    it 'returns no iframe when the DOM cannot be read' do
+      allow(page).to receive(:command).and_raise(Ferrum::NodeNotFoundError, 'gone')
+
+      expect(described_class.iframes(page)).to eq([])
+    end
+
+    it 'lets a dead browser error through' do
+      allow(page).to receive(:command).and_raise(Ferrum::DeadBrowserError)
+
+      expect { described_class.iframes(page) }.to raise_error(Ferrum::DeadBrowserError)
+    end
+  end
+
   describe '.types_for_urls' do
     it 'recognises reCAPTCHA anchors on google.com and recaptcha.net, including enterprise' do
       urls = ['https://www.google.com/recaptcha/api2/anchor?ar=1&k=key&hl=fr',

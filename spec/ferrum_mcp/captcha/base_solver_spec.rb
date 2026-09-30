@@ -14,6 +14,29 @@ RSpec.describe FerrumMCP::Captcha::BaseSolver do
     allow(mouse).to receive(:move) { |x:, y:| moves << [x, y] }
   end
 
+  describe '#wait_until' do
+    it 'treats errors raised while the widget re-renders as "not yet"' do
+      calls = 0
+      value = solver.send(:wait_until, 1) do
+        calls += 1
+        raise Ferrum::NodeNotFoundError, 'detached' if calls == 1
+
+        :ready
+      end
+
+      expect(value).to eq(:ready)
+    end
+
+    # The session marks its browser dead on this error; polling on it for the
+    # whole timeout would hide it.
+    it 'lets a dead browser error through immediately' do
+      expect do
+        solver.send(:wait_until, 5) { raise Ferrum::DeadBrowserError }
+      end.to raise_error(Ferrum::DeadBrowserError)
+      expect(solver).not_to have_received(:sleep)
+    end
+  end
+
   # reCAPTCHA watches the pointer on the whole page before the click; a bot
   # that appears on the checkbox from nowhere gets the decoy audio.
   describe '#warm_up' do
