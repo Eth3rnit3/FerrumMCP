@@ -37,7 +37,8 @@ module FerrumMCP
         logger.info "solve_captcha: solving #{type}"
         solver = Captcha::Detector.solver_class(type).new(
           page, logger: logger, max_attempts: params[:max_attempts].to_i.clamp(1, 10),
-                language: params[:language]
+                language: params[:language],
+                on_progress: ->(current, total, message) { report_progress(current, total: total, message: message) }
         )
         respond(solver.solve, screenshot: params[:screenshot_on_failure])
       end

@@ -116,10 +116,10 @@ module FerrumMCP
 
       def open_challenge
         if invisible?
-          logger.info 'reCAPTCHA: invisible widget, calling grecaptcha.execute()'
+          progress(0, max_attempts, 'invisible widget, calling grecaptcha.execute()')
           page.evaluate(EXECUTE_INVISIBLE_JS)
         else
-          logger.info 'reCAPTCHA: clicking the checkbox'
+          progress(0, max_attempts, 'moving over the page, then clicking the checkbox')
           warm_up(rand(WARM_UP_SECONDS))
           human_click_node(@anchor.at_css('#recaptcha-anchor'))
         end
@@ -143,6 +143,7 @@ module FerrumMCP
           source = audio_source
           return unsolved(:failed, 'reCAPTCHA audio challenge not available', attempts: round) unless source
 
+          progress(round + 1, max_attempts, "audio round #{round + 1}/#{max_attempts}: transcribing")
           audio = download_audio(source)
           return known_decoy(round + 1) if self.class.known_decoy?(audio)
 

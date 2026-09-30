@@ -32,7 +32,7 @@ module FerrumMCP
         checkbox_frame = frames_matching(Detector::FRAME_PATTERNS[:hcaptcha]).find { |frame| frame_visible?(frame) }
         return unsolved(:failed, 'hCaptcha checkbox is not visible') unless checkbox_frame
 
-        logger.info 'hCaptcha: clicking the checkbox'
+        progress(1, 1, 'clicking the checkbox')
         pause(0.4, 1.0)
         human_click_node(checkbox_frame.at_css('#checkbox'))
 

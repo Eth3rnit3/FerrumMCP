@@ -47,7 +47,7 @@ module FerrumMCP
           return unsolved(:failed, 'Turnstile widget did not render', attempts: attempt) unless box
           return outcome(box, attempt) if box.is_a?(Symbol)
 
-          click_checkbox(box)
+          click_checkbox(box, attempt + 1)
           state = wait_until(15) { current_state }
           return outcome(state, attempt + 1) if state
         end
@@ -74,8 +74,8 @@ module FerrumMCP
         iframe_boxes(Detector::FRAME_PATTERNS[:turnstile]).find { |box| box[:width] > 100 && box[:height] > 30 }
       end
 
-      def click_checkbox(box)
-        logger.info 'Turnstile: clicking the checkbox'
+      def click_checkbox(box, attempt)
+        progress(attempt, max_attempts, "clicking the checkbox (attempt #{attempt}/#{max_attempts})")
         pause(0.5, 1.2)
         x = box[:x] + [CHECKBOX_OFFSET_X, box[:width] / 2].min + rand(-4.0..4.0)
         y = box[:y] + (box[:height] / 2) + rand(-4.0..4.0)

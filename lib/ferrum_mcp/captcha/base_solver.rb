@@ -35,6 +35,13 @@ module FerrumMCP
         Result.unsolved(type, status, message, **details)
       end
 
+      # Progress for the caller (option :on_progress, a callable taking
+      # current, total, message). Solving can take minutes.
+      def progress(current, total, message)
+        logger.info "#{type}: #{message}"
+        options[:on_progress]&.call(current, total, message)
+      end
+
       def frames_matching(pattern)
         urls = Detector.frame_urls(page)
         page.frames.select { |frame| urls[frame.id].to_s.match?(pattern) }

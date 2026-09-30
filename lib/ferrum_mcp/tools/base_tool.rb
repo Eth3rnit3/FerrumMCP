@@ -23,9 +23,12 @@ module FerrumMCP
 
       attr_reader :logger
 
-      def initialize(browser_manager)
+      # progress: optional callable (current, total, message) sending an MCP
+      # progress notification to the client that made the call.
+      def initialize(browser_manager, progress: nil)
         @browser_manager = browser_manager
         @logger = browser_manager.logger
+        @progress = progress
       end
 
       # Entry point used by the server and the specs. Any error raised by
@@ -59,6 +62,11 @@ module FerrumMCP
 
       def ensure_browser_active
         raise BrowserError, 'Browser is not active' unless @browser_manager.active?
+      end
+
+      # Tell the client where a long operation stands (no-op without a channel)
+      def report_progress(current, total: nil, message: nil)
+        @progress&.call(current, total, message)
       end
 
       # Resolve a selector string into [:css, selector] or [:xpath, expression]

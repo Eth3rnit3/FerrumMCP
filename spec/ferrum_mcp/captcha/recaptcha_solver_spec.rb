@@ -58,7 +58,7 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
     let(:reports) { [] }
     let(:solver) do
       described_class.new(instance_double(Ferrum::Page), logger: Logger.new(File::NULL), max_attempts: 5,
-                                                          on_progress: ->(*args) { reports << args })
+                                                         on_progress: ->(*args) { reports << args })
     end
 
     before do
