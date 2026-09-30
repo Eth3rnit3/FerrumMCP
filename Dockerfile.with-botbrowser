@@ -38,8 +38,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install runtime libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libvips42 \
-    python3 \
-    python3-pip \
     ffmpeg \
     libnss3 \
     libatk1.0-0 \
@@ -132,8 +130,6 @@ WORKDIR /app
 COPY Gemfile Gemfile.lock ./
 RUN bundle config set --local without 'development test' && \
     bundle install --jobs=4 --retry=3 && \
-    # Install openai-whisper for CAPTCHA solving
-    pip3 install --no-cache-dir --break-system-packages openai-whisper && \
     # Remove build dependencies to reduce image size
     apt-get purge -y build-essential pkg-config libvips-dev && \
     apt-get autoremove -y && \

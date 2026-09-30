@@ -139,11 +139,12 @@ module FerrumMCP
     end
 
     def execute_tool(tool_class, params)
+      progress = progress_reporter(params[:server_context])
       params = params.except(:server_context)
       logger.debug "Executing tool: #{tool_class.tool_name} with params: #{params.inspect}"
 
       result = if tool_class.requires_session?
-                 execute_browser_tool(tool_class, params)
+                 execute_browser_tool(tool_class, params, progress)
                else
                  tool_class.new(session_manager).execute(params)
                end
@@ -155,7 +156,7 @@ module FerrumMCP
       error_tool_response("#{e.class}: #{e.message}")
     end
 
-    def execute_browser_tool(tool_class, params)
+    def execute_browser_tool(tool_class, params, progress)
       session_id = params[:session_id] || params['session_id']
       if session_id.nil? || session_id.to_s.empty?
         logger.error "session_id is required for #{tool_class.tool_name}"
@@ -163,7 +164,20 @@ module FerrumMCP
       end
 
       session_manager.with_session(session_id) do |browser_manager|
-        tool_class.new(browser_manager).execute(params)
+        tool_class.new(browser_manager, progress: progress).execute(params)
+      end
+    end
+
+    # notifications/progress for the running tool call, nil when the SDK gave
+    # no server context (a direct call) or the client sent no progress token
+    # (the SDK then drops the report itself).
+    def progress_reporter(server_context)
+      return unless server_context.respond_to?(:report_progress)
+
+      lambda do |current, total, message|
+        server_context.report_progress(current, total: total, message: message)
+      rescue StandardError => e
+        logger.debug "Progress notification failed: #{e.message}"
       end
     end
 

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>Just a moment...</title></head>
+<body>
+  <!-- Cloudflare interstitial that turns into a block page instead of letting the visitor through -->
+  <div id="challenge-stage">Checking your browser before accessing example.com.</div>
+  <script>
+    setTimeout(() => {
+      document.title = 'Attention Required! | Cloudflare';
+      document.body.innerHTML = '<div id="cf-error-details"><h1>Sorry, you have been blocked</h1>' +
+        '<p>You are unable to access example.com</p></div>';
+    }, 1500);
+  </script>
+</body>
+</html>

@@ -50,7 +50,10 @@ module FerrumMCP
         })()
       JS
 
-      # Evaluated in the host page: token of the widget whose anchor is arguments[0]
+      # Evaluated in the host page: token of the widget whose anchor is
+      # arguments[0]. Callback-only integrations have no response textarea;
+      # the token is then read through the grecaptcha API (every widget of
+      # the page is tried, the first non-empty response wins).
       TOKEN_JS = <<~JS
         (() => {
           let node = document.querySelector(`iframe[name="${arguments[0]}"]`);
@@ -59,7 +62,16 @@ module FerrumMCP
             if (area && area.value) return area.value;
           }
           const any = [...document.querySelectorAll('textarea[name="g-recaptcha-response"]')].find((a) => a.value);
-          return any ? any.value : null;
+          if (any) return any.value;
+          const api = window.grecaptcha && (window.grecaptcha.enterprise || window.grecaptcha);
+          if (!api || typeof api.getResponse !== 'function') return null;
+          for (const widgetId of [undefined, 0, 1, 2, 3]) {
+            try {
+              const value = api.getResponse(widgetId);
+              if (value) return value;
+            } catch (e) {}
+          }
+          return null;
         })()
       JS
 

@@ -28,4 +28,29 @@ RSpec.describe FerrumMCP::Tools::SolveCaptchaTool do
       expect(evaluate(sid, "document.querySelector('#username').value")).to eq('')
     end
   end
+
+  # The fixtures cannot load Cloudflare's frame, so detection is stubbed and
+  # the Turnstile solver runs against the imitated block page.
+  context 'when the CAPTCHA cannot be solved' do
+    before { allow(FerrumMCP::Captcha::Detector).to receive(:detect).and_return([:turnstile]) }
+
+    it 'attaches a screenshot so the agent can see what happened' do
+      sid = setup_session_with_fixture(session_manager, 'turnstile_blocked.html', subdir: 'captcha')
+
+      result = run_tool(sid, max_attempts: 1)
+
+      expect(result[:success]).to be false
+      expect(result[:error]).to include('turnstile, blocked')
+      expect(result[:image]).to match(%r{\A[A-Za-z0-9+/=]{100,}\z}) # base64 PNG
+    end
+
+    it 'skips the screenshot when asked to' do
+      sid = setup_session_with_fixture(session_manager, 'turnstile_blocked.html', subdir: 'captcha')
+
+      result = run_tool(sid, max_attempts: 1, screenshot_on_failure: false)
+
+      expect(result[:success]).to be false
+      expect(result).not_to have_key(:image)
+    end
+  end
 end

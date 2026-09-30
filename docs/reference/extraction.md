@@ -37,6 +37,7 @@ Compact, agent-friendly view of the page: interactive elements (links, buttons, 
 **Example Response (json):** `elements` is an array of `{ ref, role, tag, name, selector, href?, type?, placeholder?, value?, checked?, disabled?, level? }`.
 
 **Notes:**
+- When a CAPTCHA widget is on the page, the response carries `"captcha": ["turnstile"]` (also `recaptcha`, `hcaptcha`) and the text snapshot starts with `CAPTCHA detected: turnstile (solve_captcha)`
 - Refs are stored on the elements (`data-fmcp-ref`) and stay stable across snapshots until the page navigates
 - Typical loop: `snapshot` → `click ref:e5` → `wait_for_text` → `snapshot`
 - Names follow accessibility rules: `aria-label`, `<label for>`, placeholder, name, then visible text

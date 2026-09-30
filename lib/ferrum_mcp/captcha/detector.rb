@@ -41,6 +41,8 @@ module FerrumMCP
           attributes = node['attributes'].to_a.each_slice(2).to_h
           { src: attributes['src'].to_s, backend_node_id: node['backendNodeId'] }
         end
+      rescue Ferrum::DeadBrowserError
+        raise
       rescue StandardError
         []
       end

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>Contact form</title></head>
+<body>
+  <!-- Turnstile in invisible mode: no widget is rendered, the token lands in the hidden input once the script has run -->
+  <form id="contact">
+    <input type="hidden" name="cf-turnstile-response" value="">
+    <button type="submit">Send</button>
+  </form>
+  <script>
+    setTimeout(() => {
+      document.querySelector('input[name="cf-turnstile-response"]').value = '0.invisible-token-' + 'x'.repeat(40);
+    }, 5000); // later than the solver's first look, while it waits for a widget
+  </script>
+</body>
+</html>

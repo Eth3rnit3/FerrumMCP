@@ -24,6 +24,9 @@ module FerrumMCP
                            description: 'Maximum challenges to answer before giving up (default: 5)'
       param :language, type: :string,
                        description: 'Audio language for Whisper, e.g. "en" or "auto" (default: WHISPER_LANGUAGE or en)'
+      param :screenshot_on_failure, type: :boolean, default: true,
+                                    description: 'Attach a screenshot of the page when the CAPTCHA is not solved ' \
+                                                 '(default: true)'
 
       def perform(params)
         ensure_browser_active
@@ -34,9 +37,10 @@ module FerrumMCP
         logger.info "solve_captcha: solving #{type}"
         solver = Captcha::Detector.solver_class(type).new(
           page, logger: logger, max_attempts: params[:max_attempts].to_i.clamp(1, 10),
-                language: params[:language]
+                language: params[:language],
+                on_progress: ->(current, total, message) { report_progress(current, total: total, message: message) }
         )
-        respond(solver.solve)
+        respond(solver.solve, screenshot: params[:screenshot_on_failure])
       end
 
       private
@@ -59,14 +63,23 @@ module FerrumMCP
         "#{what} found on the page (supported: reCAPTCHA v2, hCaptcha, Cloudflare Turnstile)"
       end
 
-      def respond(result)
-        data = result.to_h
-        screenshot = data.delete(:screenshot)
-        return success_response(data) if result.solved?
+      # An unsolved result carries a screenshot so the agent sees the page
+      # (challenge grid, block page, error banner) and can decide what to do.
+      def respond(result, screenshot: true)
+        return success_response(result.to_h) if result.solved?
 
         response = error_response("CAPTCHA not solved (#{result.type}, #{result.status}): #{result.message}")
-        response[:image] = screenshot if screenshot
+        response[:image] = failure_screenshot if screenshot
         response
+      end
+
+      def failure_screenshot
+        page.screenshot(encoding: :base64, format: 'png')
+      rescue Ferrum::DeadBrowserError
+        raise
+      rescue StandardError => e
+        logger.debug "solve_captcha: screenshot failed: #{e.message}"
+        nil
       end
     end
   end

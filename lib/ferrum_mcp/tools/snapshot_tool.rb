@@ -31,12 +31,23 @@ module FerrumMCP
 
         data = { url: page.url, title: page.title, count: elements.length,
                  total: raw['total'], truncated: raw['truncated'] }
+        captcha = detected_captcha
+        data[:captcha] = captcha if captcha.any?
         if params[:format] == 'json'
           success_response(data.merge(elements: elements))
         else
-          success_response(data.merge(snapshot: elements.map { |e| format_line(e) }.join("\n")))
+          lines = elements.map { |e| format_line(e) }
+          lines.unshift("CAPTCHA detected: #{captcha.join(', ')} (solve_captcha)") if captcha.any?
+          success_response(data.merge(snapshot: lines.join("\n")))
         end
       end
+
+      # CAPTCHA widgets on the page ("turnstile", ...), so the agent knows
+      # about the wall from the snapshot it takes anyway.
+      def detected_captcha
+        Captcha::Detector.detect(page).map(&:to_s)
+      end
+      private :detected_captcha
 
       def format_line(element)
         role = element[:role]

@@ -30,17 +30,26 @@ module FerrumMCP
           !!document.querySelector('#challenge-form, #challenge-stage, .cf-browser-verification')
       JS
 
+      # Cloudflare's block page replaces the interstitial when the visitor is
+      # refused outright (WAF rule, IP reputation).
+      BLOCKED_JS = <<~JS
+        /sorry, you have been blocked|attention required|access denied/i.test(document.title) ||
+          !!document.querySelector('#cf-error-details, .cf-error-details, #cf-wrapper .cf-error-overview')
+      JS
+
       def solve
         @interstitial = interstitial?
-        return solved(0) if passed?
-        return solved(0) if wait_until(4) { passed? }
+        state = wait_until(4) { current_state }
+        return outcome(state, 0) if state
 
         max_attempts.times do |attempt|
-          box = wait_until(8) { widget_box }
+          box = wait_until(8) { current_state || widget_box }
           return unsolved(:failed, 'Turnstile widget did not render', attempts: attempt) unless box
+          return outcome(box, attempt) if box.is_a?(Symbol)
 
-          click_checkbox(box)
-          return solved(attempt + 1) if wait_until(15) { passed? }
+          click_checkbox(box, attempt + 1)
+          state = wait_until(15) { current_state }
+          return outcome(state, attempt + 1) if state
         end
 
         unsolved(:failed, "Turnstile did not issue a token after #{max_attempts} clicks (the browser " \
@@ -65,16 +74,34 @@ module FerrumMCP
         iframe_boxes(Detector::FRAME_PATTERNS[:turnstile]).find { |box| box[:width] > 100 && box[:height] > 30 }
       end
 
-      def click_checkbox(box)
-        logger.info 'Turnstile: clicking the checkbox'
+      def click_checkbox(box, attempt)
+        progress(attempt, max_attempts, "clicking the checkbox (attempt #{attempt}/#{max_attempts})")
         pause(0.5, 1.2)
         x = box[:x] + [CHECKBOX_OFFSET_X, box[:width] / 2].min + rand(-4.0..4.0)
         y = box[:y] + (box[:height] / 2) + rand(-4.0..4.0)
         human_click(x, y)
       end
 
+      # :blocked, :passed or nil while the challenge is still running. The block
+      # page is checked first: it also makes the interstitial "disappear".
+      def current_state
+        return :blocked if blocked?
+
+        :passed if passed?
+      end
+
+      def outcome(state, attempts)
+        state == :blocked ? blocked(attempts) : solved(attempts)
+      end
+
       def interstitial?
         page.evaluate(INTERSTITIAL_JS)
+      rescue StandardError
+        false
+      end
+
+      def blocked?
+        page.evaluate(BLOCKED_JS)
       rescue StandardError
         false
       end
@@ -95,6 +122,13 @@ module FerrumMCP
       def solved(attempts)
         message = @interstitial ? 'Cloudflare challenge passed' : 'Turnstile solved'
         Result.solved(type, token: token, attempts: attempts, message: message)
+      end
+
+      def blocked(attempts)
+        unsolved(:blocked,
+                 'Cloudflare blocked this visitor ("Sorry, you have been blocked"): the IP or browser is refused ' \
+                 'by the site\'s firewall. Solving is not possible; retry from another IP or a BotBrowser session.',
+                 attempts: attempts)
       end
     end
   end
