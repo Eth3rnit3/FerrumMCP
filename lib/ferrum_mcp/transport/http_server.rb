@@ -33,15 +33,6 @@ module FerrumMCP
                 trust_proxy: config.trust_proxy
           end
 
-          # Add API key authentication middleware if enabled
-          if config.api_key_enabled && config.api_keys.any?
-            use FerrumMCP::Transport::ApiKeyAuthenticator,
-                api_keys: config.api_keys,
-                logger: logger,
-                skip_paths: ['/health', '/'],
-                trust_proxy: config.trust_proxy
-          end
-
           # Health check endpoint
           map '/health' do
             run lambda { |_env|
@@ -64,8 +55,17 @@ module FerrumMCP
             }
           end
 
-          # MCP endpoint - use StreamableHTTPTransport
+          # MCP endpoint - use StreamableHTTPTransport. Authentication is
+          # mounted here rather than globally with skip paths: Rack routes
+          # "//mcp" to this endpoint too, and a "/" skip path matched it.
           map '/mcp' do
+            if config.api_key_enabled && config.api_keys.any?
+              use FerrumMCP::Transport::ApiKeyAuthenticator,
+                  api_keys: config.api_keys,
+                  logger: logger,
+                  trust_proxy: config.trust_proxy
+            end
+
             run lambda { |env|
               request = Rack::Request.new(env)
               mcp_transport.handle_request(request)

@@ -117,6 +117,20 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
         get '/'
         expect(last_response.status).to eq(200)
       end
+
+      # Rack routes "//mcp" to the /mcp endpoint; the root skip path must not
+      # let such variants through unauthenticated.
+      %w[//mcp ///mcp //mcp/].each do |path|
+        it "requires authentication for #{path}" do
+          # Rack::Test normalizes the URL, so hand the raw path to the app
+          body = { jsonrpc: '2.0', id: 1, method: 'tools/list' }.to_json
+          env = Rack::MockRequest.env_for('/mcp', method: 'POST', input: body, 'CONTENT_TYPE' => 'application/json')
+          env['PATH_INFO'] = path
+          status, = app.call(env)
+
+          expect(status).to eq(401)
+        end
+      end
     end
 
     context 'when API key authentication is disabled' do
