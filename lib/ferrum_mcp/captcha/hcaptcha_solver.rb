@@ -6,8 +6,8 @@ module FerrumMCP
     #
     # hCaptcha removed its audio challenge, so only the checkbox can be solved
     # automatically: it passes when the browser looks trustworthy. When a visual
-    # challenge shows up the solver reports :challenge_required with a
-    # screenshot so the calling agent can decide what to do.
+    # challenge shows up the solver reports :challenge_required (the tool
+    # attaches a screenshot so the calling agent can decide what to do).
     class HcaptchaSolver < BaseSolver
       TOKEN_JS = <<~JS
         (() => {
@@ -47,8 +47,7 @@ module FerrumMCP
         when :challenge
           unsolved(:challenge_required,
                    'hCaptcha asked for a visual challenge, which cannot be solved automatically ' \
-                   '(hCaptcha has no audio challenge). A BotBrowser session is more likely to pass the checkbox.',
-                   screenshot: page.screenshot(encoding: :base64, format: 'png'))
+                   '(hCaptcha has no audio challenge). A BotBrowser session is more likely to pass the checkbox.')
         else
           unsolved(:failed, 'hCaptcha did not react to the checkbox click')
         end

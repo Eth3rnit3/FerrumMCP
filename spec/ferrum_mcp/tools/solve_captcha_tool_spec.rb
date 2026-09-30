@@ -41,7 +41,7 @@ RSpec.describe FerrumMCP::Tools::SolveCaptchaTool do
 
       expect(result[:success]).to be false
       expect(result[:error]).to include('turnstile, blocked')
-      expect(result[:image]).to match(/\A[A-Za-z0-9+\/=]{100,}\z/) # base64 PNG
+      expect(result[:image]).to match(%r{\A[A-Za-z0-9+/=]{100,}\z}) # base64 PNG
     end
 
     it 'skips the screenshot when asked to' do
