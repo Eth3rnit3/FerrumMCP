@@ -4,7 +4,7 @@ require 'spec_helper'
 
 # Cloudflare pages imitated by fixtures: the solver is driven directly on the
 # session's page, since the fixtures cannot load the real Turnstile frame.
-RSpec.describe FerrumMCP::Captcha::TurnstileSolver do
+RSpec.describe 'Turnstile solver on Cloudflare pages' do
   let(:session_manager) { FerrumMCP::SessionManager.new(FerrumMCP::Configuration.new) }
 
   after { session_manager.shutdown }
@@ -12,7 +12,7 @@ RSpec.describe FerrumMCP::Captcha::TurnstileSolver do
   def solve(fixture, **options)
     sid = setup_session_with_fixture(session_manager, fixture, subdir: 'captcha')
     session_manager.with_session(sid) do |bm|
-      described_class.new(bm.page, logger: Logger.new(File::NULL), **options).solve
+      FerrumMCP::Captcha::TurnstileSolver.new(bm.page, logger: Logger.new(File::NULL), **options).solve
     end
   end
 

@@ -10,7 +10,7 @@ AllCops:
     - 'bin/**/*'
     - 'examples/**/*'
     - 'vendor/**/*'
-    - 'node_modules/**/*'
+    - '**/node_modules/**/*'
     - 'tmp/**/*'
 
 Style/Documentation:
