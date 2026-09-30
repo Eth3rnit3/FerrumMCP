@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cookie Banner - Icon buttons</title>
+</head>
+<body>
+    <h1>Banner whose buttons only carry an aria-label</h1>
+
+    <div class="privacy">
+        <p>We use cookies.</p>
+        <button aria-label="Decline cookies" data-action="reject"><svg width="16" height="16"><path d="M2 2L14 14M14 2L2 14" stroke="black"/></svg></button>
+        <button aria-label="Accept cookies" data-action="accept"><svg width="16" height="16"><path d="M2 8L6 12L14 3" stroke="black"/></svg></button>
+    </div>
+
+    <script>
+        document.querySelectorAll('button[data-action]').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelector('.privacy').style.display = 'none';
+                const result = document.createElement('div');
+                result.id = this.dataset.action === 'accept' ? 'banner-accepted' : 'banner-rejected';
+                document.body.appendChild(result);
+            });
+        });
+    </script>
+</body>
+</html>

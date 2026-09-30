@@ -81,6 +81,14 @@ RSpec.describe FerrumMCP::Tools::SnapshotTool do
     expect(text).to match(/\[e\d+\] radio "Red color" value="red"$/)
   end
 
+  it 'skips headings without text' do
+    sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+    text = run_tool(described_class, sid)[:data][:snapshot]
+
+    expect(text).not_to match(/heading\(\d\) ""/)
+  end
+
   it 'exposes the radio value in json format' do
     sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
 

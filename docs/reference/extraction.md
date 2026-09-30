@@ -268,7 +268,7 @@ Get the current URL of the page.
 
 ## find_by_text
 
-Find elements by their text content using XPath.
+Find the innermost elements whose visible text contains (or equals) a text. Each result comes with a CSS selector that matches that element only, and a ref usable by every other tool.
 
 **Parameters:**
 
@@ -276,7 +276,7 @@ Find elements by their text content using XPath.
 |------|------|----------|-------------|
 | text | string | Yes | Text to search for |
 | tag | string | No | HTML tag to search within (default: `*` for any) |
-| exact | boolean | No | Exact match vs partial match (default: false) |
+| exact | boolean | No | Match the whole visible text, case included (default: false, case-insensitive substring) |
 | multiple | boolean | No | Return all matches or first visible (default: false) |
 | session_id | string | Yes | Session ID to use |
 
@@ -301,8 +301,8 @@ Find elements by their text content using XPath.
   "tag": "button",
   "text": "Sign In",
   "visible": true,
-  "selector": "button.login-btn",
-  "xpath": "//button[contains(normalize-space(.), 'sign in')]",
+  "selector": "#header > nav > button:nth-of-type(2)",
+  "ref": "ref:e42",
   "total_found": 3
 }
 ```
@@ -318,23 +318,25 @@ Find elements by their text content using XPath.
       "tag": "button",
       "text": "Sign In",
       "visible": true,
-      "selector": "button#main-login"
+      "selector": "#main-login",
+      "ref": "ref:e7"
     },
     {
       "index": 1,
       "tag": "a",
       "text": "Sign In Here",
       "visible": true,
-      "selector": "a.secondary-login"
+      "selector": "#footer > a:nth-of-type(3)",
+      "ref": "ref:e8"
     }
-  ],
-  "xpath": "//button[contains(normalize-space(.), 'sign in')]"
+  ]
 }
 ```
 
 **Notes:**
-- Case-insensitive search
-- Handles quotes in text properly (prevents XPath injection)
+- Only the innermost match is returned: a wrapper whose descendant also matches (a card, `<body>`, `<html>`) is left out
+- Text inside `<script>`, `<style>` and `<template>` is never matched
+- `text` is cut at 200 characters; at most 50 elements are returned (`found` gives the total)
 - Prefers visible elements when `multiple: false`
-- Generates CSS selector from element id/classes when possible
+- `ref` (e.g. `ref:e42`) is the same kind of ref as `snapshot` and works in `click`, `fill_form`, `get_text`, ...
 

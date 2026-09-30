@@ -40,6 +40,14 @@ Click on an element using a CSS selector or XPath.
 - Automatically scrolls element into view before clicking
 - If `force: true`, uses JavaScript click as fallback for hidden elements
 - Includes retry logic for stale elements
+- When the click opens a tab (`target="_blank"`, `window.open`), the session switches to it, as the browser does for a user. The response then carries `new_tab: { tab_id, url, title }`; `switch_tab` goes back
+
+```json
+{
+  "message": "Clicked on a.product; it opened a new tab, now the current one",
+  "new_tab": { "tab_id": "C2D8F470...", "url": "https://shop.example/item/42", "title": "Item 42" }
+}
+```
 
 ## fill_form
 
@@ -309,13 +317,13 @@ Attach files from the **server's** filesystem to an `<input type="file">`.
 
 ## accept_cookies
 
-Automatically detect and accept cookie consent banners.
+Detect a cookie consent banner and accept all cookies. The tool only clicks an accept button that sits inside a consent banner, never a refusal disguised as a way out ("Continuer sans accepter", "Accept only necessary"). After the click it checks that the banner closed.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| wait | number | No | Seconds to wait for banner to appear (default: 3) |
+| wait | number | No | Seconds to wait for the banner to appear; returns as soon as it is accepted (default: 3) |
 | session_id | string | Yes | Session ID to use |
 
 **Example Request:**
@@ -334,26 +342,25 @@ Automatically detect and accept cookie consent banners.
 
 ```json
 {
-  "message": "Cookie consent accepted successfully",
-  "strategy": "common_frameworks",
-  "selector": "#onetrust-accept-btn-handler"
+  "message": "Cookie consent accepted",
+  "strategy": "known_cmp",
+  "clicked": "Tout accepter"
 }
 ```
 
-**Detection Strategies (in order):**
-1. **Common Frameworks**: OneTrust, Cookiebot, Osano, Quantcast, TrustArc, Termly, Didomi, Sourcepoint
-2. **Iframe Detection**: Checks iframes for cookie banners
-3. **Text-Based Detection**: Searches for common accept button text in multiple languages
-4. **CSS Selectors**: Generic CSS patterns for accept buttons
+| Field | Description |
+|-------|-------------|
+| `strategy` | `known_cmp` (a known platform's accept button), `text` (an accept wording inside a consent banner) or `cmp_api` (the platform's JavaScript API) |
+| `clicked` | Label of the button that was clicked |
+| `frame` | URL of the iframe holding the banner, when it is not the page itself |
+| `cmp` | Platform answered through its API (`Didomi`, `OneTrust`, `Cookiebot`, `Usercentrics`, `tarteaucitron`) |
 
-**Supported Languages:**
-- English, French, German, Spanish, Italian, Portuguese
-
-**Notes:**
-- Automatically tries multiple strategies
-- Filters out reject/customize buttons
-- Works with both main page and iframes
-- Returns the strategy and selector used for success
+**How the button is chosen:**
+1. The page, its open shadow roots and its iframes are scanned for buttons, links, `<input type="submit">` and `role="button"` elements. Labels come from the text, the `value` or the `aria-label`.
+2. Labels that refuse or give partial consent are discarded ("refuser", "continuer sans accepter", "only necessary", "ablehnen", ...). Settings entries ("personnaliser", "manage options") are discarded as well, unless the label is an accept-all wording such as "Accepter tous les paramètres".
+3. Of the remaining buttons, known accept buttons (OneTrust, Cookiebot, Didomi, Sourcepoint, Quantcast, Google, Amazon, ...) come first, then "accept all" wordings, then plain "accept" and finally "OK". English, French, German, Spanish, Italian, Portuguese and Dutch are recognised.
+4. A generic wording only counts inside a consent banner, identified by its id, class or label, or by nearby text mentioning cookies. An "I agree" button on a signup form is left alone.
+5. If the banner is still visible after a real click, the tool tries a DOM click. If a known platform is still waiting for an answer, it calls the platform's "accept all" API. Otherwise the tool reports that the banner is still visible instead of claiming success.
 
 ## solve_captcha
 

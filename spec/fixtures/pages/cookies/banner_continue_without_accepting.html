@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bandeau Cookies - Continuer sans accepter</title>
+    <style>
+        .consent { position: fixed; bottom: 0; left: 0; right: 0; background: #eee; padding: 20px; }
+        .consent.hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Bandeau avec un refus déguisé</h1>
+
+    <!-- Didomi-like layout: the refusal comes first and reads "Continuer" -->
+    <div class="consent">
+        <button id="skip" data-action="reject">Continuer sans accepter →</button>
+        <p>Nous et nos partenaires utilisons des cookies.</p>
+        <button data-action="customize">Paramétrer</button>
+        <button id="agree" data-action="accept">Accepter &amp; Fermer</button>
+    </div>
+
+    <script>
+        document.querySelectorAll('button[data-action]').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelector('.consent').classList.add('hidden');
+                const result = document.createElement('div');
+                result.id = 'banner-' + { accept: 'accepted', reject: 'rejected', customize: 'customized' }[this.dataset.action];
+                document.body.appendChild(result);
+            });
+        });
+    </script>
+</body>
+</html>

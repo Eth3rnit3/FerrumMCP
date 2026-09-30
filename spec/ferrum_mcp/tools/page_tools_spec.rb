@@ -140,6 +140,33 @@ RSpec.describe 'Page Tools (scroll, select, upload, viewport, tabs)' do
   end
 
   describe 'tabs' do
+    it 'follows a link that opens a new tab, as a user lands on it' do
+      sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+      result = run_tool(FerrumMCP::Tools::ClickTool, sid, selector: '#blank-link')
+
+      expect(result[:data][:new_tab]).to include(url: include('/fixtures/navigation/page2'))
+      expect(run_tool(FerrumMCP::Tools::GetURLTool, sid)[:data][:url]).to include('/fixtures/navigation/page2')
+    end
+
+    it 'follows a tab opened by a script' do
+      sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+      result = run_tool(FerrumMCP::Tools::ClickTool, sid, selector: '#script-tab')
+
+      expect(result[:data][:new_tab]).to include(url: include('/fixtures/navigation/page3'))
+      expect(run_tool(FerrumMCP::Tools::GetURLTool, sid)[:data][:url]).to include('/fixtures/navigation/page3')
+    end
+
+    it 'stays on the tab when the click opens nothing' do
+      sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+      result = run_tool(FerrumMCP::Tools::ClickTool, sid, selector: '#custom-role')
+
+      expect(result[:data]).not_to have_key(:new_tab)
+      expect(run_tool(FerrumMCP::Tools::GetURLTool, sid)[:data][:url]).to include('agent_page')
+    end
+
     # rubocop:disable RSpec/MultipleExpectations
     it 'opens, lists, switches and closes tabs' do
       sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')

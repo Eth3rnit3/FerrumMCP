@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Find by text</title>
+</head>
+<body>
+    <!-- Like Temu: the page state, product titles included, sits in a script -->
+    <script>
+        window.catalog = { title: 'Thermos isotherme 1 L robuste', secret: 'OnlyInScript' };
+    </script>
+
+    <div class="grid">
+        <div class="card"><a href="#p1"><span class="title">Thermos isotherme 1 L robuste</span></a></div>
+        <div class="card"><a href="#p2"><span class="title">Gourde en acier</span></a></div>
+    </div>
+
+    <!-- Swatches without id or class: a tag name alone is not a selector -->
+    <div>
+        <div><span>Acier</span></div>
+        <div><span>Rouge</span></div>
+        <div><span>Doré</span></div>
+    </div>
+
+    <p id="long"></p>
+    <script>
+        document.getElementById('long').textContent = 'needle ' + 'lorem ipsum '.repeat(400);
+    </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Signup - no cookie banner</title>
+</head>
+<body>
+    <h1>Create your account</h1>
+
+    <!-- Accept-looking buttons that have nothing to do with cookies -->
+    <form id="signup">
+        <p>Please read our terms of service before signing up.</p>
+        <button type="button" id="terms">I agree</button>
+        <button type="button" id="next">Continue</button>
+        <a href="#offer" id="offer">Accept the offer</a>
+    </form>
+
+    <script>
+        document.querySelectorAll('#terms, #next, #offer').forEach(el => {
+            el.addEventListener('click', function(event) {
+                event.preventDefault();
+                const result = document.createElement('div');
+                result.id = 'unrelated-clicked';
+                document.body.appendChild(result);
+            });
+        });
+    </script>
+</body>
+</html>

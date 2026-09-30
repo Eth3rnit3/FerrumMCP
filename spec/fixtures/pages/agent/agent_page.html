@@ -13,9 +13,12 @@
 </head>
 <body>
   <h1 id="main-heading">Agent Tools</h1>
+  <!-- Empty visually-hidden heading, as Leboncoin puts on every result card -->
+  <h3 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0, 0, 0, 0)"></h3>
   <nav>
     <a id="docs-link" href="/docs">Documentation</a>
     <a id="blank-link" href="/fixtures/navigation/page2" target="_blank">Open in new tab</a>
+    <span id="script-tab" onclick="window.open('/fixtures/navigation/page3')">Open through a script</span>
   </nav>
 
   <form id="signup">

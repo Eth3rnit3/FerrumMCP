@@ -150,18 +150,23 @@ module FerrumMCP
             return path.join(' > ');
           };
 
+          // Listed for their text only: without one they are noise
+          const TEXT_ROLES = ['heading', 'paragraph', 'label', 'img'];
+
           const elements = [];
           let total = 0;
           let truncated = false;
           for (const el of candidates) {
             if (!visible(el)) continue;
+            const role = roleOf(el);
+            const name = nameOf(el, role);
+            if (!name && TEXT_ROLES.includes(role)) continue;
             total += 1;
             if (elements.length >= maxElements) { truncated = true; continue; }
             let ref = el.getAttribute(ATTR);
             if (!ref) { ref = 'e' + (++window.__fmcpRefCounter); el.setAttribute(ATTR, ref); }
-            const role = roleOf(el);
             const tag = el.tagName.toLowerCase();
-            const item = { ref: ref, role: role, tag: tag, name: nameOf(el, role), selector: selectorFor(el) };
+            const item = { ref: ref, role: role, tag: tag, name: name, selector: selectorFor(el) };
             if (role === 'heading') item.level = parseInt(tag[1], 10) || null;
             if (tag === 'a' && el.getAttribute('href')) item.href = el.getAttribute('href');
             if (tag === 'input' && el.type && !['text', 'checkbox', 'radio'].includes(el.type)) item.type = el.type;

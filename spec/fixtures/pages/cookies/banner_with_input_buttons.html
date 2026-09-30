@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bandeau Cookies - Boutons input</title>
+</head>
+<body>
+    <h1>Bandeau dont les boutons sont des input (comme Amazon)</h1>
+
+    <form id="consent-form" class="banner">
+        <h4>Cookies et choix publicitaires</h4>
+        <span class="a-button"><input id="choice-yes" name="action" class="a-button-input" type="submit" value="Accepter "></span>
+        <span class="a-button"><input id="choice-no" name="action" class="a-button-input" type="submit" value="Refuser"></span>
+    </form>
+
+    <script>
+        document.getElementById('consent-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            this.style.display = 'none';
+            const result = document.createElement('div');
+            result.id = event.submitter.id === 'choice-yes' ? 'banner-accepted' : 'banner-rejected';
+            document.body.appendChild(result);
+        });
+    </script>
+</body>
+</html>

@@ -13,7 +13,57 @@ module FerrumMCP
       param :force, type: :boolean, default: false,
                     description: 'Force click through JavaScript when the element is hidden (default: false)'
 
+      # Seconds to watch for a tab opened by the click (target=_blank, window.open).
+      # Chrome creates it while dispatching the click; every click pays this wait.
+      NEW_TAB_WAIT = 0.15
+      # Seconds the new tab gets to leave about:blank
+      NEW_TAB_LOAD = 5
+
+      # A click that opens a tab moves the session to it, as the browser
+      # moves the user, and says so in `new_tab`.
       def perform(params)
+        before = tab_ids
+        response = click(params)
+        tab = wait_for_new_tab(before)
+        return response unless tab
+
+        follow(tab, response)
+      end
+
+      private
+
+      def tab_ids
+        @browser_manager.pages.map(&:target_id)
+      end
+
+      def wait_for_new_tab(before)
+        deadline = monotonic_now + NEW_TAB_WAIT
+        loop do
+          tab = @browser_manager.pages.find { |p| !before.include?(p.target_id) }
+          return tab if tab || monotonic_now >= deadline
+
+          sleep POLL_INTERVAL
+        end
+      rescue Ferrum::DeadBrowserError
+        raise
+      rescue StandardError => e
+        logger.debug "New tab lookup failed: #{e.message}"
+        nil
+      end
+
+      def follow(tab, response)
+        @browser_manager.select_page(tab)
+        tab.command('Page.bringToFront')
+        deadline = monotonic_now + NEW_TAB_LOAD
+        sleep POLL_INTERVAL while tab.url.to_s.start_with?('about:blank') && monotonic_now < deadline
+        logger.info "Click opened tab #{tab.target_id}, now the current tab"
+
+        data = response[:data]
+        success_response(data.merge(message: "#{data[:message]}; it opened a new tab, now the current one",
+                                    new_tab: { tab_id: tab.target_id, url: tab.url, title: tab.title }))
+      end
+
+      def click(params)
         selector = params[:selector]
         force = params[:force]
 
@@ -34,8 +84,6 @@ module FerrumMCP
 
         forced_click(selector, e, force)
       end
-
-      private
 
       def forced_click(selector, error, force)
         raise ToolError, "#{error.message}. Try with force: true" unless force
