@@ -176,6 +176,28 @@ RSpec.describe FerrumMCP::Configuration do
     end
   end
 
+  describe 'DNS rebinding protection' do
+    it 'is enabled by default with no extra hosts or origins' do
+      config = described_class.new
+
+      expect(config.dns_rebinding_protection).to be true
+      expect(config.mcp_allowed_hosts).to be_empty
+      expect(config.mcp_allowed_origins).to be_empty
+    end
+
+    it 'reads the allow-lists and the switch from the environment' do
+      ENV['MCP_ALLOWED_HOSTS'] = 'mcp.example.com, 192.168.1.10:3000'
+      ENV['MCP_ALLOWED_ORIGINS'] = 'https://app.example.com'
+      ENV['DNS_REBINDING_PROTECTION'] = 'false'
+
+      config = described_class.new
+
+      expect(config.mcp_allowed_hosts).to eq(['mcp.example.com', '192.168.1.10:3000'])
+      expect(config.mcp_allowed_origins).to eq(['https://app.example.com'])
+      expect(config.dns_rebinding_protection).to be false
+    end
+  end
+
   describe 'API key configuration' do
     describe '#api_key_enabled' do
       it 'defaults to false' do

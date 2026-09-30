@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **MCP SDK 1.6** (`mcp` gem `~> 1.6`, was `~> 0.4.0`): protocol 2025-11-25 / 2026-07-28 lifecycle, progress and
+  cancellation support, hardened Streamable HTTP transport (4 MiB request cap, idle MCP sessions reaped after 30 min,
+  10k session cap).
+- The HTTP transport is stateful per the specification: clients send `initialize` first and reuse the
+  `Mcp-Session-Id` header (every MCP client does this already).
 - Tool errors are handled in one place (`BaseTool#execute` / `SessionTool#execute`): any error raised by
   `#perform` becomes the error response `"<tool_name> failed: <message>"` (was `"Failed to <verb>: <message>"`).
   Tools no longer carry their own `rescue StandardError` block.
@@ -20,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **API key bypass**: `POST //mcp` (any number of leading slashes) reached the MCP endpoint without a key.
   Rack routes `//mcp` to `/mcp`, while the authenticator skipped every path "under" the unauthenticated
   root `/`. Authentication is now mounted on the `/mcp` endpoint itself, and a root skip path only matches `/`.
+- **DNS rebinding protection** on `/mcp` (HTTP transport), on by default through the SDK: the `Host` header must be
+  loopback or listed in `MCP_ALLOWED_HOSTS`, a browser `Origin` must be same-origin or listed in
+  `MCP_ALLOWED_ORIGINS`; `DNS_REBINDING_PROTECTION=false` disables it behind a proxy that validates `Host`. A server
+  reached through another host name or IP now needs `MCP_ALLOWED_HOSTS` (the startup log says so).
 
 ## [1.1.0] - 2026-09-28
 

@@ -72,6 +72,10 @@ Before exposing a container beyond localhost:
 
 Rate limiting is on by default (`RATE_LIMIT_MAX_REQUESTS=100` per `RATE_LIMIT_WINDOW=60` seconds). Set `TRUST_PROXY=true` only behind a reverse proxy.
 
+`/mcp` only accepts loopback `Host` headers by default (DNS rebinding protection). Reaching the container through
+`localhost:3000` on the host works as is; from another container or machine, set `MCP_ALLOWED_HOSTS` to the name
+or IP the clients use (e.g. `-e MCP_ALLOWED_HOSTS=ferrum-mcp` on a Compose network).
+
 ## CAPTCHAs in Docker
 
 `solve_captcha` handles Cloudflare Turnstile and the hCaptcha checkbox in both images. reCAPTCHA's audio challenge needs `whisper-cli` (whisper.cpp), which neither image ships: build your own image on top if you need it.
@@ -90,6 +94,8 @@ services:
       LOG_FILE: stderr
       API_KEY_ENABLED: "true"
       API_KEY: ${FERRUM_API_KEY}
+      # Clients on the Compose network reach the service by name: allow that Host header
+      # MCP_ALLOWED_HOSTS: ferrum-mcp
     restart: unless-stopped
 ```
 
@@ -115,6 +121,7 @@ docker build -f Dockerfile.with-botbrowser --build-arg BOTBROWSER_VERSION=<tag> 
 | Chrome fails to start / crashes | Add `--security-opt seccomp=unconfined` |
 | `docker logs` is empty | Add `-e LOG_FILE=stderr` |
 | Container exits right away with a mounted `logs/` | The host directory must be writable by UID 1000 |
+| `/mcp` answers `403 Forbidden: Invalid Host header` | Clients reach the container through a name or IP other than `localhost`: set `MCP_ALLOWED_HOSTS` to it |
 | `headless: false` rejected | Expected in Docker; use the gem locally to watch the browser |
 | `Unable to find image 'ferrum-mcp:latest'` | That tag only exists after a local build; use `eth3rnit3/ferrum-mcp:latest` |
 

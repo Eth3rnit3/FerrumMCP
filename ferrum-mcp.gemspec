@@ -52,7 +52,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'ferrum', '~> 0.17.1'
   spec.add_dependency 'json', '~> 2.16'
   spec.add_dependency 'logger', '~> 1.7'
-  spec.add_dependency 'mcp', '~> 0.4.0'
+  spec.add_dependency 'mcp', '~> 1.6'
   spec.add_dependency 'puma', '~> 7.1'
   spec.add_dependency 'rack', '~> 3.2'
   spec.add_dependency 'ruby-vips', '~> 2.2'

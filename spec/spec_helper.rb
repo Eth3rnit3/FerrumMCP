@@ -38,7 +38,7 @@ RSpec.configure do |config|
   config.before do
     preserved_keys = %w[BROWSER_HEADLESS BROWSER_TIMEOUT LOG_LEVEL COVERAGE CI]
     volatile = /^(BROWSER_|USER_PROFILE_|BOT_PROFILE_|BOTBROWSER_|API_KEY|LOG_FILE|TRUST_PROXY|
-                  ALLOWED_HOSTS|BLOCKED_HOSTS|UPLOAD_ALLOWED_DIRS)/x
+                  ALLOWED_HOSTS|BLOCKED_HOSTS|UPLOAD_ALLOWED_DIRS|DNS_REBINDING_PROTECTION|MCP_ALLOWED_)/x
     ENV.keys.grep(volatile).each do |key|
       ENV.delete(key) unless preserved_keys.include?(key)
     end

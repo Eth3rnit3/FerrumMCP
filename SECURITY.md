@@ -200,6 +200,7 @@ If you're deploying FerrumMCP, follow these best practices:
 ### Network Security
 
 ✅ **Bind to localhost**: Use `MCP_SERVER_HOST=127.0.0.1` for local-only access
+✅ **DNS rebinding protection**: on by default, `/mcp` only accepts loopback `Host` headers and same-origin browser requests; list other names in `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS`
 ✅ **Use firewall**: Restrict access to port 3000
 ✅ **Reverse proxy**: Use nginx/Apache with TLS for remote access
 ✅ **VPN/SSH tunnel**: For remote access, use VPN or SSH tunneling

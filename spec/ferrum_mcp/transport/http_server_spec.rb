@@ -7,11 +7,40 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
   include Rack::Test::Methods
 
   let(:config) { test_base_config }
+  # Rack::Test's default host is example.org, which the SDK's DNS rebinding
+  # protection rejects: MCP clients reach a local server through localhost.
+  # The transport is stateful, so requests follow an initialize handshake.
+  let(:mcp_session) { {} }
   let(:mcp_server) { FerrumMCP::Server.new(config) }
   let(:http_server) { described_class.new(mcp_server, config) }
 
   def app
     http_server.app
+  end
+
+  def mcp_post(body)
+    header 'Host', 'localhost'
+    header 'Accept', 'application/json, text/event-stream'
+    header 'Mcp-Session-Id', mcp_session[:id] if mcp_session[:id]
+    post '/mcp', body.to_json, 'CONTENT_TYPE' => 'application/json'
+    mcp_session[:id] ||= last_response.headers['mcp-session-id']
+    last_response
+  end
+
+  def mcp_initialize
+    mcp_post(jsonrpc: '2.0', id: 1, method: 'initialize',
+             params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'spec', version: '1' } })
+  end
+
+  def tools_list_request
+    { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }
+  end
+
+  def post_mcp_from(host, origin: nil)
+    header 'Accept', 'application/json, text/event-stream'
+    header 'Origin', origin if origin
+    post '/mcp', tools_list_request.to_json, 'CONTENT_TYPE' => 'application/json', 'HTTP_HOST' => host
+    last_response
   end
 
   describe '#initialize' do
@@ -57,16 +86,64 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
     end
 
     describe 'POST /mcp' do
-      it 'handles MCP requests' do
-        request_body = {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list',
-          params: {}
-        }
+      it 'answers the initialize handshake with a session id' do
+        mcp_initialize
 
-        post '/mcp', request_body.to_json, 'CONTENT_TYPE' => 'application/json'
+        expect(last_response.status).to eq(200)
+        expect(mcp_session[:id]).not_to be_nil
+      end
+
+      it 'handles MCP requests within the session' do
+        mcp_initialize
+        mcp_post(tools_list_request)
+
         expect(last_response.status).to be_between(200, 299)
+      end
+    end
+  end
+
+  describe 'DNS rebinding protection' do
+    it 'rejects a Host header that is neither loopback nor allow-listed (DNS rebinding)' do
+      expect(post_mcp_from('evil.example').status).to eq(403)
+    end
+
+    it 'rejects a cross-origin browser request' do
+      expect(post_mcp_from('localhost', origin: 'http://evil.example').status).to eq(403)
+    end
+
+    context 'with MCP_ALLOWED_HOSTS' do
+      let(:config) do
+        cfg = test_base_config
+        cfg.mcp_allowed_hosts = ['mcp.example.com']
+        cfg
+      end
+
+      it 'accepts the allow-listed host on any port' do
+        expect(post_mcp_from('mcp.example.com:3000').status).not_to eq(403)
+      end
+    end
+
+    context 'with MCP_ALLOWED_ORIGINS' do
+      let(:config) do
+        cfg = test_base_config
+        cfg.mcp_allowed_origins = ['http://app.example.com']
+        cfg
+      end
+
+      it 'accepts the allow-listed origin' do
+        expect(post_mcp_from('localhost', origin: 'http://app.example.com').status).not_to eq(403)
+      end
+    end
+
+    context 'with DNS_REBINDING_PROTECTION=false' do
+      let(:config) do
+        cfg = test_base_config
+        cfg.dns_rebinding_protection = false
+        cfg
+      end
+
+      it 'accepts any host' do
+        expect(post_mcp_from('evil.example').status).not_to eq(403)
       end
     end
   end
@@ -94,16 +171,15 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
       end
 
       it 'requires authentication for /mcp endpoint' do
-        post '/mcp', { jsonrpc: '2.0', method: 'tools/list' }.to_json,
-             'CONTENT_TYPE' => 'application/json'
+        mcp_initialize
 
         expect(last_response.status).to eq(401)
       end
 
       it 'allows authenticated requests to /mcp' do
         header 'Authorization', 'Bearer test-api-key'
-        post '/mcp', { jsonrpc: '2.0', id: 1, method: 'tools/list' }.to_json,
-             'CONTENT_TYPE' => 'application/json'
+        mcp_initialize
+        mcp_post(tools_list_request)
 
         expect(last_response.status).to be_between(200, 299)
       end
@@ -141,8 +217,8 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
       end
 
       it 'allows unauthenticated access to /mcp' do
-        post '/mcp', { jsonrpc: '2.0', id: 1, method: 'tools/list' }.to_json,
-             'CONTENT_TYPE' => 'application/json'
+        mcp_initialize
+        mcp_post(tools_list_request)
 
         expect(last_response.status).to be_between(200, 299)
       end
