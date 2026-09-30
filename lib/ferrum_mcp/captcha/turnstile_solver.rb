@@ -43,8 +43,9 @@ module FerrumMCP
         return outcome(state, 0) if state
 
         max_attempts.times do |attempt|
-          box = wait_until(8) { widget_box }
+          box = wait_until(8) { current_state || widget_box }
           return unsolved(:failed, 'Turnstile widget did not render', attempts: attempt) unless box
+          return outcome(box, attempt) if box.is_a?(Symbol)
 
           click_checkbox(box)
           state = wait_until(15) { current_state }
