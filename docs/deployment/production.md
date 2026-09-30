@@ -20,7 +20,7 @@ Generate a key with `openssl rand -hex 32` or `rake generate_api_key`.
 
 ## Docker
 
-The simplest option; see [Docker](DOCKER.md) for images, Compose and the container specifics. A locked-down run:
+The simplest option; see [Docker](/deployment/docker) for images, Compose and the container specifics. A locked-down run:
 
 ```bash
 docker run -d --name ferrum-mcp --restart unless-stopped \

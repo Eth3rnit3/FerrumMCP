@@ -40,3 +40,8 @@ Thumbs.db
 # Screenshots and downloads
 screenshots/
 downloads/
+
+# Documentation site (VitePress)
+docs/node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/

@@ -4,7 +4,7 @@
 
 ## Image
 
-`eth3rnit3/ferrum-mcp:botbrowser` (also `1.1.0-botbrowser`, `1.1-botbrowser`) is based on `ruby:3.3-slim` and contains BotBrowser at `/opt/botbrowser/chrome`, **no regular Chromium**. Everything in the [Docker guide](DOCKER.md) applies (non-root UID 1000, headless only, `seccomp=unconfined`, `LOG_FILE=stderr`).
+`eth3rnit3/ferrum-mcp:botbrowser` (also `1.1.0-botbrowser`, `1.1-botbrowser`) is based on `ruby:3.3-slim` and contains BotBrowser at `/opt/botbrowser/chrome`, **no regular Chromium**. Everything in the [Docker guide](/deployment/docker) applies (non-root UID 1000, headless only, `seccomp=unconfined`, `LOG_FILE=stderr`).
 
 ## Run
 
@@ -49,4 +49,4 @@ docker build -f Dockerfile.with-botbrowser -t ferrum-mcp:botbrowser .
 | Build fails on the GitHub API | Rate limit: pass `--secret id=github_token,env=GITHUB_TOKEN` |
 | Unstable sessions, crashes | Demo profiles; use a trial or paid profile |
 
-Outside Docker, declare BotBrowser like any other browser: `BROWSER_BOTBROWSER=botbrowser:/path/to/chrome:BotBrowser:Anti-detection` (see [Configuration](CONFIGURATION.md)).
+Outside Docker, declare BotBrowser like any other browser: `BROWSER_BOTBROWSER=botbrowser:/path/to/chrome:BotBrowser:Anti-detection` (see [Configuration](/guide/configuration)).

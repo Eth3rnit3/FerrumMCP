@@ -298,6 +298,6 @@ docker run --env-file .env -p 3000:3000 eth3rnit3/ferrum-mcp
 
 ## Next Steps
 
-- See [Getting Started](GETTING_STARTED.md) for basic setup
-- Read [API Reference](API_REFERENCE.md) for tool documentation
-- Check [BotBrowser in Docker](DOCKER_BOTBROWSER.md) for anti-detection setup
+- See [Getting Started](/guide/getting-started) for basic setup
+- Read [API Reference](/reference/) for tool documentation
+- Check [BotBrowser in Docker](/deployment/botbrowser-docker) for anti-detection setup

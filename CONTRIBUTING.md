@@ -335,7 +335,7 @@ TOOL_CLASSES = [
 3. **Write tests**: Create `spec/ferrum_mcp/tools/my_tool_spec.rb`
 
 4. **Update documentation**:
-   - Add to [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
+   - Add to the matching page under [docs/reference/](docs/reference/)
    - Update CHANGELOG.md under `[Unreleased]`
 
 ### Documentation
@@ -351,7 +351,7 @@ Documentation is as important as code!
 
 **Where to document**:
 - Inline comments for complex code
-- [docs/API_REFERENCE.md](docs/API_REFERENCE.md) for tools
+- [docs/reference/](docs/reference/) for tools (one page per category; preview with `cd docs && npm install && npm run dev`)
 - [CHANGELOG.md](CHANGELOG.md) for changes
 - README.md for user-facing features
 
@@ -406,7 +406,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 
 ### Getting Help
 
-- **Read the docs**: Start with [docs/](docs/)
+- **Read the docs**: Start with the [documentation site](https://eth3rnit3.github.io/FerrumMCP)
 - **Search issues**: Someone may have asked already
 - **Ask a question**: Open a GitHub Discussion
 - **Be specific**: Provide context and examples
