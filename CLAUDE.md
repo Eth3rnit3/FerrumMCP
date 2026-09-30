@@ -101,6 +101,16 @@ rake test:integration
 
 Tests use a WEBrick test server on port 9999 (override with `TEST_SERVER_PORT`) started in `spec_helper.rb`. Specs under `spec/ferrum_mcp/tools/` and `spec/integration/` are tagged `:integration` and drive a real headless Chrome; the rest stub `Ferrum::Browser`. All tests run with error-level logging.
 
+### Documentation Site
+
+`docs/` is a VitePress site (sidebar and nav in `docs/.vitepress/config.mts`), deployed to GitHub Pages at https://eth3rnit3.github.io/FerrumMCP by `.github/workflows/docs.yml` on pushes to `main`. Link between pages with site paths (`/guide/configuration#...`), not `.md` file names; the build fails on dead links. Tool headings keep their underscores as anchors (`/reference/interaction#solve_captcha`).
+
+```bash
+cd docs && npm install
+npm run dev     # live preview
+npm run build   # what CI runs
+```
+
 ### Linting
 
 ```bash
@@ -275,7 +285,7 @@ Old environment variables still work:
    - `param :name, type:, description:, required:, default:, enum:, schema:`: one line per parameter (`session_id` is added automatically for browser tools)
    - `#perform(params)`: Main logic, returns `success_response(data)` or `image_response(...)`. Raise (`ToolError` for an expected failure) rather than rescuing: `BaseTool#execute` turns any error into `"<tool_name> failed: <message>"` and lets `Ferrum::DeadBrowserError` through so the session restarts its browser
 3. Add to `TOOL_CLASSES` array in `lib/ferrum_mcp/server.rb`
-4. Add an integration spec under `spec/ferrum_mcp/tools/` and document the tool in `docs/API_REFERENCE.md`
+4. Add an integration spec under `spec/ferrum_mcp/tools/` and document the tool in the matching `docs/reference/<category>.md` page
 
 Example:
 ```ruby

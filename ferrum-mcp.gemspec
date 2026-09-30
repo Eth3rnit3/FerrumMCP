@@ -26,14 +26,15 @@ Gem::Specification.new do |spec|
     'source_code_uri' => 'https://github.com/Eth3rnit3/FerrumMCP',
     'changelog_uri' => 'https://github.com/Eth3rnit3/FerrumMCP/blob/main/CHANGELOG.md',
     'bug_tracker_uri' => 'https://github.com/Eth3rnit3/FerrumMCP/issues',
-    'documentation_uri' => 'https://github.com/Eth3rnit3/FerrumMCP/tree/main/docs',
+    'documentation_uri' => 'https://eth3rnit3.github.io/FerrumMCP',
     'rubygems_mfa_required' => 'true'
   }
 
   # Specify which files should be added to the gem when it is released.
-  spec.files = Dir.glob('{bin,lib,docs}/**/*', File::FNM_DOTMATCH).reject do |f|
+  # docs/ also holds the VitePress site: ship the Markdown only, not its node_modules or build
+  spec.files = Dir.glob('{bin,lib}/**/*', File::FNM_DOTMATCH).reject do |f|
     File.directory?(f)
-  end + %w[
+  end + Dir.glob('docs/{*,{guide,reference,deployment}/*}.md') + %w[
     README.md
     CHANGELOG.md
     CONTRIBUTING.md
@@ -65,8 +66,8 @@ Gem::Specification.new do |spec|
 
     Thank you for installing FerrumMCP #{FerrumMCP::VERSION}!
 
-    📚 Documentation: https://github.com/Eth3rnit3/FerrumMCP/tree/main/docs
-    🚀 Quick Start:   https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/GETTING_STARTED.md
+    📚 Documentation: https://eth3rnit3.github.io/FerrumMCP
+    🚀 Quick Start:   https://eth3rnit3.github.io/FerrumMCP/guide/getting-started
     🐛 Issues:        https://github.com/Eth3rnit3/FerrumMCP/issues
 
     To start the server:

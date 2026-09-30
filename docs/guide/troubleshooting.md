@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start by reading the logs. They go to `LOG_FILE`: `./logs/ferrum_mcp.log` relative to the directory the server was started from, or `stderr`. Set `LOG_LEVEL=debug` for details. With Claude Desktop, set an absolute `LOG_FILE` in the config's `env` block (see [Getting started](GETTING_STARTED.md#claude-desktop)).
+Start by reading the logs. They go to `LOG_FILE`: `./logs/ferrum_mcp.log` relative to the directory the server was started from, or `stderr`. Set `LOG_LEVEL=debug` for details. With Claude Desktop, set an absolute `LOG_FILE` in the config's `env` block (see [Getting started](/guide/getting-started#claude-desktop)).
 
 ## Server won't start
 
@@ -65,11 +65,11 @@ Start by reading the logs. They go to `LOG_FILE`: `./logs/ferrum_mcp.log` relati
 - `browser_id: "botbrowser"` only exists if `BROWSER_BOTBROWSER` is defined; `BOTBROWSER_PATH` alone creates the browser `default`.
 - Demo profiles make sessions unstable; use trial or paid profiles.
 
-More in [BotBrowser in Docker](DOCKER_BOTBROWSER.md) and [Configuration](CONFIGURATION.md).
+More in [BotBrowser in Docker](/deployment/botbrowser-docker) and [Configuration](/guide/configuration).
 
 ## Docker
 
-See the [common issues table in the Docker guide](DOCKER.md#common-issues): `seccomp=unconfined`, `LOG_FILE=stderr` for `docker logs`, mounted `logs/` owned by UID 1000, headless only.
+See the [common issues table in the Docker guide](/deployment/docker#common-issues): `seccomp=unconfined`, `LOG_FILE=stderr` for `docker logs`, mounted `logs/` owned by UID 1000, headless only.
 
 ## Still stuck
 

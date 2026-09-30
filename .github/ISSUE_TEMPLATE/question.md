@@ -20,10 +20,10 @@ A clear description of what you're working on and why you have this question.
 
 **Have you checked the documentation?**
 
-- [ ] I've read the [Getting Started](https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/GETTING_STARTED.md)
-- [ ] I've read the [API Reference](https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/API_REFERENCE.md)
-- [ ] I've read the [Configuration Guide](https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/CONFIGURATION.md)
-- [ ] I've checked [Troubleshooting](https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/TROUBLESHOOTING.md)
+- [ ] I've read the [Getting Started](https://eth3rnit3.github.io/FerrumMCP/guide/getting-started)
+- [ ] I've read the [API Reference](https://eth3rnit3.github.io/FerrumMCP/reference/)
+- [ ] I've read the [Configuration Guide](https://eth3rnit3.github.io/FerrumMCP/guide/configuration)
+- [ ] I've checked [Troubleshooting](https://eth3rnit3.github.io/FerrumMCP/guide/troubleshooting)
 - [ ] I've searched existing issues
 
 **What have you tried so far?**

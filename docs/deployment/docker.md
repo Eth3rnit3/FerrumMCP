@@ -7,7 +7,7 @@ Published on Docker Hub as `eth3rnit3/ferrum-mcp`, multi-arch (`linux/amd64`, `l
 | Tag | Base | Browser |
 |---|---|---|
 | `latest`, `1.1.0`, `1.1`, `1` | `ruby:3.3-alpine` | Chromium |
-| `botbrowser`, `1.1.0-botbrowser`, `1.1-botbrowser` | `ruby:3.3-slim` | [BotBrowser](DOCKER_BOTBROWSER.md) only (no Chromium) |
+| `botbrowser`, `1.1.0-botbrowser`, `1.1-botbrowser` | `ruby:3.3-slim` | [BotBrowser](/deployment/botbrowser-docker) only (no Chromium) |
 
 Both run as the non-root user `ferrum` (UID 1000), work in `/app`, expose port 3000, have a `HEALTHCHECK` on `/health`, and start the HTTP server (`bin/ferrum-mcp start`).
 
@@ -51,7 +51,7 @@ Claude Desktop (`claude_desktop_config.json`), spawning a container per conversa
 
 ## Configuration
 
-Pass any variable from the [configuration guide](CONFIGURATION.md) with `-e`. Set by the images:
+Pass any variable from the [configuration guide](/guide/configuration) with `-e`. Set by the images:
 
 | Variable | Value |
 |---|---|
@@ -125,4 +125,4 @@ docker build -f Dockerfile.with-botbrowser --build-arg BOTBROWSER_VERSION=<tag> 
 | `headless: false` rejected | Expected in Docker; use the gem locally to watch the browser |
 | `Unable to find image 'ferrum-mcp:latest'` | That tag only exists after a local build; use `eth3rnit3/ferrum-mcp:latest` |
 
-More in [Troubleshooting](TROUBLESHOOTING.md).
+More in [Troubleshooting](/guide/troubleshooting).

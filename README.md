@@ -56,7 +56,7 @@ Every browser tool takes a `session_id`: call `create_session` first (`headless:
 | Tabs & viewport | `list_tabs` `new_tab` `switch_tab` `close_tab` `set_viewport` |
 | Advanced | `execute_script` `evaluate_js` `get_cookies` `set_cookie` `clear_cookies` `get_attribute` `query_shadow_dom` |
 
-Selectors accept CSS, XPath (`//…` or `xpath:…`) and snapshot refs. MCP resources (`ferrum://browsers`, `ferrum://user-profiles`, `ferrum://bot-profiles`, `ferrum://capabilities`) describe what the server is configured with. Details: [API reference](docs/API_REFERENCE.md).
+Selectors accept CSS, XPath (`//…` or `xpath:…`) and snapshot refs. MCP resources (`ferrum://browsers`, `ferrum://user-profiles`, `ferrum://bot-profiles`, `ferrum://capabilities`) describe what the server is configured with. Details: [API reference](https://eth3rnit3.github.io/FerrumMCP/reference/).
 
 ## CAPTCHAs
 
@@ -68,7 +68,7 @@ Selectors accept CSS, XPath (`//…` or `xpath:…`) and snapshot refs. MCP reso
 | reCAPTCHA v2 | Solved through the audio challenge with local [whisper.cpp](https://github.com/ggerganov/whisper.cpp) **when Google serves a real audio**. Anonymous sessions usually get Google's decoy audio instead: the tool recognises it and stops (`distrusted`) rather than burning the IP. A long-lived browser profile and a residential IP help a lot. |
 | hCaptcha | Checkbox only; a visual challenge returns `challenge_required` with a screenshot |
 
-reCAPTCHA needs `whisper-cli` (`brew install whisper-cpp`), `ffmpeg` is recommended; models download on first use. See [Whisper configuration](docs/CONFIGURATION.md#whisper-configuration-captcha-solving).
+reCAPTCHA needs `whisper-cli` (`brew install whisper-cpp`), `ffmpeg` is recommended; models download on first use. See [Whisper configuration](https://eth3rnit3.github.io/FerrumMCP/guide/configuration#whisper-configuration-captcha-solving).
 
 ## Configuration
 
@@ -83,11 +83,11 @@ API_KEY_ENABLED=true  API_KEY=...                        # bearer auth for the H
 LOG_FILE=stderr                                          # default: ./logs/ferrum_mcp.log
 ```
 
-[BotBrowser](https://botbrowser.com) (anti-detection Chromium, licensed profiles) is supported as just another browser. Full list: [configuration guide](docs/CONFIGURATION.md).
+[BotBrowser](https://botbrowser.com) (anti-detection Chromium, licensed profiles) is supported as just another browser. Full list: [configuration guide](https://eth3rnit3.github.io/FerrumMCP/guide/configuration).
 
 ## Documentation
 
-[Getting started](docs/GETTING_STARTED.md) · [API reference](docs/API_REFERENCE.md) · [Configuration](docs/CONFIGURATION.md) · [Docker](docs/DOCKER.md) · [BotBrowser in Docker](docs/DOCKER_BOTBROWSER.md) · [Deployment](docs/DEPLOYMENT.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Changelog](CHANGELOG.md)
+[Getting started](https://eth3rnit3.github.io/FerrumMCP/guide/getting-started) · [API reference](https://eth3rnit3.github.io/FerrumMCP/reference/) · [Configuration](https://eth3rnit3.github.io/FerrumMCP/guide/configuration) · [Docker](https://eth3rnit3.github.io/FerrumMCP/deployment/docker) · [BotBrowser in Docker](https://eth3rnit3.github.io/FerrumMCP/deployment/botbrowser-docker) · [Deployment](https://eth3rnit3.github.io/FerrumMCP/deployment/production) · [Troubleshooting](https://eth3rnit3.github.io/FerrumMCP/guide/troubleshooting) · [Changelog](CHANGELOG.md)
 
 ## Development
 

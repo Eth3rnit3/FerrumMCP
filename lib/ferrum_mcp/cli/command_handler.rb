@@ -82,9 +82,9 @@ module FerrumMCP
               See .env.example for all configuration options.
 
           DOCUMENTATION:
-              Getting Started: https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/GETTING_STARTED.md
-              API Reference:   https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/API_REFERENCE.md
-              Configuration:   https://github.com/Eth3rnit3/FerrumMCP/blob/main/docs/CONFIGURATION.md
+              Getting Started: https://eth3rnit3.github.io/FerrumMCP/guide/getting-started
+              API Reference:   https://eth3rnit3.github.io/FerrumMCP/reference/
+              Configuration:   https://eth3rnit3.github.io/FerrumMCP/guide/configuration
 
           For more information, visit: https://github.com/Eth3rnit3/FerrumMCP
         HELP

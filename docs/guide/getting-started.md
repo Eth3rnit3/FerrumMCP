@@ -94,7 +94,7 @@ The usual loop is `create_session` → `navigate` → `snapshot` (lists interact
 
 ## Next steps
 
-- [API reference](API_REFERENCE.md): every tool and its parameters
-- [Configuration](CONFIGURATION.md): browsers, profiles, security, Whisper
-- [Docker](DOCKER.md) and [BotBrowser in Docker](DOCKER_BOTBROWSER.md)
-- [Troubleshooting](TROUBLESHOOTING.md)
+- [API reference](/reference/): every tool and its parameters
+- [Configuration](/guide/configuration): browsers, profiles, security, Whisper
+- [Docker](/deployment/docker) and [BotBrowser in Docker](/deployment/botbrowser-docker)
+- [Troubleshooting](/guide/troubleshooting)

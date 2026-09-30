@@ -48,7 +48,7 @@ Fixes #(issue number)
 
 ## Documentation
 
-- [ ] Updated API_REFERENCE.md (if adding/changing tools)
+- [ ] Updated docs/reference/ (if adding/changing tools)
 - [ ] Updated CHANGELOG.md under `[Unreleased]`
 - [ ] Updated README.md (if needed)
 - [ ] Updated Configuration docs (if adding env vars)
