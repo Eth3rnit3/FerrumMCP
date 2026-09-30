@@ -42,8 +42,14 @@ module FerrumMCP
 
       private
 
+      # A skip path also covers the paths nested under it, except for the
+      # root: "//mcp" is not nested under "/", Rack serves it as /mcp.
       def skip_authentication?(path)
-        @skip_paths.any? { |skip_path| path == skip_path || path.start_with?("#{skip_path}/") }
+        @skip_paths.any? do |skip_path|
+          next path == skip_path if skip_path == '/'
+
+          path == skip_path || path.start_with?("#{skip_path}/")
+        end
       end
 
       def extract_bearer_token(env)

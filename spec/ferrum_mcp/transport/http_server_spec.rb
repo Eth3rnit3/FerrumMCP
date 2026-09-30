@@ -123,9 +123,8 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
       %w[//mcp ///mcp //mcp/].each do |path|
         it "requires authentication for #{path}" do
           # Rack::Test normalizes the URL, so hand the raw path to the app
-          env = Rack::MockRequest.env_for('/mcp', method: 'POST', input: { jsonrpc: '2.0', id: 1,
-                                                                            method: 'tools/list' }.to_json,
-                                                  'CONTENT_TYPE' => 'application/json')
+          body = { jsonrpc: '2.0', id: 1, method: 'tools/list' }.to_json
+          env = Rack::MockRequest.env_for('/mcp', method: 'POST', input: body, 'CONTENT_TYPE' => 'application/json')
           env['PATH_INFO'] = path
           status, = app.call(env)
 
