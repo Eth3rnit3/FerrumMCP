@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - the tool checks that the banner closed, then falls back to the platform's API (Didomi, OneTrust, Cookiebot,
     Usercentrics, tarteaucitron);
   - the response includes the `clicked` label.
+- `snapshot` skipped nothing without text: empty headings (Leboncoin's hidden `<h3>` on every card), paragraphs,
+  labels and images were listed with `""`. They are left out now.
 - Turnstile: Cloudflare's "Sorry, you have been blocked" page was reported as solved (the interstitial title had
   changed); it is now status `blocked`.
 - Turnstile: an invisible or managed widget issues its token without rendering a checkbox; the solver waited for a
