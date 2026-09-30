@@ -27,9 +27,6 @@ module FerrumMCP
 
         @browser_manager.select_page(tabs.first) if closing_current
         success_response(closed_tab_id: tab.target_id, current_tab_id: current_tab.target_id, count: tabs.length)
-      rescue StandardError => e
-        logger.error "Close tab failed: #{e.message}"
-        error_response("Failed to close tab: #{e.message}")
       end
 
       private

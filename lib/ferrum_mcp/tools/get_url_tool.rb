@@ -10,9 +10,6 @@ module FerrumMCP
       def perform(_params)
         ensure_browser_active
         success_response(url: page.url)
-      rescue StandardError => e
-        logger.error "Get URL failed: #{e.message}"
-        error_response("Failed to get URL: #{e.message}")
       end
     end
   end

@@ -32,9 +32,6 @@ module FerrumMCP
 
         success_response(found: PRESENT_STATES.include?(state), state: state, selector: selector,
                          elapsed_ms: ((monotonic_now - started) * 1000).round)
-      rescue StandardError => e
-        logger.error "Wait for selector failed: #{e.message}"
-        error_response("Failed to wait for selector: #{e.message}")
       end
 
       private

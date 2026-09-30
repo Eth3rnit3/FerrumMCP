@@ -26,9 +26,6 @@ module FerrumMCP
         result = page.evaluate(script_for(action, params[:multiple]),
                                params[:host_selector], params[:shadow_selector], params[:attribute])
         success_response(format_result(action, params, result))
-      rescue StandardError => e
-        logger.error "Shadow DOM query failed: #{e.message}"
-        error_response("Failed to query Shadow DOM: #{e.message}")
       end
 
       EXTRACTORS = {

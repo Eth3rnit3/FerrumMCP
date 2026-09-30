@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Tool errors are handled in one place (`BaseTool#execute` / `SessionTool#execute`): any error raised by
+  `#perform` becomes the error response `"<tool_name> failed: <message>"` (was `"Failed to <verb>: <message>"`).
+  Tools no longer carry their own `rescue StandardError` block.
+
+### Fixed
+- A `Ferrum::DeadBrowserError` raised during a tool call now reaches the session, which marks its browser dead
+  and restarts it on the next call. Every tool used to swallow it in its own `rescue StandardError`.
+
 ### Security
 - **API key bypass**: `POST //mcp` (any number of leading slashes) reached the MCP endpoint without a key.
   Rack routes `//mcp` to `/mcp`, while the authenticator skipped every path "under" the unauthenticated

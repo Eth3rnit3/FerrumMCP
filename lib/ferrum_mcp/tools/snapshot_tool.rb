@@ -36,9 +36,6 @@ module FerrumMCP
         else
           success_response(data.merge(snapshot: elements.map { |e| format_line(e) }.join("\n")))
         end
-      rescue StandardError => e
-        logger.error "Snapshot failed: #{e.message}"
-        error_response("Failed to take snapshot: #{e.message}")
       end
 
       def format_line(element)

@@ -20,9 +20,6 @@ module FerrumMCP
         logger.info "Switched to tab #{tab.target_id}"
 
         success_response(tab_id: tab.target_id, url: tab.url, title: tab.title)
-      rescue StandardError => e
-        logger.error "Switch tab failed: #{e.message}"
-        error_response("Failed to switch tab: #{e.message}")
       end
     end
   end

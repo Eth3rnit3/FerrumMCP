@@ -39,7 +39,7 @@ FerrumMCP is a browser automation server implementing the Model Context Protocol
 **Tool Architecture** (`lib/ferrum_mcp/tools/`)
 - Browser tools inherit from `BaseTool`, session-management tools from `SessionTool`; both use the `Definition` DSL
 - A tool declares `tool_name`, `description` and `param`s; `input_schema` is generated, `session_id` is injected for browser tools, and `#perform(params)` receives symbol keys with defaults applied
-- Tools use `success_response`, `error_response`, or `image_response` helper methods
+- Tools return `success_response` or `image_response` (`Tools::Responses`); errors raised in `#perform` become error responses in `execute`
 - Tools act on the session's **current tab** (`page`, a `Ferrum::Page`); `browser` is the `Ferrum::Browser`
 - `find_element` / `find_elements` accept CSS, XPath (`xpath:` prefix or `//`) and snapshot refs (`ref:e12`)
 - `snapshot` tags elements with `data-fmcp-ref`; refs stay stable until the document changes
@@ -273,7 +273,7 @@ Old environment variables still work:
    - `tool_name 'my_tool'`: String identifier for MCP
    - `description '...'`: Human-readable description
    - `param :name, type:, description:, required:, default:, enum:, schema:`: one line per parameter (`session_id` is added automatically for browser tools)
-   - `#perform(params)`: Main logic, returns `success_response(data)`, `image_response(...)` or `error_response(message)`
+   - `#perform(params)`: Main logic, returns `success_response(data)` or `image_response(...)`. Raise (`ToolError` for an expected failure) rather than rescuing: `BaseTool#execute` turns any error into `"<tool_name> failed: <message>"` and lets `Ferrum::DeadBrowserError` through so the session restarts its browser
 3. Add to `TOOL_CLASSES` array in `lib/ferrum_mcp/server.rb`
 4. Add an integration spec under `spec/ferrum_mcp/tools/` and document the tool in `docs/API_REFERENCE.md`
 
@@ -292,8 +292,6 @@ module FerrumMCP
         element = find_element(params[:selector])
         page.execute("arguments[0].style.outline = '3px solid ' + arguments[1]", element, params[:color])
         success_response(message: "Highlighted #{params[:selector]}")
-      rescue StandardError => e
-        error_response("Failed to highlight: #{e.message}")
       end
     end
   end
@@ -352,7 +350,7 @@ See `.env.example` for detailed configuration examples.
 - **Error Handling**: MCP exception reporter configured in `Server#setup_error_handling` logs to file
 - **Image Responses**: Screenshot tool returns base64 image data with `type: 'image'` and `mime_type`
 - **Element Finding**: `BaseTool#find_element` includes retry logic with configurable timeout
-- **Browser State**: Each session's browser remains active until session is closed or idle timeout (30min); a dead Chrome process (`BrowserManager#healthy?`) is restarted on the next call, and a `Ferrum::DeadBrowserError` inside a tool marks the session inactive
+- **Browser State**: Each session's browser remains active until session is closed or idle timeout (30min); a dead Chrome process (`BrowserManager#healthy?`) is restarted on the next call, and a `Ferrum::DeadBrowserError` raised by a tool propagates through `BaseTool#execute` and marks the session inactive
 - **Locking**: `SessionManager` holds its global mutex only for map operations; browsers are stopped outside of it. `Session` has a `closed` state so a closed session cannot be restarted
 - **Auto-cleanup**: Background thread cleans up idle sessions every 5 minutes
 - **Thread Safety**: All session operations are protected by mutex locks

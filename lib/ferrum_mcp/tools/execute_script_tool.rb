@@ -15,9 +15,6 @@ module FerrumMCP
         page.execute(params[:script].to_s)
 
         success_response(message: 'Script executed successfully')
-      rescue StandardError => e
-        logger.error "Execute script failed: #{e.message}"
-        error_response("Failed to execute script: #{e.message}")
       end
     end
   end

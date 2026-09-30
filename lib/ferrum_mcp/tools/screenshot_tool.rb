@@ -32,9 +32,6 @@ module FerrumMCP
 
         data = resize_if_needed(page.screenshot(**options), format)
         image_response(Base64.strict_encode64(data), format == 'png' ? 'image/png' : 'image/jpeg')
-      rescue StandardError => e
-        logger.error "Screenshot failed: #{e.message}"
-        error_response("Failed to take screenshot: #{e.message}")
       end
 
       private

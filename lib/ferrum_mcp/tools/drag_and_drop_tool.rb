@@ -30,9 +30,6 @@ module FerrumMCP
         perform_drag(from_x, from_y, to_x, to_y, params[:steps].to_i.clamp(1, 200))
 
         success_response(message: "Dragged from (#{from_x.round}, #{from_y.round}) to (#{to_x.round}, #{to_y.round})")
-      rescue StandardError => e
-        logger.error "Drag and drop failed: #{e.message}"
-        error_response("Failed to drag and drop: #{e.message}")
       end
 
       private

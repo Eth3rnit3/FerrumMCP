@@ -14,12 +14,6 @@ module FerrumMCP
         page.network.wait_for_idle(timeout: 30)
 
         success_response(url: page.url, title: page.title)
-      rescue Ferrum::TimeoutError => e
-        logger.error "Go forward timeout: #{e.message}"
-        error_response("Go forward timed out: #{e.message}")
-      rescue StandardError => e
-        logger.error "Go forward failed: #{e.message}"
-        error_response("Failed to go forward: #{e.message}")
       end
     end
   end

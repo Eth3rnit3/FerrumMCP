@@ -18,9 +18,6 @@ module FerrumMCP
         cookies.select! { |c| c[:domain].to_s.include?(domain) } if domain
 
         success_response(cookies: cookies, count: cookies.length)
-      rescue StandardError => e
-        logger.error "Get cookies failed: #{e.message}"
-        error_response("Failed to get cookies: #{e.message}")
       end
 
       private

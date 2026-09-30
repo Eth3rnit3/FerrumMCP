@@ -43,9 +43,6 @@ module FerrumMCP
         end
 
         success_response(fields: results)
-      rescue StandardError => e
-        logger.error "Fill form failed: #{e.message}"
-        error_response("Failed to fill form: #{e.message}")
       end
 
       private

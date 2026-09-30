@@ -13,6 +13,7 @@ module FerrumMCP
     #   - Snapshot ref:   "ref:e12" (from the snapshot tool)
     class BaseTool
       extend Definition
+      include Responses
 
       requires_session true
 
@@ -27,9 +28,16 @@ module FerrumMCP
         @logger = browser_manager.logger
       end
 
-      # Entry point used by the server and the specs.
+      # Entry point used by the server and the specs. Any error raised by
+      # #perform becomes an error response, so tools only rescue what they
+      # handle differently (a fallback, a retry).
       def execute(raw_params)
         perform(self.class.normalize_params(raw_params))
+      rescue Ferrum::DeadBrowserError
+        # The session marks its browser dead and restarts it on the next call
+        raise
+      rescue StandardError => e
+        failure_response(e)
       end
 
       def perform(_params)
@@ -137,18 +145,6 @@ module FerrumMCP
 
       def monotonic_now
         Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      end
-
-      def success_response(data = {})
-        { success: true, data: data }
-      end
-
-      def image_response(base64_data, mime_type = 'image/png')
-        { success: true, type: 'image', data: base64_data, mime_type: mime_type }
-      end
-
-      def error_response(message)
-        { success: false, error: message }
       end
     end
   end

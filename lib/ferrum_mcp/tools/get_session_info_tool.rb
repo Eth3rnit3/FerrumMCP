@@ -15,9 +15,6 @@ module FerrumMCP
         return error_response("Session not found: #{session_id}") unless session
 
         success_response(session.info)
-      rescue StandardError => e
-        logger.error "Failed to get session info: #{e.message}"
-        error_response("Failed to get session info: #{e.message}")
       end
     end
   end

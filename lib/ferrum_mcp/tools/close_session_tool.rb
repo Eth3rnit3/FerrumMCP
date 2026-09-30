@@ -18,9 +18,6 @@ module FerrumMCP
         else
           error_response("Session not found: #{session_id}")
         end
-      rescue StandardError => e
-        logger.error "Failed to close session: #{e.message}"
-        error_response("Failed to close session: #{e.message}")
       end
     end
   end

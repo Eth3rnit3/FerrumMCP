@@ -48,8 +48,9 @@ RSpec.configure do |config|
   # multi-browser suite) drive a real Chrome; everything else runs without it.
   #   rake test:unit        -> rspec --tag ~integration
   #   rake test:integration -> rspec --tag integration
+  # A spec there that fakes the browser opts out with `integration: false`.
   config.define_derived_metadata(file_path: %r{/spec/(ferrum_mcp/tools|integration)/}) do |metadata|
-    metadata[:integration] = true
+    metadata[:integration] = true unless metadata.key?(:integration)
   end
   config.define_derived_metadata(file_path: %r{/spec/ferrum_mcp/(multi_browser|server_options)_spec\.rb}) do |metadata|
     metadata[:integration] = true

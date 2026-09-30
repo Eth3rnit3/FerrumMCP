@@ -23,9 +23,6 @@ module FerrumMCP
         return error_response("Network still busy after #{timeout}s") unless idle
 
         success_response(idle: true, elapsed_ms: elapsed_ms, url: page.url)
-      rescue StandardError => e
-        logger.error "Wait for network idle failed: #{e.message}"
-        error_response("Failed to wait for network idle: #{e.message}")
       end
     end
   end

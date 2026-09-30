@@ -27,9 +27,6 @@ module FerrumMCP
                                  params[:x], params[:y])
 
         success_response(x: position['x'], y: position['y'], target: position['target'])
-      rescue StandardError => e
-        logger.error "Scroll failed: #{e.message}"
-        error_response("Failed to scroll: #{e.message}")
       end
 
       SCROLL_SCRIPT = <<~JS

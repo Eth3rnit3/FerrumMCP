@@ -37,11 +37,6 @@ module FerrumMCP
                 language: params[:language]
         )
         respond(solver.solve)
-      rescue ToolError => e
-        error_response("Failed to solve CAPTCHA: #{e.message}")
-      rescue StandardError => e
-        logger.error "solve_captcha: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
-        error_response("Failed to solve CAPTCHA: #{e.class}: #{e.message}")
       end
 
       private

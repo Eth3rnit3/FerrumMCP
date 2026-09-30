@@ -28,9 +28,6 @@ module FerrumMCP
           page.cookies.clear
           success_response(message: 'All cookies cleared')
         end
-      rescue StandardError => e
-        logger.error "Clear cookies failed: #{e.message}"
-        error_response("Failed to clear cookies: #{e.message}")
       end
     end
   end

@@ -74,9 +74,6 @@ module FerrumMCP
         end
 
         error_response('No cookie consent banner found or unable to accept')
-      rescue StandardError => e
-        logger.error "Accept cookies failed: #{e.message}"
-        error_response("Failed to accept cookies: #{e.message}")
       end
 
       private

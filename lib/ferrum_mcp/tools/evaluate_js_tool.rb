@@ -15,9 +15,6 @@ module FerrumMCP
         result = page.evaluate(params[:expression].to_s)
 
         success_response(result: result)
-      rescue StandardError => e
-        logger.error "Evaluate JS failed: #{e.message}"
-        error_response("Failed to evaluate JS: #{e.message}")
       end
     end
   end

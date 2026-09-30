@@ -27,9 +27,6 @@ module FerrumMCP
         end
 
         success_response(tab_id: tab.target_id, url: tab.url, title: tab.title, count: tabs.length)
-      rescue StandardError => e
-        logger.error "New tab failed: #{e.message}"
-        error_response("Failed to open tab: #{e.message}")
       end
     end
   end

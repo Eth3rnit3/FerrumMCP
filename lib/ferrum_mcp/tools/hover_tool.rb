@@ -26,9 +26,6 @@ module FerrumMCP
         end
 
         success_response(message: "Hovered over #{selector}")
-      rescue StandardError => e
-        logger.error "Hover failed: #{e.message}"
-        error_response("Failed to hover: #{e.message}")
       end
     end
   end
