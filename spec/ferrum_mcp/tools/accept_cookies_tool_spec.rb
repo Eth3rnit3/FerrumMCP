@@ -122,6 +122,18 @@ RSpec.describe FerrumMCP::Tools::AcceptCookiesTool do
       end
     end
 
+    context 'when the accept-all label mentions settings ("Accepter tous les paramètres")' do
+      it 'accepts, while the refusal and settings buttons stay untouched' do
+        sid = setup_session_with_fixture(session_manager, 'banner_accept_all_settings.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be true
+        expect(result[:data][:clicked]).to eq('Accepter tous les paramètres')
+        expect(element_exists?(session_manager, sid, '#banner-accepted')).to be true
+      end
+    end
+
     context 'when only a refusal button is on screen' do
       it 'clicks nothing and reports that no banner was accepted' do
         sid = setup_session_with_fixture(session_manager, 'banner_reject_only.html', subdir: 'cookies')

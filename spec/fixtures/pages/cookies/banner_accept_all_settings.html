@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bandeau Cookies - Accepter tous les paramètres</title>
+</head>
+<body>
+    <h1>Bandeau dont l'acceptation parle de « paramètres » (comme Temu)</h1>
+
+    <div class="privacy-modal">
+        <div>Paramètres de confidentialité et des cookies</div>
+        <button data-action="customize">Personnaliser les cookies</button>
+        <button data-action="reject">Refuser tous les paramètres</button>
+        <button data-action="accept">Accepter tous les paramètres</button>
+    </div>
+
+    <script>
+        document.querySelectorAll('button[data-action]').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelector('.privacy-modal').style.display = 'none';
+                const result = document.createElement('div');
+                result.id = 'banner-' + { accept: 'accepted', reject: 'rejected', customize: 'customized' }[this.dataset.action];
+                document.body.appendChild(result);
+            });
+        });
+    </script>
+</body>
+</html>
