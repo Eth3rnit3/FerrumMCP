@@ -11,9 +11,6 @@ module FerrumMCP
         ensure_browser_active
         list = tabs.map.with_index { |tab, index| describe(tab, index) }
         success_response(count: list.length, tabs: list)
-      rescue StandardError => e
-        logger.error "List tabs failed: #{e.message}"
-        error_response("Failed to list tabs: #{e.message}")
       end
     end
   end

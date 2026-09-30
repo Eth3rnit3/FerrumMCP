@@ -10,9 +10,6 @@ module FerrumMCP
       def perform(_params)
         sessions = session_manager.list_sessions
         success_response(count: sessions.size, sessions: sessions)
-      rescue StandardError => e
-        logger.error "Failed to list sessions: #{e.message}"
-        error_response("Failed to list sessions: #{e.message}")
       end
     end
   end

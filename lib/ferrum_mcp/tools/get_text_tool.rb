@@ -28,9 +28,6 @@ module FerrumMCP
         else
           success_response(text: texts.first)
         end
-      rescue StandardError => e
-        logger.error "Get text failed: #{e.message}"
-        error_response("Failed to get text: #{e.message}")
       end
 
       private

@@ -30,9 +30,6 @@ module FerrumMCP
         end
 
         success_response({ html: html, length: html.length, truncated: truncated }.merge(extra))
-      rescue StandardError => e
-        logger.error "Get HTML failed: #{e.message}"
-        error_response("Failed to get HTML: #{e.message}")
       end
     end
   end

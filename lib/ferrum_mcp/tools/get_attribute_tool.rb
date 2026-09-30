@@ -18,9 +18,6 @@ module FerrumMCP
 
         value = find_element(selector).attribute(attribute)
         success_response(selector: selector, attribute: attribute, value: value)
-      rescue StandardError => e
-        logger.error "Get attribute failed: #{e.message}"
-        error_response("Failed to get attribute: #{e.message}")
       end
     end
   end

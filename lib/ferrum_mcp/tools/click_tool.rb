@@ -28,22 +28,17 @@ module FerrumMCP
         success_response(message: "Clicked on #{selector}")
       rescue Ferrum::NodeNotFoundError, Ferrum::CoordinatesNotFoundError, Ferrum::NodeMovingError => e
         forced_click(selector, e, force)
-      rescue StandardError => e
-        if e.message.include?('layout object') || e.message.include?('not visible')
-          forced_click(selector, e, force)
-        else
-          logger.error "Click failed: #{e.message}"
-          error_response("Failed to click: #{e.message}")
-        end
+      rescue Ferrum::BrowserError => e
+        # Chrome cannot compute a position for an element without layout
+        raise unless e.message.include?('layout object') || e.message.include?('not visible')
+
+        forced_click(selector, e, force)
       end
 
       private
 
       def forced_click(selector, error, force)
-        unless force
-          logger.error "Click failed: #{error.message}"
-          return error_response("Failed to click: #{error.message}. Try with force: true")
-        end
+        raise ToolError, "#{error.message}. Try with force: true" unless force
 
         logger.warn "Native click failed, retrying with JavaScript: #{error.message}"
         click_with_javascript(selector)

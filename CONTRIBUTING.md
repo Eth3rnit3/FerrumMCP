@@ -304,49 +304,26 @@ module FerrumMCP
   module Tools
     # MyTool does something awesome
     class MyTool < BaseTool
-      def self.tool_name
-        'my_tool'
-      end
+      tool_name 'my_tool'
+      description 'Does something awesome with the browser'
 
-      def self.description
-        'Does something awesome with the browser'
-      end
+      # session_id is injected automatically for browser tools
+      param :my_param, type: :string, required: true, description: 'Description of my parameter'
+      param :wait, type: :number, default: 5, description: 'Seconds to wait (default: 5)'
 
-      def self.input_schema
-        {
-          type: 'object',
-          properties: {
-            session_id: {
-              type: 'string',
-              description: 'Session ID to use for this operation'
-            },
-            my_param: {
-              type: 'string',
-              description: 'Description of my parameter'
-            }
-          },
-          required: ['session_id', 'my_param']
-        }
-      end
-
-      def execute(params)
-        session_id = params[:session_id]
-        my_param = params[:my_param]
-
-        session_manager.with_session(session_id) do |browser|
-          # Your logic here
-          result = browser.do_something(my_param)
-          success_response({ result: result })
-        end
-      rescue StandardError => e
-        error_response("Failed to do something: #{e.message}")
+      # Params arrive with symbol keys and defaults applied. Raise (ToolError
+      # for an expected failure) instead of rescuing: BaseTool#execute turns
+      # any error into an error response, "my_tool failed: <message>".
+      def perform(params)
+        element = find_element(params[:my_param], timeout: params[:wait])
+        success_response(result: element.text)
       end
     end
   end
 end
 ```
 
-2. **Register in server**: Add to `TOOL_CLASSES` in `lib/ferrum_mcp/bin/ferrum-mcp`
+2. **Register in server**: Add to `TOOL_CLASSES` in `lib/ferrum_mcp/server.rb`
 
 ```ruby
 TOOL_CLASSES = [

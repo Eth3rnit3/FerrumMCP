@@ -1659,7 +1659,7 @@ All tools return responses in this standard format:
 2. **Invalid session**: "Session not found: {session_id}"
 3. **Element not found**: "Element not found: {selector}"
 4. **Timeout errors**: "Navigation timed out" / "Timed out after 10s waiting for #x to be visible"
-5. **JavaScript errors**: "Failed to execute script: {error}"
+5. **Any other tool failure**: "{tool_name} failed: {error}" (e.g. "execute_script failed: ReferenceError: foo is not defined")
 
 ---
 

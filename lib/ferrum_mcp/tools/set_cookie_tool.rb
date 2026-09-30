@@ -27,9 +27,6 @@ module FerrumMCP
         page.cookies.set(**cookie)
 
         success_response(message: "Cookie set: #{cookie[:name]}")
-      rescue StandardError => e
-        logger.error "Set cookie failed: #{e.message}"
-        error_response("Failed to set cookie: #{e.message}")
       end
     end
   end

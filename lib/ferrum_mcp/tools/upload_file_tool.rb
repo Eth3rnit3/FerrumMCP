@@ -22,9 +22,6 @@ module FerrumMCP
         find_element(selector).select_file(paths)
 
         success_response(selector: selector, files: paths.map { |p| File.basename(p) }, count: paths.length)
-      rescue StandardError => e
-        logger.error "Upload failed: #{e.message}"
-        error_response("Failed to upload file: #{e.message}")
       end
 
       private

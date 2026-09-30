@@ -32,9 +32,6 @@ module FerrumMCP
         return error_response("No elements found with text: '#{text}'") if elements.empty?
 
         success_response(build_result(elements, xpath, params[:multiple]))
-      rescue StandardError => e
-        logger.error "Find by text failed: #{e.message}"
-        error_response("Failed to find elements: #{e.message}")
       end
 
       private

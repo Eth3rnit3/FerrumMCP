@@ -52,9 +52,6 @@ module FerrumMCP
           message: 'Session created successfully',
           options: options.except(:metadata)
         )
-      rescue StandardError => e
-        logger.error "Failed to create session: #{e.message}"
-        error_response("Failed to create session: #{e.message}")
       end
 
       private

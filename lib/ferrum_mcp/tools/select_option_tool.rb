@@ -26,9 +26,6 @@ module FerrumMCP
 
         success_response(selector: selector,
                          selected: selected.map { |o| { value: o['value'], label: o['label'] } })
-      rescue StandardError => e
-        logger.error "Select option failed: #{e.message}"
-        error_response("Failed to select option: #{e.message}")
       end
 
       SELECT_SCRIPT = <<~JS

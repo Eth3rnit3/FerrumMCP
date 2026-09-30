@@ -27,12 +27,6 @@ module FerrumMCP
         page.network.wait_for_idle(timeout: params[:timeout]) if params[:wait_for_idle]
 
         success_response(url: page.url, title: page.title)
-      rescue Ferrum::TimeoutError => e
-        logger.error "Navigation timeout: #{e.message}"
-        error_response("Navigation timed out: #{e.message}")
-      rescue StandardError => e
-        logger.error "Navigation failed: #{e.message}"
-        error_response("Failed to navigate: #{e.message}")
       end
     end
   end

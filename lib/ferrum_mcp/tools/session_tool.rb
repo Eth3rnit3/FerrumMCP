@@ -6,6 +6,7 @@ module FerrumMCP
     # and do not need a running browser.
     class SessionTool
       extend Definition
+      include Responses
 
       requires_session false
 
@@ -16,22 +17,15 @@ module FerrumMCP
         @logger = session_manager.logger
       end
 
+      # Any error raised by #perform becomes an error response
       def execute(raw_params)
         perform(self.class.normalize_params(raw_params))
+      rescue StandardError => e
+        failure_response(e)
       end
 
       def perform(_params)
         raise NotImplementedError, 'Subclasses must implement #perform'
-      end
-
-      protected
-
-      def success_response(data = {})
-        { success: true, data: data }
-      end
-
-      def error_response(message)
-        { success: false, error: message }
       end
     end
   end

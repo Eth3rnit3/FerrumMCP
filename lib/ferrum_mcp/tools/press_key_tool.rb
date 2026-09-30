@@ -31,9 +31,6 @@ module FerrumMCP
         page.keyboard.type(normalize_key(key))
 
         success_response(message: "Pressed key: #{key}")
-      rescue StandardError => e
-        logger.error "Press key failed: #{e.message}"
-        error_response("Failed to press key: #{e.message}")
       end
 
       private

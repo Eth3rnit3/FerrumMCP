@@ -23,9 +23,6 @@ module FerrumMCP
                           mobile: params[:mobile] ? true : false)
 
         success_response(width: width, height: height, mobile: params[:mobile] ? true : false)
-      rescue StandardError => e
-        logger.error "Set viewport failed: #{e.message}"
-        error_response("Failed to set viewport: #{e.message}")
       end
     end
   end

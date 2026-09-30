@@ -31,9 +31,6 @@ module FerrumMCP
 
         success_response(found: true, text: text, selector: selector,
                          elapsed_ms: ((monotonic_now - started) * 1000).round)
-      rescue StandardError => e
-        logger.error "Wait for text failed: #{e.message}"
-        error_response("Failed to wait for text: #{e.message}")
       end
 
       private
