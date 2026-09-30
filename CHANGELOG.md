@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `Ferrum::DeadBrowserError` raised during a tool call now reaches the session, which marks its browser dead
   and restarts it on the next call. Every tool used to swallow it in its own `rescue StandardError`.
 
+### Security
+- **API key bypass**: `POST //mcp` (any number of leading slashes) reached the MCP endpoint without a key.
+  Rack routes `//mcp` to `/mcp`, while the authenticator skipped every path "under" the unauthenticated
+  root `/`. Authentication is now mounted on the `/mcp` endpoint itself, and a root skip path only matches `/`.
+
 ## [1.1.0] - 2026-09-28
 
 ### Added

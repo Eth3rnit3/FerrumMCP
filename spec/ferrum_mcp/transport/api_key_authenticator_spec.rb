@@ -108,6 +108,24 @@ RSpec.describe FerrumMCP::Transport::ApiKeyAuthenticator do
 
       expect(last_response.status).to eq(401)
     end
+
+    context 'when the root path is a skip path' do
+      let(:skip_paths) { ['/health', '/'] }
+
+      it 'allows access to / itself' do
+        get '/'
+
+        expect(last_response.status).to eq(200)
+      end
+
+      it 'does not treat paths starting with // as nested under /' do
+        env = Rack::MockRequest.env_for('/')
+        env['PATH_INFO'] = '//mcp'
+        status, = middleware.call(env)
+
+        expect(status).to eq(401)
+      end
+    end
   end
 
   describe 'response headers' do
