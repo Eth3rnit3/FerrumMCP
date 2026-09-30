@@ -38,6 +38,8 @@ module FerrumMCP
       def frames_matching(pattern)
         urls = Detector.frame_urls(page)
         page.frames.select { |frame| urls[frame.id].to_s.match?(pattern) }
+      rescue Ferrum::DeadBrowserError
+        raise
       rescue StandardError => e
         logger.debug "Frame lookup failed: #{e.message}"
         []
@@ -49,12 +51,15 @@ module FerrumMCP
       end
 
       # Poll until the block returns a truthy value. Errors raised while the
-      # widget re-renders (detached nodes, navigated frames) count as "not yet".
+      # widget re-renders (detached nodes, navigated frames) count as "not
+      # yet"; a dead browser is not going to come back and reaches the session.
       def wait_until(timeout, interval: POLL_INTERVAL)
         deadline = monotonic_now + timeout
         loop do
           value = begin
             yield
+          rescue Ferrum::DeadBrowserError
+            raise
           rescue StandardError => e
             logger.debug "wait_until: #{e.class}: #{e.message}"
             nil
