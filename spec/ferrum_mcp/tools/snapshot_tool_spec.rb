@@ -109,4 +109,27 @@ RSpec.describe FerrumMCP::Tools::SnapshotTool do
     expect(result[:data][:snapshot]).to include('Documentation')
     expect(result[:data][:snapshot]).not_to include('Create account')
   end
+
+  # The agent learns about a CAPTCHA wall from the snapshot it takes anyway,
+  # instead of discovering it when a click does nothing.
+  describe 'CAPTCHA detection' do
+    it 'names the CAPTCHA widgets present on the page' do
+      allow(FerrumMCP::Captcha::Detector).to receive(:detect).and_return([:turnstile])
+      sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+      result = run_tool(described_class, sid)
+
+      expect(result[:data][:captcha]).to eq(['turnstile'])
+      expect(result[:data][:snapshot]).to include('CAPTCHA detected: turnstile (solve_captcha)')
+    end
+
+    it 'says nothing when there is none' do
+      sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
+
+      result = run_tool(described_class, sid)
+
+      expect(result[:data]).not_to have_key(:captcha)
+      expect(result[:data][:snapshot]).not_to include('CAPTCHA')
+    end
+  end
 end
