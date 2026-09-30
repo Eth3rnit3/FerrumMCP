@@ -94,6 +94,8 @@ services:
       LOG_FILE: stderr
       API_KEY_ENABLED: "true"
       API_KEY: ${FERRUM_API_KEY}
+      # Clients on the Compose network reach the service by name: allow that Host header
+      # MCP_ALLOWED_HOSTS: ferrum-mcp
     restart: unless-stopped
 ```
 
@@ -119,6 +121,7 @@ docker build -f Dockerfile.with-botbrowser --build-arg BOTBROWSER_VERSION=<tag> 
 | Chrome fails to start / crashes | Add `--security-opt seccomp=unconfined` |
 | `docker logs` is empty | Add `-e LOG_FILE=stderr` |
 | Container exits right away with a mounted `logs/` | The host directory must be writable by UID 1000 |
+| `/mcp` answers `403 Forbidden: Invalid Host header` | Clients reach the container through a name or IP other than `localhost`: set `MCP_ALLOWED_HOSTS` to it |
 | `headless: false` rejected | Expected in Docker; use the gem locally to watch the browser |
 | `Unable to find image 'ferrum-mcp:latest'` | That tag only exists after a local build; use `eth3rnit3/ferrum-mcp:latest` |
 
