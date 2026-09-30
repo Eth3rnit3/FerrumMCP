@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'base64'
+require 'digest'
 require 'fileutils'
 
 module FerrumMCP
@@ -31,6 +32,14 @@ module FerrumMCP
         /subscribe|like and share/,
         /gracias por ver|obrigado por assistir|merci d'avoir regard/
       ].freeze
+
+      # Every distrusted session receives the same unintelligible ~4 s clip.
+      # Its fingerprint gives the verdict at once: no Whisper run, no reload.
+      KNOWN_DECOY_MD5S = %w[18028cdcb77a664d5ab15adb489d1bf8].freeze
+
+      def self.known_decoy?(audio)
+        KNOWN_DECOY_MD5S.include?(Digest::MD5.hexdigest(audio))
+      end
 
       # Unintelligible audio: reCAPTCHA serves it to clients it distrusts.
       # Answering it only lowers the IP's reputation, so ask for another one.
@@ -134,7 +143,10 @@ module FerrumMCP
           source = audio_source
           return unsolved(:failed, 'reCAPTCHA audio challenge not available', attempts: round) unless source
 
-          heard = listen(source, round)
+          audio = download_audio(source)
+          return known_decoy(round + 1) if self.class.known_decoy?(audio)
+
+          heard = listen(audio, round)
           garbled_in_a_row = heard ? 0 : garbled_in_a_row + 1
           return distrusted(round + 1, @transcriptions) if garbled_in_a_row >= MAX_GARBLED_IN_A_ROW
 
@@ -146,9 +158,15 @@ module FerrumMCP
                  attempts: max_attempts, transcriptions: @transcriptions)
       end
 
+      def known_decoy(attempts)
+        logger.info 'reCAPTCHA: known decoy audio served'
+        @transcriptions << '(known decoy audio)'
+        distrusted(attempts, @transcriptions)
+      end
+
       # Transcribed answer, or nil when the audio is garbled
-      def listen(source, round)
-        heard = transcribe(source)
+      def listen(audio, round)
+        heard = transcribe(audio)
         garbled = self.class.garbled?(heard, expected_language)
         @transcriptions << (garbled ? "(garbled #{heard.language}) #{heard.text}" : heard.text)
         logger.info "reCAPTCHA: round #{round + 1} heard #{heard.text.inspect} " \
@@ -169,8 +187,7 @@ module FerrumMCP
         challenge_frame&.evaluate("(document.querySelector('#audio-source') || {}).src || null")
       end
 
-      def transcribe(source)
-        audio = download_audio(source)
+      def transcribe(audio)
         transcriber.analyze_bytes(audio).tap { |heard| keep_sample(audio, heard) }
       end
 

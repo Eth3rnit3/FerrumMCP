@@ -35,7 +35,8 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
     let(:solver) { described_class.new(instance_double(Ferrum::Page), logger: Logger.new(File::NULL), max_attempts: 5) }
 
     before do
-      allow(solver).to receive_messages(current_challenge: 'audio', checked?: false, audio_source: 'https://x/payload')
+      allow(solver).to receive_messages(current_challenge: 'audio', checked?: false, audio_source: 'https://x/payload',
+                                        download_audio: 'some other garbled clip')
       allow(solver).to receive(:transcribe).and_return(decoy)
       allow(solver).to receive(:reload_challenge)
       allow(solver).to receive(:submit_answer)
@@ -60,7 +61,7 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
     let(:decoy_bytes) { 'decoy mp3 bytes' }
     let(:solver) do
       described_class.new(instance_double(Ferrum::Page), logger: Logger.new(File::NULL), max_attempts: 5,
-                                                          transcriber: transcriber)
+                                                         transcriber: transcriber)
     end
 
     before do
@@ -72,15 +73,20 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
       allow(transcriber).to receive(:analyze_bytes)
     end
 
-    it 'reports distrusted after the first decoy without transcribing or reloading' do
+    it 'reports distrusted after the first decoy without reloading' do
       result = solver.send(:solve_audio_rounds)
 
       expect(result.status).to eq(:distrusted)
       expect(result.attempts).to eq(1)
       expect(result.details[:transcriptions]).to eq(['(known decoy audio)'])
-      expect(transcriber).not_to have_received(:analyze_bytes)
       expect(solver).not_to have_received(:reload_challenge)
       expect(solver).not_to have_received(:submit_answer)
+    end
+
+    it 'does not run Whisper on it' do
+      solver.send(:solve_audio_rounds)
+
+      expect(transcriber).not_to have_received(:analyze_bytes)
     end
   end
 
@@ -105,7 +111,7 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
       full = Base64.strict_encode64('a' * 30_000)
       allow(frame).to receive(:evaluate_async).and_return(truncated, full)
 
-      solver.send(:transcribe, 'https://www.google.com/recaptcha/api2/payload?p=x')
+      solver.send(:transcribe, solver.send(:download_audio, 'https://www.google.com/recaptcha/api2/payload?p=x'))
 
       expect(transcriber).to have_received(:analyze_bytes).with('a' * 30_000)
     end
@@ -115,7 +121,7 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
         Base64.strict_encode64('a' * n)
       end)
 
-      solver.send(:transcribe, 'https://www.google.com/recaptcha/api2/payload?p=x')
+      solver.send(:transcribe, solver.send(:download_audio, 'https://www.google.com/recaptcha/api2/payload?p=x'))
 
       expect(transcriber).to have_received(:analyze_bytes).with('a' * 9000)
     end
