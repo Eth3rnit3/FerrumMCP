@@ -56,8 +56,8 @@ module FerrumMCP
 
       def scan(frame, url)
         found = frame.evaluate(CookieConsent::SCAN_JS, CookieConsent::KNOWN_ACCEPT_SELECTORS,
-                               CookieConsent::ACCEPT_TIERS, CookieConsent::REJECT_PATTERNS,
-                               CookieConsent::CONSENT_HINT)
+                               CookieConsent::ACCEPT_TIERS, CookieConsent::REFUSAL_PATTERNS,
+                               CookieConsent::SETTINGS_PATTERNS, CookieConsent::CONSENT_HINT)
         found && { frame: frame, url: url, label: found['label'], score: found['score'], known: found['known'] }
       rescue Ferrum::DeadBrowserError
         raise

@@ -349,7 +349,7 @@ Detect a cookie consent banner and accept all cookies. The tool only clicks an a
 
 **How the button is chosen:**
 1. The page, its open shadow roots and its iframes are scanned for buttons, links, `<input type="submit">` and `role="button"` elements. Labels come from the text, the `value` or the `aria-label`.
-2. Labels that refuse, give partial consent or open settings are discarded ("refuser", "continuer sans accepter", "only necessary", "personnaliser", "ablehnen", ...).
+2. Labels that refuse or give partial consent are discarded ("refuser", "continuer sans accepter", "only necessary", "ablehnen", ...). Settings entries ("personnaliser", "manage options") are discarded as well, unless the label is an accept-all wording such as "Accepter tous les paramètres".
 3. Of the remaining buttons, known accept buttons (OneTrust, Cookiebot, Didomi, Sourcepoint, Quantcast, Google, Amazon, ...) come first, then "accept all" wordings, then plain "accept" and finally "OK". English, French, German, Spanish, Italian, Portuguese and Dutch are recognised.
 4. A generic wording only counts inside a consent banner, identified by its id, class or label, or by nearby text mentioning cookies. An "I agree" button on a signup form is left alone.
 5. If the banner is still visible after a real click, the tool tries a DOM click. If a known platform is still waiting for an answer, it calls the platform's "accept all" API. Otherwise the tool reports that the banner is still visible instead of claiming success.

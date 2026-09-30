@@ -36,17 +36,23 @@ module FerrumMCP
             'verstanden', 'entendido', 'capito', 'yes', 'oui']
     }.freeze
 
-    # A label containing any of these is a refusal, a partial consent or a
-    # settings entry, never an acceptance ("Continuer sans accepter",
-    # "Accept only necessary", "Personnaliser", "Nicht akzeptieren", ...).
-    REJECT_PATTERNS = [
+    # A label containing any of these is a refusal or a partial consent,
+    # never an acceptance ("Continuer sans accepter", "Accept only
+    # necessary", "Nicht akzeptieren", ...).
+    REFUSAL_PATTERNS = [
       'refus', 'reject', 'decline', 'deny', 'denied', 'sans accepter', 'without accept', 'without agree',
       'continue without', 'continuer sans', 'no thanks', 'non merci', 'ablehn', 'nicht', 'ohne', 'rechaz',
       'sin acept', 'rifiut', 'senza', 'recus', 'rejeit', 'sem aceit', 'weiger', 'necessar', 'necessair',
       'essential', 'essentiel', 'notwendig', 'necesari', 'only', 'uniquement', 'seulement', 'nur', 'solo',
-      'custom', 'personnalis', 'personaliz', 'parametr', 'setting', 'option', 'preferen', 'manage', 'gerer',
-      'einstell', 'configur', 'learn more', 'en savoir plus', 'more info', "plus d'info", 'detail', 'mehr',
       'selection', 'auswahl', 'selecci', 'no', 'non', 'nein'
+    ].freeze
+
+    # Settings entries ("Personnaliser", "Manage options"). They do not
+    # count against an accept-all wording: Temu's button reads "Accepter
+    # tous les paramètres".
+    SETTINGS_PATTERNS = [
+      'custom', 'personnalis', 'personaliz', 'parametr', 'setting', 'option', 'preferen', 'manage', 'gerer',
+      'einstell', 'configur', 'learn more', 'en savoir plus', 'more info', "plus d'info", 'detail', 'mehr'
     ].freeze
 
     # Something in the element's id, class or label that says "consent banner"
@@ -58,7 +64,7 @@ module FerrumMCP
     # roots included, and keeps it in window.__fmcpCookieButton.
     # Returns { label, score, known } or null.
     SCAN_JS = <<~JS
-      (function(knownSelectors, tiers, rejectPatterns, hint) {
+      (function(knownSelectors, tiers, refusalPatterns, settingsPatterns, hint) {
         const hintRe = new RegExp(hint, 'i');
         const norm = (s) => (s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase()
           .replace(/[’`]/g, "'").replace(/[^\\p{L}\\p{N}' ]+/gu, ' ').replace(/\\s+/g, ' ').trim();
@@ -122,8 +128,8 @@ module FerrumMCP
           }
           return tiers[1].includes(label) ? 1 : 0;
         };
-        const refusal = (labels) => labels.some((label) =>
-          rejectPatterns.some((p) => (p.length <= 3 ? hasWholeWord(label, p) : hasWord(label, p))));
+        const mentions = (labels, patterns) => labels.some((label) =>
+          patterns.some((p) => (p.length <= 3 ? hasWholeWord(label, p) : hasWord(label, p))));
 
         let best = null;
         for (const el of all) {
@@ -132,8 +138,10 @@ module FerrumMCP
           if (!visible(el)) continue;
           const raw = names(el);
           const labels = raw.map(norm).filter(Boolean);
-          if (refusal(labels)) continue;
+          if (mentions(labels, refusalPatterns)) continue;
           let tier = Math.max(0, ...labels.map(tierOf));
+          // "Accepter tous les paramètres" accepts; "Personnaliser les paramètres" does not
+          if (tier < 3 && mentions(labels, settingsPatterns)) continue;
           if (isKnown) tier = 4;
           if (tier === 0) continue;
           if (!isKnown && !inConsentBanner(el)) continue;
@@ -142,7 +150,7 @@ module FerrumMCP
         }
         window.__fmcpCookieButton = best ? best.el : null;
         return best ? { label: best.label, score: best.score, known: best.known } : null;
-      })(arguments[0], arguments[1], arguments[2], arguments[3])
+      })(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4])
     JS
 
     # true once the clicked button is gone, hidden or faded out
