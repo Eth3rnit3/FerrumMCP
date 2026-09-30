@@ -20,6 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `grecaptcha.getResponse()`.
 
 ### Fixed
+- `accept_cookies` clicked refusals and reported them as acceptances. On Leboncoin it clicked *Continuer sans
+  accepter*, because the English pattern `continue` matched and Didomi's `.didomi-continue-without-agreeing` was
+  listed as an accept selector. The tool was rewritten:
+  - one scan covers the page, open shadow roots and iframes;
+  - `<input type="submit">` buttons (Amazon) and icon buttons that only carry an `aria-label` are recognised;
+  - generic wordings count only inside a consent banner;
+  - refusal and settings labels are filtered in 7 languages;
+  - the tool checks that the banner closed, then falls back to the platform's API (Didomi, OneTrust, Cookiebot,
+    Usercentrics, tarteaucitron);
+  - the response includes the `clicked` label.
 - Turnstile: Cloudflare's "Sorry, you have been blocked" page was reported as solved (the interstitial title had
   changed); it is now status `blocked`.
 - Turnstile: an invisible or managed widget issues its token without rendering a checkbox; the solver waited for a
