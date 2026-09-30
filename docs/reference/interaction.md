@@ -40,6 +40,14 @@ Click on an element using a CSS selector or XPath.
 - Automatically scrolls element into view before clicking
 - If `force: true`, uses JavaScript click as fallback for hidden elements
 - Includes retry logic for stale elements
+- When the click opens a tab (`target="_blank"`, `window.open`), the session switches to it, as the browser does for a user. The response then carries `new_tab: { tab_id, url, title }`; `switch_tab` goes back
+
+```json
+{
+  "message": "Clicked on a.product; it opened a new tab, now the current one",
+  "new_tab": { "tab_id": "C2D8F470...", "url": "https://shop.example/item/42", "title": "Item 42" }
+}
+```
 
 ## fill_form
 
