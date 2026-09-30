@@ -52,6 +52,38 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
     end
   end
 
+  # Distrusted sessions all get the same mp3 (one known md5): recognising it
+  # by fingerprint gives the verdict at once, without running Whisper or
+  # reloading the challenge, which wears the IP down further.
+  describe 'recognising the known decoy audio' do
+    let(:transcriber) { instance_double(FerrumMCP::WhisperService) }
+    let(:decoy_bytes) { 'decoy mp3 bytes' }
+    let(:solver) do
+      described_class.new(instance_double(Ferrum::Page), logger: Logger.new(File::NULL), max_attempts: 5,
+                                                          transcriber: transcriber)
+    end
+
+    before do
+      stub_const('FerrumMCP::Captcha::RecaptchaSolver::KNOWN_DECOY_MD5S', [Digest::MD5.hexdigest(decoy_bytes)])
+      allow(solver).to receive_messages(current_challenge: 'audio', checked?: false, audio_source: 'https://x/payload',
+                                        download_audio: decoy_bytes)
+      allow(solver).to receive(:reload_challenge)
+      allow(solver).to receive(:submit_answer)
+      allow(transcriber).to receive(:analyze_bytes)
+    end
+
+    it 'reports distrusted after the first decoy without transcribing or reloading' do
+      result = solver.send(:solve_audio_rounds)
+
+      expect(result.status).to eq(:distrusted)
+      expect(result.attempts).to eq(1)
+      expect(result.details[:transcriptions]).to eq(['(known decoy audio)'])
+      expect(transcriber).not_to have_received(:analyze_bytes)
+      expect(solver).not_to have_received(:reload_challenge)
+      expect(solver).not_to have_received(:submit_answer)
+    end
+  end
+
   describe 'downloading the challenge audio' do
     let(:frame) { instance_double(Ferrum::Frame) }
     let(:transcriber) { instance_double(FerrumMCP::WhisperService) }
