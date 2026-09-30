@@ -53,6 +53,29 @@ RSpec.describe FerrumMCP::Captcha::RecaptchaSolver do
     end
   end
 
+  describe 'progress reporting' do
+    let(:decoy) { FerrumMCP::WhisperService::Transcription.new(text: 'see you next time', language: 'es') }
+    let(:reports) { [] }
+    let(:solver) do
+      described_class.new(instance_double(Ferrum::Page), logger: Logger.new(File::NULL), max_attempts: 5,
+                                                          on_progress: ->(*args) { reports << args })
+    end
+
+    before do
+      allow(solver).to receive_messages(current_challenge: 'audio', checked?: false, audio_source: 'https://x/payload',
+                                        download_audio: 'clip')
+      allow(solver).to receive(:transcribe).and_return(decoy)
+      allow(solver).to receive(:reload_challenge)
+    end
+
+    it 'reports each audio round to the caller' do
+      solver.send(:solve_audio_rounds)
+
+      messages = reports.map { |current, total, message| "#{current}/#{total} #{message}" }
+      expect(messages).to include(a_string_matching(%r{1/5 .*round 1}i), a_string_matching(%r{2/5 .*round 2}i))
+    end
+  end
+
   # Distrusted sessions all get the same mp3 (one known md5): recognising it
   # by fingerprint gives the verdict at once, without running Whisper or
   # reloading the challenge, which wears the IP down further.

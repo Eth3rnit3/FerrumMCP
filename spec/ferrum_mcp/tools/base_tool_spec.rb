@@ -72,4 +72,33 @@ RSpec.describe FerrumMCP::Tools::BaseTool, integration: false do
       expect(session_manager.get_session(session_id).active?).to be(false)
     end
   end
+
+  # Long tools (solve_captcha) report where they are; the MCP SDK hands the
+  # notification channel to the tool block as server_context.
+  describe 'progress reporting' do
+    let(:slow_tool) do
+      Class.new(described_class) do
+        tool_name 'slow_tool'
+        description 'Reports progress'
+
+        def perform(_params)
+          report_progress(1, total: 2, message: 'half way')
+          success_response(done: true)
+        end
+      end
+    end
+    let(:server_context) { instance_double(MCP::ServerContext, report_progress: nil) }
+
+    it 'forwards report_progress to the MCP server context' do
+      server.send(:execute_tool, slow_tool, { session_id: session_id, server_context: server_context })
+
+      expect(server_context).to have_received(:report_progress).with(1, total: 2, message: 'half way')
+    end
+
+    it 'is a no-op when the client asked for no progress' do
+      response = server.send(:execute_tool, slow_tool, { session_id: session_id })
+
+      expect(response.error?).to be(false)
+    end
+  end
 end
