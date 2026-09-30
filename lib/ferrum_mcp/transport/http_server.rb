@@ -13,8 +13,19 @@ module FerrumMCP
         @server = server
         @config = config
         @logger = config.logger
-        @mcp_transport = MCP::Server::Transports::StreamableHTTPTransport.new(server.mcp_server)
+        @mcp_transport = MCP::Server::Transports::StreamableHTTPTransport.new(server.mcp_server, **transport_options)
         server.mcp_server.transport = @mcp_transport
+      end
+
+      # The SDK rejects a Host header that is neither loopback nor allow-listed
+      # (DNS rebinding protection, MCP 2025-11-25). A server listening on a
+      # public interface must name the hosts its clients use.
+      def transport_options
+        {
+          dns_rebinding_protection: config.dns_rebinding_protection,
+          allowed_hosts: config.mcp_allowed_hosts,
+          allowed_origins: config.mcp_allowed_origins
+        }
       end
 
       def app
@@ -90,6 +101,19 @@ module FerrumMCP
 
         logger.info 'HTTP server started'
         logger.info "MCP endpoint: http://#{config.server_host}:#{config.server_port}/mcp"
+        warn_about_host_validation
+      end
+
+      LOOPBACK_HOSTS = %w[127.0.0.1 ::1 localhost].freeze
+
+      def warn_about_host_validation
+        return unless config.dns_rebinding_protection
+        return if LOOPBACK_HOSTS.include?(config.server_host) || config.mcp_allowed_hosts.any?
+
+        logger.warn "Listening on #{config.server_host} but only loopback Host headers are accepted: " \
+                    'clients reaching /mcp through another host name or IP get 403. ' \
+                    'Set MCP_ALLOWED_HOSTS (e.g. "mcp.example.com,192.168.1.10") or DNS_REBINDING_PROTECTION=false ' \
+                    'behind a proxy that validates Host itself.'
       end
 
       def stop

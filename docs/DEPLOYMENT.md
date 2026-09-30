@@ -13,6 +13,7 @@ A browser server reachable by others can browse your internal network and read f
 | `UPLOAD_ALLOWED_DIRS=/srv/uploads` | Limits which local files `upload_file` can read (default: working directory and temp dir) |
 | `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW` | Per-client limit, on by default (100 requests / 60 s) |
 | `TRUST_PROXY=true` | Only behind a reverse proxy you control, so rate limiting uses `X-Forwarded-For` |
+| `MCP_ALLOWED_HOSTS=ferrum.example.com` | `/mcp` only accepts loopback `Host` headers by default (DNS rebinding protection); list the names or IPs clients use |
 | TLS | Terminate it in a reverse proxy (below) |
 
 Generate a key with `openssl rand -hex 32` or `rake generate_api_key`.
@@ -99,7 +100,8 @@ server {
 }
 ```
 
-Set `TRUST_PROXY=true` on FerrumMCP when it sits behind this proxy.
+Set `TRUST_PROXY=true` and `MCP_ALLOWED_HOSTS=ferrum.example.com` on FerrumMCP when it sits behind this proxy
+(the proxy forwards the public `Host`, which the DNS rebinding protection would otherwise reject).
 
 ## Kubernetes
 

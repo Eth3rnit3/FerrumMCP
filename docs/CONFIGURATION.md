@@ -19,6 +19,9 @@ See `.env.example` for a complete example configuration.
 | `LOG_LEVEL` | Logging level (debug/info/warn/error) | `info` |
 | `LOG_FILE` | Log destination: a file path or `stderr` | `./logs/ferrum_mcp.log` |
 | `TRUST_PROXY` | Use `X-Forwarded-For` for rate limiting and audit logs (only behind a trusted proxy) | `false` |
+| `DNS_REBINDING_PROTECTION` | Validate the `Host` and `Origin` headers on `/mcp` | `true` |
+| `MCP_ALLOWED_HOSTS` | Extra `Host` values accepted besides loopback (`name` for any port, or `name:port`) | none |
+| `MCP_ALLOWED_ORIGINS` | Extra browser `Origin` values accepted besides same-origin | none |
 
 **Logging**: logs never go to STDOUT because the stdio transport uses it for the protocol. The default file lives
 under the current working directory (never inside the installed gem); when that directory is not writable the
@@ -51,6 +54,12 @@ server falls back to the system temp directory. Use `LOG_FILE=stderr` in contain
 **Note**: Rate limiting is applied per client IP address. When exceeded, HTTP 429 (Too Many Requests) is returned with a `Retry-After` header.
 The client address is the socket peer unless `TRUST_PROXY=true`, in which case the first `X-Forwarded-For` entry is used.
 Never enable `TRUST_PROXY` on a server reachable directly by clients: they could rotate the header to escape the limit.
+
+**DNS rebinding protection**: the MCP SDK rejects (HTTP 403) a request on `/mcp` whose `Host` header is neither
+loopback nor listed in `MCP_ALLOWED_HOSTS`, and a browser request whose `Origin` is neither same-origin nor listed in
+`MCP_ALLOWED_ORIGINS`. A server reached through a host name or IP other than `localhost` must list it
+(`MCP_ALLOWED_HOSTS=mcp.example.com,192.168.1.10`). Behind a reverse proxy, either list the public host name the
+proxy forwards, or set `DNS_REBINDING_PROTECTION=false` when the proxy validates `Host` itself.
 
 ### Navigation Policy
 

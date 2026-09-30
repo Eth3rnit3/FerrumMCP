@@ -8,7 +8,8 @@ module FerrumMCP
   class Configuration
     attr_accessor :headless, :timeout, :server_host, :server_port, :log_level, :log_file, :transport,
                   :max_sessions, :rate_limit_enabled, :rate_limit_max_requests, :rate_limit_window,
-                  :api_key_enabled, :api_keys, :trust_proxy
+                  :api_key_enabled, :api_keys, :trust_proxy,
+                  :dns_rebinding_protection, :mcp_allowed_hosts, :mcp_allowed_origins
     attr_reader :browsers, :user_profiles, :bot_profiles, :url_policy, :upload_allowed_dirs
 
     # Browser configuration structure
@@ -45,6 +46,13 @@ module FerrumMCP
 
       # Only honour X-Forwarded-For when the server sits behind a trusted proxy
       @trust_proxy = ENV.fetch('TRUST_PROXY', 'false') == 'true'
+
+      # DNS rebinding protection of the MCP endpoint (HTTP transport): the
+      # Host header must be loopback or listed in MCP_ALLOWED_HOSTS, and a
+      # browser Origin must be same-origin or listed in MCP_ALLOWED_ORIGINS.
+      @dns_rebinding_protection = ENV.fetch('DNS_REBINDING_PROTECTION', 'true') == 'true'
+      @mcp_allowed_hosts = env_list('MCP_ALLOWED_HOSTS')
+      @mcp_allowed_origins = env_list('MCP_ALLOWED_ORIGINS')
 
       # Optional navigation restrictions (ALLOWED_HOSTS / BLOCKED_HOSTS)
       @url_policy = UrlPolicy.from_env
@@ -114,9 +122,14 @@ module FerrumMCP
       @bot_profiles = load_bot_profiles
     end
 
+    # Comma-separated environment variable as a list
+    def env_list(name)
+      ENV.fetch(name, '').split(',').map(&:strip).reject(&:empty?)
+    end
+
     # Defaults to the current directory and the system temp dir
     def load_upload_allowed_dirs
-      configured = ENV.fetch('UPLOAD_ALLOWED_DIRS', '').split(',').map(&:strip).reject(&:empty?)
+      configured = env_list('UPLOAD_ALLOWED_DIRS')
       dirs = configured.empty? ? [Dir.pwd, Dir.tmpdir] : configured
       dirs.map { |d| File.expand_path(d) }
     end
@@ -131,8 +144,7 @@ module FerrumMCP
       keys << single_key if single_key && !single_key.empty?
 
       # Load multiple API keys (comma-separated)
-      multiple_keys = ENV.fetch('API_KEYS', nil)
-      keys.concat(multiple_keys.split(',').map(&:strip).reject(&:empty?)) if multiple_keys && !multiple_keys.empty?
+      keys.concat(env_list('API_KEYS'))
 
       keys.uniq
     end

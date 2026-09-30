@@ -308,6 +308,7 @@ end
 - `LOG_LEVEL`: Logging level - debug/info/warn/error (default: info)
 - `LOG_FILE`: Log destination, a path or `stderr` (default: `./logs/ferrum_mcp.log`)
 - `TRUST_PROXY`: Honour `X-Forwarded-For` for rate limiting/audit (default: false; only behind a trusted proxy)
+- `DNS_REBINDING_PROTECTION` / `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS`: `Host`/`Origin` validation on `/mcp` (default: on, loopback only)
 - `ALLOWED_HOSTS` / `BLOCKED_HOSTS`: Optional navigation policy (exact host, `*.suffix`, CIDR)
 - `UPLOAD_ALLOWED_DIRS`: Directories `upload_file` may read from (default: cwd and temp dir)
 

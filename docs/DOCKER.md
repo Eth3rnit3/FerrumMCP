@@ -72,6 +72,10 @@ Before exposing a container beyond localhost:
 
 Rate limiting is on by default (`RATE_LIMIT_MAX_REQUESTS=100` per `RATE_LIMIT_WINDOW=60` seconds). Set `TRUST_PROXY=true` only behind a reverse proxy.
 
+`/mcp` only accepts loopback `Host` headers by default (DNS rebinding protection). Reaching the container through
+`localhost:3000` on the host works as is; from another container or machine, set `MCP_ALLOWED_HOSTS` to the name
+or IP the clients use (e.g. `-e MCP_ALLOWED_HOSTS=ferrum-mcp` on a Compose network).
+
 ## CAPTCHAs in Docker
 
 `solve_captcha` handles Cloudflare Turnstile and the hCaptcha checkbox in both images. reCAPTCHA's audio challenge needs `whisper-cli` (whisper.cpp), which neither image ships: build your own image on top if you need it.
