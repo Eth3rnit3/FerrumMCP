@@ -367,6 +367,10 @@ Detect the CAPTCHA on the current page and solve it. Detection relies on the wid
 | type | string | No | `auto` (default), `recaptcha`, `hcaptcha` or `turnstile` |
 | max_attempts | integer | No | Maximum challenges to answer (default: 5) |
 | language | string | No | Expected audio language for Whisper, e.g. `en` or `auto` (default: `WHISPER_LANGUAGE` or `en`) |
+| screenshot_on_failure | boolean | No | Attach a screenshot of the page when the CAPTCHA is not solved (default: true) |
+
+Solving can take a minute or more (human-like warm-up, audio rounds): the tool sends MCP progress notifications
+(`notifications/progress`) when the client provides a progress token.
 
 **Example Response (solved):**
 
@@ -382,18 +386,19 @@ Detect the CAPTCHA on the current page and solve it. Detection relies on the wid
 }
 ```
 
-**When it cannot solve**, the tool returns an error with an explicit status:
+**When it cannot solve**, the tool returns an error with an explicit status and a screenshot of the page
+(unless `screenshot_on_failure: false`), so the agent can see the challenge grid, the block page or the error banner:
 
 | Status | Meaning |
 |--------|---------|
-| `blocked` | The provider refuses to serve challenges ("Try again later") |
-| `distrusted` | reCAPTCHA only serves its decoy audio to this session; the tool stops early to protect the IP |
-| `challenge_required` | A visual challenge appeared (hCaptcha); a screenshot is attached |
+| `blocked` | The provider refuses to serve challenges: reCAPTCHA's "Try again later", Cloudflare's "Sorry, you have been blocked" page |
+| `distrusted` | reCAPTCHA only serves its decoy audio to this session; the tool stops after the first one (recognised by fingerprint) to protect the IP |
+| `challenge_required` | A visual challenge appeared (hCaptcha) |
 | `failed` | Attempts exhausted or the widget never reached a solved state |
 
 **Supported CAPTCHAs:**
-- **Cloudflare Turnstile** and the "Just a moment…" interstitial: human-like click on the widget, headful and headless
-- **reCAPTCHA v2** (checkbox, invisible, enterprise): audio challenge transcribed locally with whisper.cpp; decoy audio is detected and never answered
+- **Cloudflare Turnstile** (widget, invisible and managed modes) and the "Just a moment…" interstitial: human-like click on the widget when there is one, headful and headless
+- **reCAPTCHA v2** (checkbox, invisible, enterprise): audio challenge transcribed locally with whisper.cpp; decoy audio is detected and never answered. The token is read from the response textarea or, for callback-only integrations, through `grecaptcha.getResponse()`
 - **hCaptcha**: checkbox only (hCaptcha no longer offers an audio challenge)
 
 **Notes:**

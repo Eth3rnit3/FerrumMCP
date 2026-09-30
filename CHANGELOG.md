@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **MCP progress notifications**: `BaseTool#report_progress` sends `notifications/progress` to the calling client;
+  `solve_captcha` reports each step (warm-up and click, audio round n/max, checkbox attempt n/max).
+- `solve_captcha` attaches a screenshot to every unsolved result (`blocked`, `distrusted`, `challenge_required`,
+  `failed`); `screenshot_on_failure: false` turns it off.
+- `snapshot` names the CAPTCHA widgets present on the page (`captcha: ["turnstile"]` and a first line
+  `CAPTCHA detected: …`).
+- reCAPTCHA: the known decoy audio is recognised by fingerprint (md5) before any Whisper run, so a distrusted
+  session is reported after the first audio without reloading the challenge.
+- reCAPTCHA: the token of a callback-only integration (no `g-recaptcha-response` textarea) is read through
+  `grecaptcha.getResponse()`.
+
+### Fixed
+- Turnstile: Cloudflare's "Sorry, you have been blocked" page was reported as solved (the interstitial title had
+  changed); it is now status `blocked`.
+- Turnstile: an invisible or managed widget issues its token without rendering a checkbox; the solver waited for a
+  widget box and failed with "did not render". The token is now picked up while waiting.
+- CAPTCHA solvers no longer swallow `Ferrum::DeadBrowserError` in their polling helpers: a browser that dies
+  mid-solve reaches the session instead of being retried until the timeout.
+- The BotBrowser Docker image no longer installs the Python `openai-whisper` (torch included): the server runs
+  `whisper-cli` from whisper.cpp, which the image does not ship (see the Docker guide).
+
 ### Changed
 - **MCP SDK 1.6** (`mcp` gem `~> 1.6`, was `~> 0.4.0`): protocol 2025-11-25 / 2026-07-28 lifecycle, progress and
   cancellation support, hardened Streamable HTTP transport (4 MiB request cap, idle MCP sessions reaped after 30 min,
