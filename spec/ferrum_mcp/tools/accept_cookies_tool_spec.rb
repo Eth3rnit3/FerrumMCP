@@ -109,6 +109,120 @@ RSpec.describe FerrumMCP::Tools::AcceptCookiesTool do
       end
     end
 
+    context 'when the refusal reads like an acceptance ("Continuer sans accepter")' do
+      it 'clicks the real accept button' do
+        sid = setup_session_with_fixture(session_manager, 'banner_continue_without_accepting.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be true
+        expect(result[:data][:clicked]).to eq('Accepter & Fermer')
+        expect(element_exists?(session_manager, sid, '#banner-rejected')).to be false
+        expect(element_exists?(session_manager, sid, '#banner-accepted')).to be true
+      end
+    end
+
+    context 'when only a refusal button is on screen' do
+      it 'clicks nothing and reports that no banner was accepted' do
+        sid = setup_session_with_fixture(session_manager, 'banner_reject_only.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be false
+        expect(element_exists?(session_manager, sid, '#banner-rejected')).to be false
+      end
+    end
+
+    context 'when the buttons are <input type="submit"> elements' do
+      it 'accepts through the input value' do
+        sid = setup_session_with_fixture(session_manager, 'banner_with_input_buttons.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be true
+        expect(result[:data][:clicked]).to eq('Accepter')
+        expect(element_exists?(session_manager, sid, '#banner-accepted')).to be true
+      end
+    end
+
+    context 'when the buttons only carry an aria-label' do
+      it 'accepts through the aria-label' do
+        sid = setup_session_with_fixture(session_manager, 'banner_with_icon_buttons.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be true
+        expect(element_exists?(session_manager, sid, '#banner-accepted')).to be true
+      end
+    end
+
+    context 'when the banner lives in an open shadow root' do
+      it 'accepts inside the shadow DOM' do
+        sid = setup_session_with_fixture(session_manager, 'banner_in_shadow_dom.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be true
+        expect(element_exists?(session_manager, sid, '#banner-accepted')).to be true
+      end
+    end
+
+    context 'when the banner lives in an iframe' do
+      it 'accepts inside the iframe' do
+        sid = setup_session_with_fixture(session_manager, 'banner_in_iframe.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be true
+        expect(element_exists?(session_manager, sid, '#banner-accepted')).to be true
+      end
+    end
+
+    context 'when the banner can only be answered through the CMP API' do
+      it 'accepts through the CMP JavaScript API' do
+        sid = setup_session_with_fixture(session_manager, 'banner_cmp_api_only.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be true
+        expect(result[:data][:strategy]).to eq('cmp_api')
+        expect(element_exists?(session_manager, sid, '#banner-accepted')).to be true
+      end
+    end
+
+    context 'when the banner shows up after the page loaded' do
+      it 'waits for it' do
+        sid = setup_session_with_fixture(session_manager, 'banner_delayed.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 3 })
+
+        expect(result[:success]).to be true
+        expect(element_exists?(session_manager, sid, '#banner-accepted')).to be true
+      end
+    end
+
+    context 'when the accept button does not close the banner' do
+      it 'reports the failure instead of claiming success' do
+        sid = setup_session_with_fixture(session_manager, 'banner_stuck.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to match(/still visible/i)
+      end
+    end
+
+    context 'when accept-looking buttons are not part of a cookie banner' do
+      it 'leaves them alone' do
+        sid = setup_session_with_fixture(session_manager, 'agree_outside_banner.html', subdir: 'cookies')
+
+        result = execute_tool_in_session(sid, { session_id: sid, wait: 0 })
+
+        expect(result[:success]).to be false
+        expect(element_exists?(session_manager, sid, '#unrelated-clicked')).to be false
+      end
+    end
+
     context 'when no cookie banner is present' do
       it 'returns error when no banner found' do
         sid = setup_session_with_fixture(session_manager, 'no_banner.html', subdir: 'cookies')

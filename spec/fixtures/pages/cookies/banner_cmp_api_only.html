@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bandeau Cookies - Shadow DOM fermé</title>
+</head>
+<body>
+    <h1>Bandeau d'une CMP dans un shadow DOM fermé</h1>
+
+    <div id="didomi-host"></div>
+
+    <script>
+        // The buttons are out of reach (closed shadow root): only the CMP API can answer
+        const host = document.getElementById('didomi-host');
+        const shadow = host.attachShadow({ mode: 'closed' });
+        shadow.innerHTML = '<div style="position:fixed;bottom:0;left:0;right:0;padding:20px;background:#eee">' +
+            '<p>Nous utilisons des cookies.</p><button>Accepter</button></div>';
+
+        let visible = true;
+        const accepted = function() {
+            visible = false;
+            host.remove();
+            const result = document.createElement('div');
+            result.id = 'banner-accepted';
+            document.body.appendChild(result);
+        };
+        shadow.querySelector('button').addEventListener('click', accepted);
+        window.Didomi = {
+            notice: { isVisible: function() { return visible; } },
+            setUserAgreeToAll: accepted
+        };
+    </script>
+</body>
+</html>

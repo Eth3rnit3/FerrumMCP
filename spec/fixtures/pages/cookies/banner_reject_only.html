@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bandeau Cookies - Refus seulement</title>
+</head>
+<body>
+    <h1>Seul le lien de refus Didomi est visible</h1>
+
+    <!-- The accept button is not rendered yet: only the refusal is on screen -->
+    <div id="didomi-notice">
+        <p>Nous utilisons des cookies.</p>
+        <button class="didomi-continue-without-agreeing">Continuer sans accepter</button>
+    </div>
+
+    <script>
+        document.querySelector('.didomi-continue-without-agreeing').addEventListener('click', function() {
+            document.getElementById('didomi-notice').style.display = 'none';
+            const result = document.createElement('div');
+            result.id = 'banner-rejected';
+            document.body.appendChild(result);
+        });
+    </script>
+</body>
+</html>

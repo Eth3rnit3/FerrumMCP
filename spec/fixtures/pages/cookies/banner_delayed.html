@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cookie Banner - Shown late</title>
+</head>
+<body>
+    <h1>Banner injected one second after load</h1>
+
+    <script>
+        setTimeout(function() {
+            const banner = document.createElement('div');
+            banner.id = 'cookie-banner';
+            banner.innerHTML = '<p>We use cookies.</p><button id="accept">Accept all</button>';
+            document.body.appendChild(banner);
+            document.getElementById('accept').addEventListener('click', function() {
+                banner.remove();
+                const result = document.createElement('div');
+                result.id = 'banner-accepted';
+                document.body.appendChild(result);
+            });
+        }, 1000);
+    </script>
+</body>
+</html>
