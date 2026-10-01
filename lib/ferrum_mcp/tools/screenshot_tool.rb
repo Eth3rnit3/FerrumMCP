@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'base64'
+require 'securerandom'
 
 module FerrumMCP
   module Tools
@@ -27,23 +28,37 @@ module FerrumMCP
           element = find_element(selector)
           element.scroll_into_view
           sleep 0.1 # let the element render after scrolling
-          options[:selector] = css_selector_for(selector, element)
         end
 
-        data = resize_if_needed(page.screenshot(**options), format)
+        data = with_css_selector(selector, element) do |css_selector|
+          options[:selector] = css_selector if css_selector
+          resize_if_needed(page.screenshot(**options), format)
+        end
         image_response(Base64.strict_encode64(data), format == 'png' ? 'image/png' : 'image/jpeg')
       end
 
       private
 
       # Ferrum's screenshot(selector:) only takes CSS; map refs/xpath to a CSS
-      # selector by tagging the resolved element.
-      def css_selector_for(selector, element)
-        kind, expression = resolve_selector(selector)
-        return expression if kind == :css
+      # selector by tagging the resolved element only for this capture.
+      def with_css_selector(selector, element)
+        return yield(nil) unless selector
 
-        page.execute("arguments[0].setAttribute('data-fmcp-shot', '1')", element)
-        '[data-fmcp-shot="1"]'
+        kind, expression = resolve_selector(selector)
+        return yield(expression) if kind == :css
+
+        marker = SecureRandom.hex(16)
+        previous = element.attribute('data-fmcp-shot')
+        page.execute("arguments[0].setAttribute('data-fmcp-shot', arguments[1])", element, marker)
+        yield %([data-fmcp-shot="#{marker}"])
+      ensure
+        if marker
+          page.execute(<<~JS, element, previous)
+            const el = arguments[0], previous = arguments[1];
+            if (previous === null) el.removeAttribute('data-fmcp-shot');
+            else el.setAttribute('data-fmcp-shot', previous);
+          JS
+        end
       end
 
       # Resize image if any dimension exceeds MAX_DIMENSION. Needs libvips; when

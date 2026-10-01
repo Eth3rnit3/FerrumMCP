@@ -127,7 +127,7 @@ module FerrumMCP
             if (tag === 'img') return clean(el.getAttribute('alt'));
             if (['input', 'select', 'textarea'].includes(tag)) {
               return labelText(el) || clean(el.placeholder) || clean(el.name) || clean(el.title) ||
-                (['button', 'checkbox', 'radio'].includes(role) ? clean(el.value) : '') || clean(el.id);
+                (el.type !== 'password' && ['button', 'checkbox', 'radio'].includes(role) ? clean(el.value) : '') || clean(el.id);
             }
             return clean(el.innerText || el.textContent) || clean(el.title) || clean(el.value) || clean(el.id);
           };
@@ -167,12 +167,13 @@ module FerrumMCP
             if (!ref) { ref = 'e' + (++window.__fmcpRefCounter); el.setAttribute(ATTR, ref); }
             const tag = el.tagName.toLowerCase();
             const item = { ref: ref, role: role, tag: tag, name: name, selector: selectorFor(el) };
+            const value = el.type === 'password' ? '' : clean(el.value);
             if (role === 'heading') item.level = parseInt(tag[1], 10) || null;
             if (tag === 'a' && el.getAttribute('href')) item.href = el.getAttribute('href');
             if (tag === 'input' && el.type && !['text', 'checkbox', 'radio'].includes(el.type)) item.type = el.type;
             if (el.placeholder) item.placeholder = clean(el.placeholder);
-            if ((role === 'textbox' || role === 'combobox' || role === 'listbox' || role === 'slider') && el.value) item.value = clean(el.value);
-            if (role === 'radio' && tag === 'input' && el.value && el.value !== 'on') item.value = clean(el.value);
+            if ((role === 'textbox' || role === 'combobox' || role === 'listbox' || role === 'slider') && value) item.value = value;
+            if (role === 'radio' && tag === 'input' && value && value !== 'on') item.value = value;
             if (role === 'checkbox' || role === 'radio' || role === 'switch') {
               item.checked = el.checked === true || el.getAttribute('aria-checked') === 'true';
             }

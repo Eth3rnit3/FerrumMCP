@@ -14,6 +14,8 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
   let(:mcp_server) { FerrumMCP::Server.new(config) }
   let(:http_server) { described_class.new(mcp_server, config) }
 
+  after { mcp_server.shutdown }
+
   def app
     http_server.app
   end
@@ -162,6 +164,19 @@ RSpec.describe FerrumMCP::Transport::HTTPServer do
   end
 
   describe 'API key authentication integration' do
+    context 'when authentication is enabled without any keys' do
+      let(:config) do
+        cfg = test_base_config
+        cfg.api_key_enabled = true
+        cfg.api_keys = []
+        cfg
+      end
+
+      it 'refuses to create an HTTP transport instead of exposing an unauthenticated endpoint' do
+        expect { http_server }.to raise_error(FerrumMCP::Error, /API_KEY_ENABLED.*API_KEY.*API_KEYS/)
+      end
+    end
+
     context 'when API key authentication is enabled' do
       let(:config) do
         cfg = test_base_config

@@ -42,6 +42,7 @@ Compact, agent-friendly view of the page: interactive elements (links, buttons, 
 - Typical loop: `snapshot` → `click ref:e5` → `wait_for_text` → `snapshot`
 - Names follow accessibility rules: `aria-label`, `<label for>`, placeholder, name, then visible text
 - Radio buttons also show their `value`, so unlabeled buttons of one group stay distinguishable
+- Password inputs retain their name, type and ref, but their value is omitted in both text and JSON snapshots
 
 ## get_text
 
@@ -339,4 +340,3 @@ Find the innermost elements whose visible text contains (or equals) a text. Each
 - `text` is cut at 200 characters; at most 50 elements are returned (`found` gives the total)
 - Prefers visible elements when `multiple: false`
 - `ref` (e.g. `ref:e42`) is the same kind of ref as `snapshot` and works in `click`, `fill_form`, `get_text`, ...
-
