@@ -17,6 +17,25 @@ RSpec.describe FerrumMCP::Tools::ScreenshotTool do
     session_manager.shutdown
   end
 
+  it 'captures the requested element on successive XPath screenshots' do
+    sid = setup_session_with_fixture(session_manager, 'screenshot_targets.html', subdir: 'agent')
+
+    sizes = session_manager.with_session(sid) do |browser_manager|
+      tool = described_class.new(browser_manager)
+      dimensions = %w[first second first].map do |id|
+        result = tool.execute(selector: "xpath://div[@id='#{id}']")
+        expect(result[:success]).to be true
+        image = Vips::Image.new_from_buffer(Base64.decode64(result[:data]), '')
+        [image.width, image.height]
+      end
+      expect(browser_manager.page.at_css('#first').attribute('data-fmcp-shot')).to be_nil
+      expect(browser_manager.page.at_css('#second').attribute('data-fmcp-shot')).to eq('site-owned')
+      dimensions
+    end
+
+    expect(sizes).to eq([[100, 80], [200, 120], [100, 80]])
+  end
+
   describe '#resize_if_needed' do
     let(:small_image_data) { create_test_image(800, 600) }
     let(:wide_image_data) { create_test_image(10_000, 600) }

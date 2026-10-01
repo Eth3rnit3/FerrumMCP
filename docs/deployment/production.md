@@ -9,7 +9,7 @@ A browser server reachable by others can browse your internal network and read f
 | Setting | Why |
 |---|---|
 | `API_KEY_ENABLED=true`, `API_KEY` (or `API_KEYS=k1,k2` for rotation) | Clients must send `Authorization: Bearer <key>` on `/mcp`; `/health` and `/` stay open |
-| `BLOCKED_HOSTS=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,localhost` | Keeps the browser off private ranges and cloud metadata. Or allow-list with `ALLOWED_HOSTS` (exact host, `*.suffix`, CIDR) |
+| `BLOCKED_HOSTS=127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,localhost` | Rejects matching initial URLs in `navigate` and `new_tab`. Or allow-list with `ALLOWED_HOSTS` (exact host, `*.suffix`, CIDR) |
 | `UPLOAD_ALLOWED_DIRS=/srv/uploads` | Limits which local files `upload_file` can read (default: working directory and temp dir) |
 | `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW` | Per-client limit, on by default (100 requests / 60 s) |
 | `TRUST_PROXY=true` | Only behind a reverse proxy you control, so rate limiting uses `X-Forwarded-For` |
@@ -17,6 +17,12 @@ A browser server reachable by others can browse your internal network and read f
 | TLS | Terminate it in a reverse proxy (below) |
 
 Generate a key with `openssl rand -hex 32` or `rake generate_api_key`.
+
+HTTP startup fails if `API_KEY_ENABLED=true` but neither `API_KEY` nor `API_KEYS` contains a key.
+All keys access the same sessions and profiles: use separate instances for clients that must be isolated.
+
+The navigation policy checks URLs as written, without resolving DNS. It does not cover redirects, clicks,
+subresources or JavaScript requests. Enforce private-network restrictions with a firewall or outbound proxy.
 
 ## Docker
 

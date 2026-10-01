@@ -141,7 +141,7 @@ module FerrumMCP
     def execute_tool(tool_class, params)
       progress = progress_reporter(params[:server_context])
       params = params.except(:server_context)
-      logger.debug "Executing tool: #{tool_class.tool_name} with params: #{params.inspect}"
+      logger.debug "Executing tool: #{tool_class.tool_name}"
 
       result = if tool_class.requires_session?
                  execute_browser_tool(tool_class, params, progress)
@@ -203,10 +203,9 @@ module FerrumMCP
       end
     end
 
-    def report_exception(exception, context)
+    def report_exception(exception, _context)
       logger.error '=' * 80
       logger.error "MCP Exception: #{exception.class} - #{exception.message}"
-      logger.error "Context: #{context.inspect}"
       original = exception.respond_to?(:original_error) ? exception.original_error : nil
       if original
         logger.error "ORIGINAL ERROR: #{original.class} - #{original.message}"

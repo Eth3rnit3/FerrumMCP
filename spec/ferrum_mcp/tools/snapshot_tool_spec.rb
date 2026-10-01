@@ -49,6 +49,24 @@ RSpec.describe FerrumMCP::Tools::SnapshotTool do
     expect(link[:selector]).to eq('#docs-link')
   end
 
+  %w[text json].each do |format|
+    it "omits password values while preserving ordinary field values in #{format} snapshots" do
+      sid = setup_session_with_fixture(session_manager, 'sensitive_fields.html', subdir: 'agent')
+
+      result = run_tool(described_class, sid, format: format)
+
+      expect(result[:data].to_json).not_to include('dummy-password-secret')
+      expect(result[:data].to_json).to include('visible-username')
+      if format == 'json'
+        password = result[:data][:elements].find { |element| element[:type] == 'password' }
+        expect(password).to include(role: 'textbox', name: 'Password', ref: match(/\Ae\d+\z/))
+        expect(password).not_to have_key(:value)
+      else
+        expect(result[:data][:snapshot]).to include('textbox "Password" type=password')
+      end
+    end
+  end
+
   it 'keeps the same ref for the same element across snapshots' do
     sid = setup_session_with_fixture(session_manager, 'agent_page.html', subdir: 'agent')
 

@@ -17,9 +17,8 @@ module FerrumMCP
       def call(env)
         client_ip = extract_ip(env)
 
-        return rate_limit_response if rate_limited?(client_ip)
+        return rate_limit_response unless admit_request?(client_ip)
 
-        track_request(client_ip)
         @app.call(env)
       end
 
@@ -29,19 +28,17 @@ module FerrumMCP
         ClientAddress.extract(env, trust_proxy: @trust_proxy)
       end
 
-      def rate_limited?(client_ip)
+      # Checking the quota and counting the request must share one lock:
+      # another Puma thread must not slip between them.
+      def admit_request?(client_ip)
         @mutex.synchronize do
           cleanup_old_requests
 
-          request_times = @requests[client_ip] || []
-          request_times.length >= @max_requests
-        end
-      end
+          request_times = (@requests[client_ip] ||= [])
+          next false if request_times.length >= @max_requests
 
-      def track_request(client_ip)
-        @mutex.synchronize do
-          @requests[client_ip] ||= []
-          @requests[client_ip] << Time.now
+          request_times << Time.now
+          true
         end
       end
 

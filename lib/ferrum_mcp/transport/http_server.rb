@@ -13,6 +13,10 @@ module FerrumMCP
         @server = server
         @config = config
         @logger = config.logger
+        if config.api_key_enabled && config.api_keys.empty?
+          raise Error, 'API_KEY_ENABLED=true requires at least one key in API_KEY or API_KEYS'
+        end
+
         @mcp_transport = MCP::Server::Transports::StreamableHTTPTransport.new(server.mcp_server, **transport_options)
         server.mcp_server.transport = @mcp_transport
       end
@@ -70,7 +74,7 @@ module FerrumMCP
           # mounted here rather than globally with skip paths: Rack routes
           # "//mcp" to this endpoint too, and a "/" skip path matched it.
           map '/mcp' do
-            if config.api_key_enabled && config.api_keys.any?
+            if config.api_key_enabled
               use FerrumMCP::Transport::ApiKeyAuthenticator,
                   api_keys: config.api_keys,
                   logger: logger,

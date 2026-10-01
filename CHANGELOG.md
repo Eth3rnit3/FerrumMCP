@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `grecaptcha.getResponse()`.
 
 ### Fixed
+- Successive XPath screenshots capture the requested element rather than reusing the first marked element;
+  each capture uses a unique temporary marker and restores the element's original attribute afterwards.
 - `accept_cookies` clicked refusals and reported them as acceptances. On Leboncoin it clicked *Continuer sans
   accepter*, because the English pattern `continue` matched and Didomi's `.didomi-continue-without-agreeing` was
   listed as an accept selector. The tool was rewritten:
@@ -64,6 +66,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and restarts it on the next call. Every tool used to swallow it in its own `rescue StandardError`.
 
 ### Security
+- HTTP startup refuses `API_KEY_ENABLED=true` without any configured API keys instead of exposing an
+  unauthenticated MCP endpoint.
+- `snapshot` omits password-input values in both text and JSON formats.
+- Tool execution logs no longer dump argument values, and MCP exception logs no longer dump request contexts.
+- HTTP rate limiting checks the quota and counts each admitted request in one critical section, preventing
+  simultaneous requests from exceeding the limit.
+- Security and deployment documentation describe the current protections, shared session access and the limits
+  of the initial-URL navigation policy.
 - **API key bypass**: `POST //mcp` (any number of leading slashes) reached the MCP endpoint without a key.
   Rack routes `//mcp` to `/mcp`, while the authenticator skipped every path "under" the unauthenticated
   root `/`. Authentication is now mounted on the `/mcp` endpoint itself, and a root skip path only matches `/`.
